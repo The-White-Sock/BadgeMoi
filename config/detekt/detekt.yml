@@ -1,0 +1,7 @@
+# Surcharge du profil par défaut de detekt (buildUponDefaultConfig = true dans
+# app/build.gradle.kts) : uniquement les écarts volontaires par rapport aux
+# règles standard sont listés ici.
+
+style:
+  MaxLineLength:
+    maxLineLength: 120

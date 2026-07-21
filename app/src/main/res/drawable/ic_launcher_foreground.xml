@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Reprend la frise de progression (route-strip) du POC : jalons reliés par un
+  trait, jalon "courant" en ambre, jalons "faits" en teal (docs/poc/trajet.html).
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:pathData="M30,54 L78,54"
+        android:strokeColor="#3FD1C8"
+        android:strokeWidth="3"
+        android:strokeLineCap="round" />
+    <path
+        android:fillColor="#FFB020"
+        android:pathData="M23,54 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0" />
+    <path
+        android:fillColor="#3FD1C8"
+        android:pathData="M48,54 a6,6 0 1,0 12,0 a6,6 0 1,0 -12,0" />
+    <path
+        android:fillColor="#3FD1C8"
+        android:pathData="M71,54 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0" />
+</vector>
