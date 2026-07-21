@@ -86,11 +86,12 @@ fun BadgeMoiTheme(
     content: @Composable () -> Unit,
 ) {
     val colorScheme = if (darkTheme) nightColorScheme() else dayColorScheme()
-    val extendedColors = if (darkTheme) {
-        BadgeMoiExtendedColors(NightPalette.amberDim, NightPalette.tealDim, NightPalette.green)
-    } else {
-        BadgeMoiExtendedColors(DayPalette.amberDim, DayPalette.tealDim, DayPalette.green)
-    }
+    val extendedColors =
+        if (darkTheme) {
+            BadgeMoiExtendedColors(NightPalette.amberDim, NightPalette.tealDim, NightPalette.green)
+        } else {
+            BadgeMoiExtendedColors(DayPalette.amberDim, DayPalette.tealDim, DayPalette.green)
+        }
 
     CompositionLocalProvider(LocalBadgeMoiExtendedColors provides extendedColors) {
         MaterialTheme(
