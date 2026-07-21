@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#0F1115">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Trajet · domicile ⇄ boulot</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;600;700;800&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0F1115; --panel:#171A21; --panel-alt:#1D212B; --line:#343B49;
+    --ink:#F1EFE8; --ink-soft:#A7AFC0; --ink-dim:#5B6376;
+    --amber:#FFB020; --amber-soft:rgba(255,176,32,.16); --amber-dim:rgba(255,176,32,.45);
+    --teal:#3FD1C8; --teal-soft:rgba(63,209,200,.16); --teal-dim:rgba(63,209,200,.4);
+    --red:#FF6259; --red-soft:rgba(255,98,89,.16);
+    --green:#5FD98A;
+    --cta-ink:#1A1300;
+    --mono:'JetBrains Mono',ui-monospace,Menlo,Consolas,monospace;
+    --sans:'Manrope',system-ui,-apple-system,'Segoe UI',sans-serif;
+    --radius:14px;
+  }
+  /* Thème "plein jour" : contraste maximal pour lecture au soleil / reflets */
+  html[data-theme="day"]{
+    --bg:#FFFFFF; --panel:#FFFFFF; --panel-alt:#EFEEE7; --line:#9AA0AC;
+    --ink:#0A0C10; --ink-soft:#3A4150; --ink-dim:#7B8291;
+    --amber:#B5540B; --amber-soft:rgba(181,84,11,.14); --amber-dim:rgba(181,84,11,.55);
+    --teal:#0B7A73; --teal-soft:rgba(11,122,115,.14); --teal-dim:rgba(11,122,115,.55);
+    --red:#B4231A; --red-soft:rgba(180,35,26,.14);
+    --green:#1E7A46;
+    --cta-ink:#FFFFFF;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
+  html,body{height:100%}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);display:flex;justify-content:center;transition:background .15s,color .15s}
+  .ic{width:1em;height:1em;display:inline-block;vertical-align:-0.15em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+  .card-title .ic,.tab .ic,.seg-line .sl-l .ic,.btn-flat .ic,.resume-banner .ic,.editCard h3 .ic,.empty .ic,.f-label .ic{width:14px;height:14px}
+  .wrap{width:100%;max-width:480px;height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+  .hidden{display:none !important}
+
+  /* ===== TOPBAR ===== */
+  .topbar{flex-shrink:0;padding:10px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--line)}
+  .themeToggle{width:40px;height:40px;border-radius:10px;border:1px solid var(--line);background:var(--panel-alt);color:var(--ink);font-size:17px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+  .tabs{flex:1;display:flex;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:3px}
+  .tab{flex:1;border:none;background:transparent;color:var(--ink-soft);font-family:var(--sans);font-weight:800;font-size:13.5px;padding:11px 6px;border-radius:8px;cursor:pointer}
+  .tab.active{background:var(--amber);color:var(--cta-ink)}
+
+  /* ===== CONTENT ===== */
+  .content{flex:1;min-height:0;overflow:hidden;padding:14px 16px 14px;display:flex;flex-direction:column}
+  /* écran d'accueil : les actions sont ancrées en bas, dans la zone atteignable au pouce */
+  #view-trip,#view-stats{flex:1;display:flex;flex-direction:column;min-height:0;overflow-y:auto}
+  #home-panel{flex:1;display:flex;flex-direction:column;justify-content:flex-end;overflow-y:auto;min-height:0}
+  #active-panel,#summary-panel{flex:1;display:flex;flex-direction:column;min-height:0;overflow-y:auto}
+  /* zone fixe (infos) / zone scrollable (listes de données) / zone fixe (boutons) — aucun scroll de page */
+  .panel-fixed{flex-shrink:0;margin-bottom:12px}
+  .panel-scroll{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:12px}
+  .panel-footer{flex-shrink:0;margin-top:12px;padding-top:12px;border-top:1.5px dashed var(--line);display:flex;gap:10px}
+
+  .bigbtn{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:9px;min-height:92px;padding:18px 20px;border-radius:18px;border:2px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;text-align:left;width:100%}
+  .bigbtn .bb-route{font-size:22px;letter-spacing:1px}
+  .bigbtn .bb-route .rs-arrow{color:var(--ink-dim);font-size:13px;margin:0 1px}
+  .bigbtn .bb-title{font-size:22px;font-weight:800;display:flex;align-items:center;gap:7px}
+  .bigbtn.aller{border-color:var(--amber-dim)}
+  .bigbtn.aller .bb-title{color:var(--amber)}
+  .bigbtn.retour{border-color:var(--teal-dim)}
+  .bigbtn.retour .bb-title{color:var(--teal)}
+  .bigbtn:active{transform:scale(.98)}
+
+  .card{background:var(--panel);border:1.5px solid var(--line);border-radius:var(--radius);padding:14px}
+  .card-title{font-size:11.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:10px;display:flex;align-items:center;gap:5px}
+
+  .resume-banner{background:var(--amber-soft);border:1px solid var(--amber-dim);border-radius:var(--radius);padding:14px 16px}
+  .resume-banner .rb-txt{font-size:15px;font-weight:700;color:var(--amber);display:flex;align-items:center;gap:6px}
+  .resume-banner .rb-sub{font-size:12px;color:var(--ink-soft);font-weight:600;margin-top:4px;display:flex;align-items:center;gap:6px}
+
+  /* frise de progression : signature visuelle façon ligne de métro */
+  .route-strip{position:relative;display:flex;justify-content:space-between;align-items:center;margin:2px 0 4px}
+  .route-strip::before{content:'';position:absolute;left:16px;right:16px;top:50%;height:2px;background:var(--line);z-index:0}
+  .route-node{position:relative;z-index:1;width:34px;height:34px;border-radius:50%;background:var(--panel-alt);border:2px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:17px}
+  .route-node.done{background:linear-gradient(var(--teal-soft),var(--teal-soft)),var(--panel-alt);border-color:var(--teal)}
+  .route-node.current{background:linear-gradient(var(--amber-soft),var(--amber-soft)),var(--panel-alt);border-color:var(--amber);box-shadow:0 0 0 4px var(--amber-soft)}
+  .route-node.skipped{opacity:.35}
+
+  /* split-flap chrono */
+  .flap-row{display:flex;gap:8px}
+  .flap{flex:1;background:var(--panel-alt);border:1.5px solid var(--line);border-radius:10px;padding:10px 8px;text-align:center}
+  .flap .f-label{font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-soft)}
+  .flap .f-val{font-family:var(--mono);font-size:32px;font-weight:800;color:var(--amber);font-variant-numeric:tabular-nums;margin-top:2px;animation:flapin .25s ease;line-height:1.1}
+  @keyframes flapin{from{opacity:.35;transform:translateY(-3px)}to{opacity:1;transform:translateY(0)}}
+
+  /* milestone rows */
+  .mrow{display:flex;align-items:center;gap:10px;padding:12px 4px;border-bottom:1px dashed var(--line);cursor:pointer;min-height:26px}
+  .mrow:last-child{border-bottom:none}
+  .mrow-num{width:28px;height:28px;border-radius:8px;background:var(--panel-alt);color:var(--ink-dim);font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid var(--line)}
+  .mrow-label{flex:1;font-size:14.5px;font-weight:700}
+  .mrow-val{font-family:var(--mono);font-size:14.5px;font-weight:800;color:var(--ink-dim)}
+  .mini-stat{display:flex;align-items:center;justify-content:center;gap:5px;font-size:11px;font-weight:600;color:var(--ink-dim);margin-top:8px}
+  /* jalon courant : fond + bordure gauche épaisse + icône, pas uniquement la couleur */
+  .mrow.current{background:var(--amber-soft);border-radius:9px;margin:0 -6px;padding:12px 10px 12px 8px;border-left:5px solid var(--amber)}
+  .mrow.current .mrow-num{background:var(--amber);color:var(--cta-ink);border-color:var(--amber)}
+  .mrow.current .mrow-label{color:var(--amber);font-weight:800}
+  .mrow.done .mrow-num{background:var(--teal-soft);color:var(--teal)}
+  .mrow.done .mrow-val{color:var(--ink)}
+  .mrow.skipped .mrow-num{color:var(--ink-dim)}
+  .mrow.skipped .mrow-val{color:var(--ink-dim);font-style:italic}
+  .mrow.skipped .mrow-label{color:var(--ink-dim)}
+
+  .seg-line{display:flex;justify-content:space-between;padding:8px 0;font-size:13.5px;border-bottom:1px dashed var(--line)}
+  .seg-line:last-child{border-bottom:none}
+  .seg-line .sl-l{color:var(--ink-soft);font-weight:700}
+  .seg-line .sl-w{font-size:10.5px;color:var(--ink-dim);font-weight:600;margin-left:3px}
+  .seg-line .sl-v{font-family:var(--mono);font-weight:800;font-size:14px}
+
+
+  /* CTA bottom bar */
+  .cta-bar{flex-shrink:0;display:flex;gap:12px;padding:12px 14px calc(14px + env(safe-area-inset-bottom));border-top:2px solid var(--ink);background:var(--panel)}
+  .btn-main{flex:1;min-height:76px;padding:14px 10px;border:none;border-radius:16px;background:var(--amber);color:var(--cta-ink);font-family:var(--sans);font-weight:800;font-size:21px;line-height:1.2;cursor:pointer;transition:transform .1s}
+  .btn-main:active{transform:scale(.97)}
+  .btn-main.flash{animation:ctaflash .35s ease}
+  @keyframes ctaflash{0%{box-shadow:0 0 0 0 var(--amber)}60%{box-shadow:0 0 0 10px transparent}100%{box-shadow:0 0 0 0 transparent}}
+  /* bouton "Passer" : nécessite un maintien pour éviter les activations accidentelles en roulant */
+  .btn-hold{position:relative;overflow:hidden;flex:0 0 118px;min-height:76px;padding:14px 6px;border:2.5px solid var(--ink-dim);border-radius:16px;background:transparent;color:var(--ink-soft);font-family:var(--sans);font-weight:800;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+  .btn-hold .sk-main{font-size:28px;position:relative;z-index:1;line-height:1}
+  .btn-hold .sk-sub{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-dim);position:relative;z-index:1}
+  .btn-hold .sk-fill{position:absolute;left:0;top:0;bottom:0;width:0%;background:var(--amber-dim);z-index:0}
+  .btn-hold.holding .sk-fill{width:100%;transition:width .65s linear}
+
+  .btn-flat{flex:1;padding:14px 8px;border-radius:11px;font-family:var(--sans);font-weight:800;font-size:13.5px;cursor:pointer;border:none}
+  .btn-flat.primary{background:var(--amber);color:var(--cta-ink)}
+  .btn-flat.outline{background:transparent;border:2px solid var(--ink-dim);color:var(--ink-soft)}
+
+  /* stats */
+  .seg2{display:flex;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:3px}
+  .seg2 button{flex:1;border:none;background:transparent;color:var(--ink-soft);font-family:var(--sans);font-weight:700;font-size:12.5px;padding:8px 6px;border-radius:8px;cursor:pointer}
+  .seg2 button.active{background:var(--teal);color:var(--cta-ink)}
+  .total-stat{display:flex;align-items:baseline;justify-content:center;gap:12px;padding:6px 0 2px}
+  .total-stat .total-val{font-family:var(--mono);font-size:34px;font-weight:800;color:var(--amber)}
+  .total-stat .total-sub{display:flex;align-items:center;gap:4px;font-size:12.5px;font-weight:700;color:var(--ink-dim)}
+  .trip-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px dashed var(--line);font-size:13.5px}
+  .trip-row:last-child{border-bottom:none}
+  .trip-row .tr-date{color:var(--ink-soft);font-weight:600}
+  .trip-row .tr-total{font-family:var(--mono);font-weight:800}
+  .empty{padding:20px 6px;text-align:center;color:var(--ink-soft);font-size:12.5px}
+
+  /* overlay edit */
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;justify-content:center;z-index:20}
+  .editCard{width:100%;max-width:480px;background:var(--panel);border-top-left-radius:18px;border-top-right-radius:18px;padding:16px 16px calc(16px + env(safe-area-inset-bottom));border:1px solid var(--line);border-bottom:none}
+  .editCard h3{margin:0 0 12px;font-size:14px;font-weight:800;color:var(--amber)}
+  .editCard input[type=time]{width:100%;background:var(--panel-alt);border:1px solid var(--line);border-radius:10px;color:var(--ink);font-family:var(--mono);font-size:22px;font-weight:700;padding:12px;margin-bottom:12px}
+  .editRow{display:flex;gap:8px}
+  .editRow button{flex:1}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="topbar">
+    <nav class="tabs">
+      <button class="tab active" id="tabTrip" data-tab="trip"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5 13 13l-4.5 2.5L11 11z" fill="currentColor" stroke="none"/></svg> Trajet</button>
+      <button class="tab" id="tabStats" data-tab="stats"><svg class="ic" viewBox="0 0 24 24"><path d="M4 20V4M4 20h16"/><rect x="7" y="13" width="3" height="6" fill="currentColor" stroke="none"/><rect x="12" y="9" width="3" height="10" fill="currentColor" stroke="none"/><rect x="17" y="6" width="3" height="13" fill="currentColor" stroke="none"/></svg> Historique</button>
+    </nav>
+    <button class="themeToggle" id="themeToggle" aria-label="Basculer thème jour/nuit">☀︎</button>
+  </header>
+
+  <main class="content" id="content">
+
+    <section id="view-trip">
+      <div id="home-panel"></div>
+      <div id="active-panel" class="hidden"></div>
+      <div id="summary-panel" class="hidden"></div>
+    </section>
+
+    <section id="view-stats" class="hidden"></section>
+
+  </main>
+
+  <div class="cta-bar hidden" id="ctaBar">
+    <button class="btn-hold" id="btnSkip"><span class="sk-fill"></span><span class="sk-main"><svg class="ic" viewBox="0 0 24 24"><path d="M5 5v14l9-7z" fill="currentColor" stroke="none"/><path d="M17 5v14"/></svg></span><span class="sk-sub">maintenir</span></button>
+    <button class="btn-main" id="btnValidate">Valider</button>
+  </div>
+
+</div>
+
+<div class="overlay hidden" id="editOverlay">
+  <div class="editCard">
+    <h3 id="editTitle"><svg class="ic" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg> Corriger</h3>
+    <input type="time" step="1" id="editTime">
+    <div class="editRow">
+      <button class="btn-flat primary" id="editSave"><svg class="ic" viewBox="0 0 24 24"><path d="M4 12.5 9 17.5 20 6.5"/></svg> OK</button>
+      <button class="btn-flat outline" id="editCancel"><svg class="ic" viewBox="0 0 24 24"><path d="M5 5l14 14M19 5 5 19"/></svg> Annuler</button>
+    </div>
+    <div class="editRow" style="margin-top:8px">
+      <button class="btn-flat outline" id="editSkip"><svg class="ic" viewBox="0 0 24 24"><path d="M5 5v14l9-7z" fill="currentColor" stroke="none"/><path d="M17 5v14"/></svg> Ignorer</button>
+      <button class="btn-flat outline" id="editClear"><svg class="ic" viewBox="0 0 24 24"><path d="M4 7h16"/><path d="M10 11v6M14 11v6"/><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/></svg> Effacer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const ACTIVE_KEY = 'trajet-active-v2';
+  const ARCHIVE_KEY = 'trajet-archive-v2';
+
+  const DIRECTIONS = {
+    aller: {
+      label: 'Aller',
+      milestones: [
+        {key:'m0', label:'Domicile', icon:'home'},
+        {key:'m1', label:'Gare', icon:'station'},
+        {key:'m2', label:'Départ', icon:'train'},
+        {key:'m3', label:'Gare', icon:'station'},
+        {key:'m4', label:'Bureau', icon:'door'}
+      ],
+      segments: [
+        {label:'Ride', from:'m0', to:'m1'},
+        {label:'Attente', from:'m1', to:'m2'},
+        {label:'Train', from:'m2', to:'m3'},
+        {label:'Ride', from:'m3', to:'m4'}
+      ]
+    },
+    retour: {
+      label: 'Retour',
+      milestones: [
+        {key:'m0', label:'Bureau', icon:'door'},
+        {key:'m1', label:'Gare', icon:'station'},
+        {key:'m2', label:'Départ', icon:'train'},
+        {key:'m3', label:'Gare', icon:'station'},
+        {key:'m4', label:'Domicile', icon:'home'}
+      ],
+      segments: [
+        {label:'Ride', from:'m0', to:'m1'},
+        {label:'Attente', from:'m1', to:'m2'},
+        {label:'Train', from:'m2', to:'m3'},
+        {label:'Ride', from:'m3', to:'m4'}
+      ]
+    }
+  };
+
+  // ——— icônes : traits monochromes (currentColor), s'adaptent au thème jour/nuit ———
+  const ICONS = {
+    home:     '<path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v9a1 1 0 0 0 1 1h3v-6h4v6h3a1 1 0 0 0 1-1v-9"/>',
+    building: '<rect x="5" y="3" width="14" height="18" rx="1"/><path d="M9 7h2M13 7h2M9 11h2M13 11h2M9 15h2M13 15h2"/>',
+    door:     '<rect x="6" y="3" width="12" height="18" rx="1"/><circle cx="14" cy="12" r="1" fill="currentColor" stroke="none"/>',
+    train:    '<rect x="6" y="4" width="12" height="11" rx="4"/><path d="M6 11h12"/><circle cx="9.5" cy="18.5" r="1" fill="currentColor" stroke="none"/><circle cx="14.5" cy="18.5" r="1" fill="currentColor" stroke="none"/><path d="M8 15l-2 4M16 15l2 4"/>',
+    station:  '<path d="M12 21s7-7.2 7-12a7 7 0 1 0-14 0c0 4.8 7 12 7 12z"/><circle cx="12" cy="9" r="2.4"/>',
+    compass:  '<circle cx="12" cy="12" r="9"/><path d="M15.5 8.5 13 13l-4.5 2.5L11 11z" fill="currentColor" stroke="none"/>',
+    chart:    '<path d="M4 20V4M4 20h16"/><rect x="7" y="13" width="3" height="6" fill="currentColor" stroke="none"/><rect x="12" y="9" width="3" height="10" fill="currentColor" stroke="none"/><rect x="17" y="6" width="3" height="13" fill="currentColor" stroke="none"/>',
+    flag:     '<path d="M6 3v18"/><path d="M6 4h12l-3.2 4L18 12H6"/>',
+    clock:    '<circle cx="12" cy="12" r="9"/><path d="M12 7.5v5l3.5 2"/>',
+    list:     '<path d="M9 6h12M9 12h12M9 18h12"/><circle cx="4" cy="6" r="1.2" fill="currentColor" stroke="none"/><circle cx="4" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle cx="4" cy="18" r="1.2" fill="currentColor" stroke="none"/>',
+    link:     '<path d="M9.5 14.5l5-5"/><path d="M13 4.8 15.2 2.6a3.7 3.7 0 0 1 5.2 5.2L18.2 10"/><path d="M11 19.2 8.8 21.4a3.7 3.7 0 0 1-5.2-5.2L5.8 14"/>',
+    trend:    '<path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>',
+    download: '<path d="M12 3v12"/><path d="M7 11l5 5 5-5"/><path d="M5 21h14"/>',
+    trash:    '<path d="M4 7h16"/><path d="M10 11v6M14 11v6"/><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/>',
+    edit:     '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
+    check:    '<path d="M4 12.5 9 17.5 20 6.5"/>',
+    close:    '<path d="M5 5l14 14M19 5 5 19"/>',
+    skip:     '<path d="M5 5v14l9-7z" fill="currentColor" stroke="none"/><path d="M17 5v14"/>',
+    play:     '<path d="M6 4.5l13 7.5-13 7.5z" fill="currentColor" stroke="none"/>',
+    sync:     '<path d="M4 12a8 8 0 0 1 14-5.3"/><path d="M20 12a8 8 0 0 1-14 5.3"/><path d="M18 3v5h-5"/><path d="M6 21v-5h5"/>',
+    warning:  '<path d="M12 3 2 21h20L12 3z"/><path d="M12 10v4"/><circle cx="12" cy="17" r="0.9" fill="currentColor" stroke="none"/>',
+    archive:  '<rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9"/><path d="M10 13h4"/>',
+    repeat:   '<path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>',
+    walk:     '<circle cx="13" cy="4.5" r="2"/><path d="M10.5 21l1.8-6-1.8-2.5.8-4.5 3.7.8 2.5 3.7-2.8 1.8 2.6 6"/>'
+  };
+  function ic(key, cls){ return '<svg class="ic'+(cls?' '+cls:'')+'" viewBox="0 0 24 24">'+(ICONS[key]||'')+'</svg>'; }
+
+  function iconOf(d, key){ return d.milestones.find(m=>m.key===key).icon; }
+  function pairIcon(d, fromKey, toKey){
+    return ic(iconOf(d,fromKey))+'<span class="rs-arrow">→</span>'+ic(iconOf(d,toKey));
+  }
+  function routeStrip(d){
+    return d.milestones.map(m=>ic(m.icon)).join('<span class="rs-arrow">→</span>');
+  }
+
+  // liste des jalons dans l'ordre, avec le temps écoulé depuis le jalon précédent
+  function jalonsCard(trip){
+    const d = dirDef(trip);
+    let rows = '';
+    let prevTs = trip.times.m0;
+    d.milestones.forEach((m,i)=>{
+      const t = trip.times[m.key];
+      const skipped = trip.skipped && trip.skipped[m.key];
+      const isCurrent = t==null && !skipped && i===trip.step;
+      const cls = t!=null ? 'done' : skipped ? 'skipped' : isCurrent ? 'current' : '';
+      const label = isCurrent ? '→ ' + m.label : m.label;
+      let durTxt;
+      if(i===0){ durTxt = '—'; }              // le départ lui-même : déjà affiché dans le bandeau
+      else if(t!=null){ durTxt = fmtDur(t - prevTs); }
+      else if(skipped){ durTxt = '–'; }
+      else { durTxt = '—'; }
+      if(t!=null) prevTs = t;                 // avance le repère seulement sur un jalon réellement posé
+      rows += `<div class="mrow ${cls}" data-idx="${i}"><div class="mrow-num">${ic(m.icon)}</div><div class="mrow-label">${label}</div><div class="mrow-val">${durTxt}</div></div>`;
+    });
+    return `<div class="card">
+      <div class="card-title">${ic('list')} Jalons</div>
+      ${rows}
+    </div>`;
+  }
+
+  // bandeau Départ / Arrivée : l'heure d'arrivée n'existe qu'une fois le dernier jalon posé,
+  // sinon on affiche le temps écoulé en direct à sa place
+  function departArrivalFlap(trip, live){
+    const d = dirDef(trip);
+    const lastKey = d.milestones[d.milestones.length-1].key;
+    const arrivalTs = trip.times[lastKey];
+    let arrivalCell;
+    if(arrivalTs!=null){
+      arrivalCell = `<div class="flap"><div class="f-label">${ic('flag')} Arrivée</div><div class="f-val">${fmtClock(arrivalTs)}</div></div>`;
+    } else if(live){
+      arrivalCell = `<div class="flap"><div class="f-label">${ic('clock')} Écoulé</div><div class="f-val" id="liveTotal">00:00</div></div>`;
+    } else {
+      arrivalCell = `<div class="flap"><div class="f-label">${ic('flag')} Arrivée</div><div class="f-val">—</div></div>`;
+    }
+    return `<div class="flap-row">
+      <div class="flap"><div class="f-label">${ic('flag')} Départ</div><div class="f-val">${fmtClock(trip.times.m0)}</div></div>
+      ${arrivalCell}
+    </div>`;
+  }
+
+  let activeTrip = null;
+  let archive = [];
+  let currentTab = 'trip';
+  let statsDirection = 'aller';
+  let editingIdx = null;
+  let liveTimer = null;
+  let deleteArmed = false;
+
+  function loadAll(){
+    try{ const r = localStorage.getItem(ACTIVE_KEY); if(r) activeTrip = JSON.parse(r); }catch(e){}
+    try{ const r = localStorage.getItem(ARCHIVE_KEY); if(r) archive = JSON.parse(r); }catch(e){}
+  }
+  function saveActive(){ try{ activeTrip ? localStorage.setItem(ACTIVE_KEY, JSON.stringify(activeTrip)) : localStorage.removeItem(ACTIVE_KEY); }catch(e){} }
+  function saveArchive(){ try{ localStorage.setItem(ARCHIVE_KEY, JSON.stringify(archive)); }catch(e){} }
+
+  function dirDef(trip){ return DIRECTIONS[trip.direction]; }
+
+  function fmtClock(ts){
+    return new Date(ts).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  }
+  function fmtDur(ms){
+    if(ms==null) return '—';
+    const sign = ms<0 ? '-' : '';
+    ms = Math.abs(ms);
+    const sec = Math.round(ms/1000);
+    if(sec<60) return sign+sec+'s';
+    const min = Math.floor(sec/60), rem = sec%60;
+    if(min<60) return sign+min+'m'+String(rem).padStart(2,'0');
+    const h = Math.floor(min/60), remm = min%60;
+    return sign+h+'h'+String(remm).padStart(2,'0');
+  }
+  function fmtDate(iso){
+    return new Date(iso).toLocaleDateString('fr-FR',{weekday:'short',day:'2-digit',month:'2-digit'});
+  }
+
+  function recomputeStep(trip){
+    const keys = dirDef(trip).milestones.map(m=>m.key);
+    let step = keys.length;
+    for(let i=0;i<keys.length;i++){
+      const k = keys[i];
+      if(trip.times[k]==null && !(trip.skipped && trip.skipped[k])){ step = i; break; }
+    }
+    trip.step = step;
+  }
+
+  function durOf(trip, fromKey, toKey){
+    const a = trip.times[fromKey], b = trip.times[toKey];
+    return (a!=null && b!=null) ? (b-a) : null;
+  }
+  function tripTotalMs(trip){
+    const d = dirDef(trip);
+    const lastKey = d.milestones[d.milestones.length-1].key;
+    return durOf(trip, 'm0', lastKey);
+  }
+
+  // ——— thème jour/nuit (lisibilité plein soleil) ———
+  const THEME_KEY = 'trajet-theme-v1';
+  function applyTheme(t){
+    document.documentElement.dataset.theme = t;
+    $('themeToggle').textContent = t==='day' ? '☾' : '☀︎';
+    $('themeToggle').setAttribute('aria-label', t==='day' ? 'Passer en thème nuit' : 'Passer en thème plein jour');
+    try{ localStorage.setItem(THEME_KEY, t); }catch(e){}
+  }
+  $('themeToggle').addEventListener('click', ()=>{
+    applyTheme(document.documentElement.dataset.theme==='day' ? 'night' : 'day');
+  });
+
+  // ——— écran allumé pendant un trajet actif (Wake Lock) ———
+  let wakeLock = null;
+  async function requestWakeLock(){
+    try{ if('wakeLock' in navigator){ wakeLock = await navigator.wakeLock.request('screen'); } }catch(e){}
+  }
+  function releaseWakeLock(){
+    try{ wakeLock && wakeLock.release(); wakeLock = null; }catch(e){}
+  }
+  document.addEventListener('visibilitychange', ()=>{
+    if(document.visibilityState==='visible' && activeTrip && activeTrip.step < dirDef(activeTrip).milestones.length){
+      requestWakeLock();
+    }
+  });
+
+  // ——— navigation ———
+  function setTab(tab){
+    currentTab = tab;
+    $('tabTrip').classList.toggle('active', tab==='trip');
+    $('tabStats').classList.toggle('active', tab==='stats');
+    $('view-trip').classList.toggle('hidden', tab!=='trip');
+    $('view-stats').classList.toggle('hidden', tab!=='stats');
+    render();
+  }
+  $('tabTrip').addEventListener('click', ()=>setTab('trip'));
+  $('tabStats').addEventListener('click', ()=>setTab('stats'));
+
+  // ——— démarrage / reprise ———
+  function startTrip(direction){
+    activeTrip = {
+      id: 't'+Date.now(),
+      direction,
+      createdAt: new Date().toISOString(),
+      times: {}, skipped: {}, step: 0
+    };
+    dirDef(activeTrip).milestones.forEach(m=>{ activeTrip.times[m.key] = null; });
+    activeTrip.times.m0 = Date.now();
+    recomputeStep(activeTrip);
+    saveActive();
+    requestWakeLock();
+    render();
+  }
+  function discardTrip(){
+    activeTrip = null; saveActive(); releaseWakeLock(); render();
+  }
+  function archiveTrip(){
+    if(!activeTrip) return;
+    archive.unshift({ id:activeTrip.id, direction:activeTrip.direction, date:activeTrip.createdAt, times:activeTrip.times, skipped:activeTrip.skipped });
+    saveArchive();
+    activeTrip = null; saveActive();
+    releaseWakeLock();
+    render();
+  }
+
+  // ——— rendu : accueil ———
+  function renderHome(){
+    if(activeTrip){
+      const d = dirDef(activeTrip);
+      $('home-panel').innerHTML = `
+        <div class="resume-banner">
+          <div class="rb-txt">${ic('sync')} ${d.label}</div>
+          <div class="rb-sub">${ic('clock')} ${fmtClock(activeTrip.times.m0)}</div>
+        </div>
+        <div style="height:14px"></div>
+        <button class="btn-main" id="homeResume" style="width:100%">${ic('play')} Reprendre le trajet</button>
+        <div style="height:10px"></div>
+        <button class="btn-flat outline" id="homeDiscard" style="width:100%;min-height:56px;font-size:14.5px">${ic('close')} Abandonner</button>
+      `;
+      $('homeResume').addEventListener('click', ()=>{ render(true); });
+      $('homeDiscard').addEventListener('click', discardTrip);
+    } else {
+      $('home-panel').innerHTML = `
+        <button class="bigbtn aller" id="startAller">
+          <span class="bb-route">${routeStrip(DIRECTIONS.aller)}</span>
+          <span class="bb-title">${ic('play')} Aller</span>
+        </button>
+        <div style="height:14px"></div>
+        <button class="bigbtn retour" id="startRetour">
+          <span class="bb-route">${routeStrip(DIRECTIONS.retour)}</span>
+          <span class="bb-title">${ic('play')} Retour</span>
+        </button>
+      `;
+      $('startAller').addEventListener('click', ()=>startTrip('aller'));
+      $('startRetour').addEventListener('click', ()=>startTrip('retour'));
+    }
+  }
+
+  // ——— rendu : trajet actif ———
+  function renderActive(){
+    const trip = activeTrip;
+    const d = dirDef(trip);
+    const strip = d.milestones.map(m=>{
+      const t = trip.times[m.key];
+      const skipped = trip.skipped && trip.skipped[m.key];
+      const isCurrent = t==null && !skipped && d.milestones.indexOf(m)===trip.step;
+      const cls = t!=null ? 'done' : skipped ? 'skipped' : isCurrent ? 'current' : '';
+      return `<div class="route-node ${cls}">${ic(m.icon)}</div>`;
+    }).join('');
+
+    // dernier jalon posé (pour le mini-stat "depuis dernier jalon")
+    let lastIdx = -1;
+    for(let i=0;i<d.milestones.length;i++){ if(trip.times[d.milestones[i].key]!=null) lastIdx = i; }
+    const lastTs = lastIdx>=0 ? trip.times[d.milestones[lastIdx].key] : trip.times.m0;
+
+    $('active-panel').innerHTML = `
+      <div class="panel-fixed card">
+        <div class="card-title">${ic('walk')} ${d.label}</div>
+        <div class="route-strip">${strip}</div>
+        ${departArrivalFlap(trip, true)}
+        <div class="mini-stat">${ic('clock')} dernier jalon il y a <span id="liveSince">00:00</span></div>
+      </div>
+      <div class="panel-scroll">${jalonsCard(trip)}</div>
+    `;
+    document.querySelectorAll('#active-panel .mrow').forEach(el=>{
+      el.addEventListener('click', ()=> openEdit(trip, Number(el.dataset.idx)));
+    });
+
+    $('ctaBar').classList.remove('hidden');
+    if(trip.step < d.milestones.length){
+      $('btnValidate').innerHTML = ic('check') + ' ' + ic(d.milestones[trip.step].icon) + ' ' + d.milestones[trip.step].label;
+      $('btnValidate').classList.remove('hidden');
+      $('btnSkip').classList.remove('hidden');
+    }
+
+    function tickLive(){
+      const now = Date.now();
+      const since = $('liveSince'); if(since) since.textContent = fmtDur(now - lastTs).replace(/^\-/,'');
+      const total = $('liveTotal'); if(total) total.textContent = fmtDur(now - trip.times.m0);
+    }
+    tickLive();
+    clearInterval(liveTimer);
+    if(currentTab==='trip'){ liveTimer = setInterval(tickLive, 1000); }
+  }
+
+  function hapticTick(ms){ try{ navigator.vibrate && navigator.vibrate(ms); }catch(e){} }
+
+  let validateLocked = false;
+  $('btnValidate').addEventListener('click', ()=>{
+    if(!activeTrip || validateLocked) return;
+    validateLocked = true;
+    const d = dirDef(activeTrip);
+    const key = d.milestones[activeTrip.step].key;
+    activeTrip.times[key] = Date.now();
+    recomputeStep(activeTrip);
+    saveActive();
+    hapticTick(25);
+    if(activeTrip.step >= d.milestones.length) releaseWakeLock();
+    render();
+    // confirmation visuelle même en un coup d'œil (glare-friendly)
+    const btn = $('btnValidate');
+    if(btn){ btn.classList.remove('flash'); void btn.offsetWidth; btn.classList.add('flash'); }
+    // court verrou : absorbe un double-tap accidentel (vibrations du board)
+    setTimeout(()=>{ validateLocked = false; }, 400);
+  });
+
+  // "Passer" : action rare et peu réversible pendant la conduite -> nécessite
+  // un appui maintenu (650 ms) plutôt qu'un tap, pour ne pas se déclencher
+  // sous l'effet des secousses. Fonctionne au doigt comme à la souris.
+  (function setupHoldSkip(){
+    const btn = $('btnSkip');
+    const HOLD_MS = 650;
+    let timer = null, fired = false;
+    function start(){
+      if(!activeTrip || fired) return;
+      btn.classList.add('holding');
+      timer = setTimeout(()=>{
+        fired = true;
+        doSkip();
+      }, HOLD_MS);
+    }
+    function cancel(){
+      clearTimeout(timer);
+      btn.classList.remove('holding');
+      setTimeout(()=>{ fired = false; }, 50);
+    }
+    function doSkip(){
+      btn.classList.remove('holding');
+      if(!activeTrip) return;
+      const d = dirDef(activeTrip);
+      const key = d.milestones[activeTrip.step].key;
+      activeTrip.skipped[key] = true;
+      recomputeStep(activeTrip);
+      saveActive();
+      hapticTick([15,40,15]);
+      render();
+    }
+    btn.addEventListener('pointerdown', start);
+    ['pointerup','pointerleave','pointercancel'].forEach(ev=>btn.addEventListener(ev, cancel));
+  })();
+
+  // ——— rendu : résumé (trajet terminé, pas encore archivé) ———
+  function renderSummary(){
+    const trip = activeTrip;
+    const d = dirDef(trip);
+    let segLines = d.segments.map(s=>`<div class="seg-line"><span class="sl-l">${pairIcon(d,s.from,s.to)} <span class="sl-w">${s.label}</span></span><span class="sl-v">${fmtDur(durOf(trip,s.from,s.to))}</span></div>`).join('');
+
+    $('summary-panel').innerHTML = `
+      <div class="panel-fixed card">
+        <div class="card-title">${ic('walk')} ${d.label} · ${ic('flag')}</div>
+        ${departArrivalFlap(trip, false)}
+      </div>
+      <div class="panel-scroll">
+        <div class="card">
+          <div class="card-title">${ic('link')} Tronçons</div>
+          ${segLines}
+        </div>
+        ${jalonsCard(trip)}
+      </div>
+      <div class="panel-footer">
+        <button class="btn-flat outline" id="sumDiscard">${ic('close')} Annuler</button>
+        <button class="btn-flat primary" id="sumSave">${ic('check')} Enregistrer</button>
+      </div>
+    `;
+    document.querySelectorAll('#summary-panel .mrow').forEach(el=>{
+      el.addEventListener('click', ()=> openEdit(trip, Number(el.dataset.idx)));
+    });
+    $('sumSave').addEventListener('click', archiveTrip);
+    $('sumDiscard').addEventListener('click', discardTrip);
+  }
+
+  // ——— édition d'un jalon ———
+  function openEdit(trip, idx){
+    editingIdx = idx;
+    const m = dirDef(trip).milestones[idx];
+    const t = trip.times[m.key];
+    const ref = t!=null ? new Date(t) : new Date();
+    const hh = String(ref.getHours()).padStart(2,'0');
+    const mm = String(ref.getMinutes()).padStart(2,'0');
+    const ss = String(ref.getSeconds()).padStart(2,'0');
+    $('editTitle').innerHTML = ic('edit') + ' ' + ic(m.icon) + ' ' + m.label;
+    $('editTime').value = `${hh}:${mm}:${ss}`;
+    $('editOverlay').classList.remove('hidden');
+  }
+  function closeEdit(){ editingIdx = null; $('editOverlay').classList.add('hidden'); }
+
+  $('editSave').addEventListener('click', ()=>{
+    if(editingIdx==null || !activeTrip) return;
+    const m = dirDef(activeTrip).milestones[editingIdx];
+    const v = $('editTime').value;
+    if(!v) return;
+    const [hh,mm,ss] = v.split(':').map(Number);
+    const base = new Date(activeTrip.createdAt);
+    base.setHours(hh, mm, ss||0, 0);
+    activeTrip.times[m.key] = base.getTime();
+    if(activeTrip.skipped) activeTrip.skipped[m.key] = false;
+    recomputeStep(activeTrip);
+    saveActive();
+    closeEdit();
+    render();
+  });
+  $('editSkip').addEventListener('click', ()=>{
+    if(editingIdx==null || !activeTrip) return;
+    const m = dirDef(activeTrip).milestones[editingIdx];
+    activeTrip.times[m.key] = null;
+    activeTrip.skipped[m.key] = true;
+    recomputeStep(activeTrip);
+    saveActive();
+    closeEdit();
+    render();
+  });
+  $('editClear').addEventListener('click', ()=>{
+    if(editingIdx==null || !activeTrip) return;
+    const m = dirDef(activeTrip).milestones[editingIdx];
+    activeTrip.times[m.key] = null;
+    if(activeTrip.skipped) activeTrip.skipped[m.key] = false;
+    recomputeStep(activeTrip);
+    saveActive();
+    closeEdit();
+    render();
+  });
+  $('editCancel').addEventListener('click', closeEdit);
+
+  // ——— rendu : historique / moyennes ———
+  function renderStats(){
+    const trips = archive.filter(t=>t.direction===statsDirection);
+    const d = DIRECTIONS[statsDirection];
+
+    function statsFor(defs){
+      return defs.map(def=>{
+        const vals = trips.map(t=>durOf(t, def.from, def.to)).filter(v=>v!=null);
+        const avg = vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : null;
+        return {def, avg, n:vals.length};
+      });
+    }
+    const segStats = statsFor(d.segments);
+    const totalVals = trips.map(tripTotalMs).filter(v=>v!=null);
+    const totalAvg = totalVals.length ? totalVals.reduce((a,b)=>a+b,0)/totalVals.length : null;
+
+    let segHtml = segStats.map(s=>`<div class="seg-line"><span class="sl-l">${pairIcon(d,s.def.from,s.def.to)} <span class="sl-w">${s.def.label}</span></span><span class="sl-v">${s.avg!=null?fmtDur(s.avg):'—'}</span></div>`).join('');
+
+    let tripsHtml = '';
+    if(trips.length===0){
+      tripsHtml = `<div class="empty">${ic('archive')} Aucun trajet archivé</div>`;
+    } else {
+      tripsHtml = trips.slice(0,10).map(t=>{
+        const total = tripTotalMs(t);
+        let color = 'var(--ink)';
+        if(total!=null && totalAvg!=null){
+          if(total < totalAvg*0.95) color = 'var(--green)';
+          else if(total > totalAvg*1.1) color = 'var(--red)';
+        }
+        return `<div class="trip-row"><span class="tr-date">${fmtDate(t.date)}</span><span class="tr-total" style="color:${color}">${fmtDur(total)}</span></div>`;
+      }).join('');
+    }
+
+    $('view-stats').innerHTML = `
+      <div class="panel-fixed">
+        <div class="seg2">
+          <button class="${statsDirection==='aller'?'active':''}" id="statAller">${ic('walk')} Aller →</button>
+          <button class="${statsDirection==='retour'?'active':''}" id="statRetour">${ic('walk')} Retour ←</button>
+        </div>
+        <div class="card" style="margin-top:12px">
+          <div class="card-title">${ic('flag')} Trajet complet</div>
+          <div class="total-stat">
+            <span class="total-val">${totalAvg!=null ? fmtDur(totalAvg) : '—'}</span>
+            <span class="total-sub">${ic('repeat')} ${trips.length}</span>
+          </div>
+        </div>
+      </div>
+      <div class="panel-scroll">
+        <div class="card">
+          <div class="card-title">${ic('trend')} Moyennes</div>
+          ${segHtml}
+        </div>
+        <div class="card">
+          <div class="card-title">${ic('clock')} Récents</div>
+          ${tripsHtml}
+        </div>
+      </div>
+      <div class="panel-footer">
+        <button class="btn-flat outline" id="btnExportCsv">${ic('download')} CSV</button>
+        <button class="btn-flat outline" id="btnClearArchive">${ic('trash')} Effacer</button>
+      </div>
+    `;
+    $('statAller').addEventListener('click', ()=>{ statsDirection='aller'; renderStats(); });
+    $('statRetour').addEventListener('click', ()=>{ statsDirection='retour'; renderStats(); });
+    $('btnExportCsv').addEventListener('click', exportCsv);
+    $('btnClearArchive').addEventListener('click', ()=>{
+      if(!deleteArmed){
+        deleteArmed = true;
+        $('btnClearArchive').innerHTML = ic('warning') + ' Confirmer ?';
+        setTimeout(()=>{ deleteArmed=false; if($('btnClearArchive')) $('btnClearArchive').innerHTML = ic('trash') + ' Effacer'; }, 3000);
+        return;
+      }
+      archive = []; saveArchive(); deleteArmed=false; renderStats();
+    });
+  }
+
+  function exportCsv(){
+    const rows = [['direction','date','jalon','heure']];
+    archive.forEach(t=>{
+      const d = DIRECTIONS[t.direction];
+      d.milestones.forEach(m=>{
+        const v = t.times[m.key];
+        rows.push([t.direction, new Date(t.date).toLocaleDateString('fr-FR'), m.label, v!=null?fmtClock(v):'']);
+      });
+    });
+    const csv = rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(';')).join('\n');
+    const blob = new Blob(['﻿'+csv], {type:'text/csv;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'trajet-historique-'+new Date().toISOString().slice(0,10)+'.csv';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  // ——— rendu global ———
+  function render(){
+    renderHome();
+    clearInterval(liveTimer);
+    $('ctaBar').classList.add('hidden');
+
+    if(activeTrip && activeTrip.step < dirDef(activeTrip).milestones.length){
+      $('home-panel').classList.add('hidden');
+      $('active-panel').classList.remove('hidden');
+      $('summary-panel').classList.add('hidden');
+      renderActive();
+    } else if(activeTrip){
+      $('home-panel').classList.add('hidden');
+      $('active-panel').classList.add('hidden');
+      $('summary-panel').classList.remove('hidden');
+      renderSummary();
+    } else {
+      $('home-panel').classList.remove('hidden');
+      $('active-panel').classList.add('hidden');
+      $('summary-panel').classList.add('hidden');
+    }
+
+    if(currentTab==='stats') renderStats();
+  }
+
+  let savedTheme = 'night';
+  try{ savedTheme = localStorage.getItem(THEME_KEY) || 'night'; }catch(e){}
+  applyTheme(savedTheme);
+
+  loadAll();
+  archive.forEach(t=>{ if(!t.skipped) t.skipped = {}; });
+  if(activeTrip){
+    recomputeStep(activeTrip);
+    if(activeTrip.step < dirDef(activeTrip).milestones.length) requestWakeLock();
+  }
+  render();
+})();
+</script>
+</body>
+</html>
