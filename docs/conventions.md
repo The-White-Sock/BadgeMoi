@@ -92,6 +92,18 @@ Ne créez un package que lorsqu'il contient réellement du code — pas de dossi
 Ces quatre commandes tournent en CI sur chaque push/PR (`.github/workflows/android-ci.yml`).
 Un build/lint local avant de pousser évite les allers-retours CI.
 
+## Sécurité et automatisation CI
+
+- **CodeQL** (`.github/workflows/codeql.yml`) : analyse statique de sécurité (Java/Kotlin),
+  sur chaque push/PR vers `main` et une fois par semaine.
+- **Dependabot** (`.github/dependabot.yml`) : met à jour automatiquement les dépendances
+  Gradle (`gradle/libs.versions.toml`), npm (`package.json`) et les Actions GitHub.
+- **Actions épinglées par SHA** : toute Action tierce dans un workflow (`.github/workflows/`)
+  est référencée par son SHA de commit complet, jamais par un tag flottant (`@v4`) —
+  un tag peut être déplacé, un SHA ne peut pas. Format :
+  `uses: owner/action@<sha-complet> # vX.Y.Z` (le commentaire de version est pour la
+  lecture humaine, Dependabot se charge de garder le SHA à jour).
+
 ## Points déjà tranchés (ne pas redemander)
 
 Voir [`cahier-des-charges.md`](cahier-des-charges.md) §9 : min SDK 29, distribution
