@@ -1,6 +1,6 @@
 #!/bin/bash
 # Installe l'Android SDK command-line (sdkmanager, platform-tools,
-# platforms;android-36, build-tools;36.0.0) pour que ./gradlew build,
+# platforms;android-37.0, build-tools;37.0.0) pour que ./gradlew build,
 # test et lint fonctionnent dans les sessions Claude Code on the web.
 #
 # Nécessite que la politique réseau de l'environnement autorise
@@ -34,7 +34,7 @@ export ANDROID_SDK_ROOT="${ANDROID_SDK_DIR}"
 export PATH="${ANDROID_SDK_DIR}/cmdline-tools/latest/bin:${ANDROID_SDK_DIR}/platform-tools:${PATH}"
 
 yes | sdkmanager --licenses >/dev/null 2>&1 || true
-sdkmanager --install "platform-tools" "platforms;android-36" "build-tools;36.0.0" >/dev/null
+sdkmanager --install "platform-tools" "platforms;android-37.0" "build-tools;37.0.0" >/dev/null
 
 {
   echo "export ANDROID_HOME=\"${ANDROID_SDK_DIR}\""
@@ -42,4 +42,4 @@ sdkmanager --install "platform-tools" "platforms;android-36" "build-tools;36.0.0
   echo "export PATH=\"${ANDROID_SDK_DIR}/cmdline-tools/latest/bin:${ANDROID_SDK_DIR}/platform-tools:\$PATH\""
 } >> "${CLAUDE_ENV_FILE}"
 
-echo "Android SDK prêt dans ${ANDROID_SDK_DIR} (platform-tools, platforms;android-36, build-tools;36.0.0)."
+echo "Android SDK prêt dans ${ANDROID_SDK_DIR} (platform-tools, platforms;android-37.0, build-tools;37.0.0)."

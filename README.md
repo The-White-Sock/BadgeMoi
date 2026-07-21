@@ -13,4 +13,4 @@ domicile-travail en Onewheel, jalon par jalon.
 ./gradlew assembleDebug
 ```
 
-Nécessite Android Studio / le SDK Android en local (compileSdk 36, JDK 17).
+Nécessite Android Studio / le SDK Android en local (compileSdk 37, JDK 17).
