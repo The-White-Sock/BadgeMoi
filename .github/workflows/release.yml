@@ -11,6 +11,8 @@ concurrency:
 
 permissions:
   contents: write
+  issues: write
+  pull-requests: write
 
 jobs:
   release:
@@ -19,6 +21,9 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          # Deploy key en bypass du ruleset sur main (le GITHUB_TOKEN par défaut
+          # n'est pas éligible au bypass) — voir docs/publication.md.
+          ssh-key: ${{ secrets.DEPLOY_KEY }}
 
       - name: Configurer le JDK
         uses: actions/setup-java@v4

@@ -95,5 +95,6 @@ Un build/lint local avant de pousser évite les allers-retours CI.
 ## Points déjà tranchés (ne pas redemander)
 
 Voir [`cahier-des-charges.md`](cahier-des-charges.md) §9 : min SDK 29, distribution
-Play Store, pas de migration de l'historique web, widget d'écran d'accueil dès le
-lot 6. DI : Hilt (décidé lors de la mise en place de la structure du repo).
+F-Droid en premier puis Play Store, pas de migration de l'historique web, widget
+d'écran d'accueil dès le lot 6. DI : Hilt (décidé lors de la mise en place de la
+structure du repo).

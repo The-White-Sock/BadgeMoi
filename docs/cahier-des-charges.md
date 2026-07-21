@@ -6,7 +6,7 @@ L'application "Trajet" existe aujourd'hui sous forme d'un fichier HTML/CSS/JS au
 
 Le POC de référence est conservé dans ce dépôt : [`docs/poc/trajet.html`](poc/trajet.html).
 
-Ce document définit le périmètre et les choix nécessaires pour transformer cet existant en application Android installable (Play Store), en conservant les décisions d'ergonomie déjà validées (usage au pouce en roulant, thème jour/nuit, iconographie monochrome) plutôt que de repartir d'une page blanche.
+Ce document définit le périmètre et les choix nécessaires pour transformer cet existant en application Android installable (F-Droid en premier, Play Store à terme — voir §4.10), en conservant les décisions d'ergonomie déjà validées (usage au pouce en roulant, thème jour/nuit, iconographie monochrome) plutôt que de repartir d'une page blanche.
 
 ---
 
