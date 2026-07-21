@@ -46,7 +46,11 @@ cette session — à configurer manuellement :
    Secrets and variables → Actions → New repository secret).
 4. Ce deploy key est ajouté à la **bypass list** du ruleset sur `main` (Settings → Rules
    → Rulesets → éditer → Bypass list → Deploy keys) — il n'apparaît dans la liste qu'une
-   fois ajouté au dépôt (étape 2).
+   fois ajouté au dépôt (étape 2). Mode de bypass : **Exempt**, pas "Always" — "Always"
+   est un bypass "coup de poing" avec signal d'audit à chaque usage, pensé pour une
+   action humaine ponctuelle ; "Exempt" contourne la règle silencieusement, prévu par
+   GitHub spécifiquement pour l'automatisation de confiance à haute fréquence (notre
+   bot de release, qui pousse à chaque merge sur `main`).
 5. `release.yml` utilise ce deploy key pour le checkout (`ssh-key: ${{ secrets.DEPLOY_KEY }}`),
    ce qui fait passer les `git push` de `@semantic-release/git` en SSH authentifié par le
    deploy key. Seul le push du commit de version bump a besoin de ce bypass — la création
