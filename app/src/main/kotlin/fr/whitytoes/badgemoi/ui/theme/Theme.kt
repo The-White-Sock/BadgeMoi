@@ -20,57 +20,60 @@ data class BadgeMoiExtendedColors(
     val success: Color,
 )
 
-private val LocalBadgeMoiExtendedColors = staticCompositionLocalOf {
-    BadgeMoiExtendedColors(
-        amberDim = NightPalette.amberDim,
-        tealDim = NightPalette.tealDim,
-        success = NightPalette.green,
+private val LocalBadgeMoiExtendedColors =
+    staticCompositionLocalOf {
+        BadgeMoiExtendedColors(
+            amberDim = NightPalette.amberDim,
+            tealDim = NightPalette.tealDim,
+            success = NightPalette.green,
+        )
+    }
+
+private fun nightColorScheme() =
+    darkColorScheme(
+        primary = NightPalette.amber,
+        onPrimary = NightPalette.ctaInk,
+        primaryContainer = NightPalette.amberSoft,
+        onPrimaryContainer = NightPalette.amber,
+        secondary = NightPalette.teal,
+        onSecondary = NightPalette.ctaInk,
+        secondaryContainer = NightPalette.tealSoft,
+        onSecondaryContainer = NightPalette.teal,
+        background = NightPalette.background,
+        onBackground = NightPalette.ink,
+        surface = NightPalette.panel,
+        onSurface = NightPalette.ink,
+        surfaceVariant = NightPalette.panelAlt,
+        onSurfaceVariant = NightPalette.inkSoft,
+        outline = NightPalette.line,
+        error = NightPalette.red,
+        onError = NightPalette.ctaInk,
+        errorContainer = NightPalette.redSoft,
+        onErrorContainer = NightPalette.red,
     )
-}
 
-private fun nightColorScheme() = darkColorScheme(
-    primary = NightPalette.amber,
-    onPrimary = NightPalette.ctaInk,
-    primaryContainer = NightPalette.amberSoft,
-    onPrimaryContainer = NightPalette.amber,
-    secondary = NightPalette.teal,
-    onSecondary = NightPalette.ctaInk,
-    secondaryContainer = NightPalette.tealSoft,
-    onSecondaryContainer = NightPalette.teal,
-    background = NightPalette.background,
-    onBackground = NightPalette.ink,
-    surface = NightPalette.panel,
-    onSurface = NightPalette.ink,
-    surfaceVariant = NightPalette.panelAlt,
-    onSurfaceVariant = NightPalette.inkSoft,
-    outline = NightPalette.line,
-    error = NightPalette.red,
-    onError = NightPalette.ctaInk,
-    errorContainer = NightPalette.redSoft,
-    onErrorContainer = NightPalette.red,
-)
-
-private fun dayColorScheme() = lightColorScheme(
-    primary = DayPalette.amber,
-    onPrimary = DayPalette.ctaInk,
-    primaryContainer = DayPalette.amberSoft,
-    onPrimaryContainer = DayPalette.amber,
-    secondary = DayPalette.teal,
-    onSecondary = DayPalette.ctaInk,
-    secondaryContainer = DayPalette.tealSoft,
-    onSecondaryContainer = DayPalette.teal,
-    background = DayPalette.background,
-    onBackground = DayPalette.ink,
-    surface = DayPalette.panel,
-    onSurface = DayPalette.ink,
-    surfaceVariant = DayPalette.panelAlt,
-    onSurfaceVariant = DayPalette.inkSoft,
-    outline = DayPalette.line,
-    error = DayPalette.red,
-    onError = DayPalette.ctaInk,
-    errorContainer = DayPalette.redSoft,
-    onErrorContainer = DayPalette.red,
-)
+private fun dayColorScheme() =
+    lightColorScheme(
+        primary = DayPalette.amber,
+        onPrimary = DayPalette.ctaInk,
+        primaryContainer = DayPalette.amberSoft,
+        onPrimaryContainer = DayPalette.amber,
+        secondary = DayPalette.teal,
+        onSecondary = DayPalette.ctaInk,
+        secondaryContainer = DayPalette.tealSoft,
+        onSecondaryContainer = DayPalette.teal,
+        background = DayPalette.background,
+        onBackground = DayPalette.ink,
+        surface = DayPalette.panel,
+        onSurface = DayPalette.ink,
+        surfaceVariant = DayPalette.panelAlt,
+        onSurfaceVariant = DayPalette.inkSoft,
+        outline = DayPalette.line,
+        error = DayPalette.red,
+        onError = DayPalette.ctaInk,
+        errorContainer = DayPalette.redSoft,
+        onErrorContainer = DayPalette.red,
+    )
 
 /**
  * Thème racine de l'application. [darkTheme] pilote nuit/jour ; par défaut suit le thème

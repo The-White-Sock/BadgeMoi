@@ -10,19 +10,21 @@ import androidx.compose.ui.text.font.FontWeight
 private val SansFontFamily = FontFamily.Default
 private val MonoFontFamily = FontFamily.Monospace
 
-val BadgeMoiTypography = Typography(
-    titleLarge = TextStyle(fontFamily = SansFontFamily, fontWeight = FontWeight.ExtraBold),
-    titleMedium = TextStyle(fontFamily = SansFontFamily, fontWeight = FontWeight.Bold),
-    bodyLarge = TextStyle(fontFamily = SansFontFamily, fontWeight = FontWeight.Medium),
-    bodyMedium = TextStyle(fontFamily = SansFontFamily, fontWeight = FontWeight.Medium),
-    labelLarge = TextStyle(fontFamily = SansFontFamily, fontWeight = FontWeight.Bold),
-)
+val BadgeMoiTypography =
+    Typography(
+        titleLarge = TextStyle(fontFamily = SansFontFamily, fontWeight = FontWeight.ExtraBold),
+        titleMedium = TextStyle(fontFamily = SansFontFamily, fontWeight = FontWeight.Bold),
+        bodyLarge = TextStyle(fontFamily = SansFontFamily, fontWeight = FontWeight.Medium),
+        bodyMedium = TextStyle(fontFamily = SansFontFamily, fontWeight = FontWeight.Medium),
+        labelLarge = TextStyle(fontFamily = SansFontFamily, fontWeight = FontWeight.Bold),
+    )
 
 /**
  * Style des valeurs chiffrées (heures, chronomètres) : toujours en monospace,
  * jamais en police d'interface (POC : `--mono`, utilisé pour tous les `.f-val`/`.mrow-val`).
  */
-val numericTextStyle = TextStyle(
-    fontFamily = MonoFontFamily,
-    fontWeight = FontWeight.ExtraBold,
-)
+val numericTextStyle =
+    TextStyle(
+        fontFamily = MonoFontFamily,
+        fontWeight = FontWeight.ExtraBold,
+    )
