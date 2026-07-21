@@ -35,7 +35,7 @@ jobs:
           cache-disabled: true
 
       - name: Initialiser CodeQL
-        uses: github/codeql-action/init@e4c79b4e9ebfe577d446333c2e31ed81079e7b03 # v4
+        uses: github/codeql-action/init@e0647621c2984b5ed2f768cb892365bf2a616ad1 # v4
         with:
           languages: java-kotlin
           build-mode: manual
