@@ -7,7 +7,7 @@ domicile-travail en Onewheel, jalon par jalon.
 - POC HTML de référence (design/ergonomie) : [`docs/poc/trajet.html`](docs/poc/trajet.html)
 - Conventions du dépôt (structure, nommage, commandes) : [`CLAUDE.md`](CLAUDE.md)
 
-## Build
+## Compilation
 
 ```bash
 ./gradlew assembleDebug

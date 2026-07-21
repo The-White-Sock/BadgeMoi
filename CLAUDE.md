@@ -7,6 +7,14 @@ Avant toute évolution fonctionnelle, lire **`docs/cahier-des-charges.md`** — 
 autorité sur le périmètre, les choix d'architecture et les décisions déjà tranchées
 (§9). Ne pas rouvrir un point déjà tranché sans validation explicite.
 
+## Langue
+
+Tout le contenu du dépôt est en **français** : commentaires de code, KDoc, messages de
+commit, description de PR, documentation (`docs/`, `README.md`, ce fichier). Les
+identifiants (classes, fonctions, variables, packages, noms de branches) restent en
+anglais/technique par convention Kotlin/Android standard — seuls le texte libre et les
+commentaires sont concernés.
+
 ## Stack
 
 - Kotlin 2.3.20, Jetpack Compose + Material 3, AGP 9.2.0, Gradle 9.4.1 (JDK 17).
@@ -82,10 +90,12 @@ Ne créez un package que lorsqu'il contient réellement du code — pas de dossi
 Ces quatre commandes tournent en CI sur chaque push/PR (`.github/workflows/android-ci.yml`).
 Un build/lint local avant de pousser évite les allers-retours CI.
 
-⚠️ Cette session cloud n'a pas accès au SDK Android ni à un réseau non restreint
-(le module Google `dl.google.com` et les releases GitHub hors du dépôt du projet sont
-bloqués) : les commandes ci-dessus ne peuvent pas être vérifiées ici. Premier
-`./gradlew` réel à faire depuis Android Studio en local.
+Le SDK Android est installé automatiquement dans les sessions Claude Code on the web via
+`.claude/hooks/session-start.sh` (command-line tools, `platforms;android-37.0`,
+`build-tools;37.0.0`). Le téléchargement de la distribution Gradle elle-même
+(`gradle-9.4.1-bin.zip`, redirigée vers un release GitHub `gradle/gradle-distributions`)
+reste bloqué par le scope GitHub de la session — `./gradlew` local n'y fonctionne donc
+pas encore, mais la CI GitHub Actions a un accès réseau complet et fait foi.
 
 ## Points déjà tranchés (ne pas redemander)
 

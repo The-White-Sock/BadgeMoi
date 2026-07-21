@@ -33,5 +33,5 @@ jobs:
       - name: Tests unitaires
         run: ./gradlew testDebugUnitTest
 
-      - name: Build debug
+      - name: Compilation debug
         run: ./gradlew assembleDebug
