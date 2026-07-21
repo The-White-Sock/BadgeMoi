@@ -1,0 +1,25 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+[*.{kt,kts}]
+indent_size = 4
+max_line_length = 120
+ktlint_standard_no-wildcard-imports = enabled
+ktlint_standard_filename = enabled
+# Les fonctions @Composable suivent la convention PascalCase de Jetpack Compose,
+# que la règle standard de ktlint ne reconnaît pas (elle n'a pas connaissance
+# de l'annotation @Composable).
+ktlint_standard_function-naming = disabled
+
+[*.{xml,yml,yaml}]
+indent_size = 4
+
+[*.md]
+trim_trailing_whitespace = false

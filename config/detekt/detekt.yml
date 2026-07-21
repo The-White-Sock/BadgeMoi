@@ -1,0 +1,13 @@
+# Surcharge du profil par défaut de detekt (buildUponDefaultConfig = true dans
+# app/build.gradle.kts) : uniquement les écarts volontaires par rapport aux
+# règles standard sont listés ici.
+
+style:
+  MaxLineLength:
+    maxLineLength: 120
+
+naming:
+  # Les fonctions @Composable suivent la convention PascalCase de Jetpack
+  # Compose (voir aussi ktlint_standard_function-naming dans .editorconfig).
+  FunctionNaming:
+    ignoreAnnotated: ['Composable']
