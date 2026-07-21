@@ -70,11 +70,10 @@ Ne créez un package que lorsqu'il contient réellement du code — pas de dossi
 
 ## Commits et branches
 
-- Messages de commit : **Conventional Commits + gitmoji**, format
-  `<emoji> <type>(<scope>): <description au présent>`.
-  Types courants : `✨ feat`, `🐛 fix`, `♻️ refactor`, `✅ test`, `📝 docs`,
-  `🔧 chore`, `💄 style` (UI/visuel), `🚀 perf`.
-  Exemple : `✨ feat(trip): ajoute la validation séquentielle des jalons`.
+- Messages de commit : **gitmoji**, format `<emoji>(<scope>): <description au présent>`.
+  Emojis courants : `✨` (nouvelle fonctionnalité), `🐛` (correctif), `♻️` (refactor),
+  `✅` (tests), `📝` (docs), `🔧` (config/outillage), `💄` (UI/visuel), `🚀` (perf).
+  Exemple : `✨(trip): ajoute la validation séquentielle des jalons`.
 - Branches : `feat/<sujet>`, `fix/<sujet>`, `chore/<sujet>` en anglais ou français
   court, cohérent avec le scope du commit principal.
 
