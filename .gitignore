@@ -2,6 +2,9 @@
 .gradle/
 build/
 
+# Outillage de release (npm)
+node_modules/
+
 # Fichier de configuration locale (chemin du SDK, etc.)
 local.properties
 

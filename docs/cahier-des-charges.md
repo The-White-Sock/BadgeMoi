@@ -168,8 +168,23 @@ Remplacement de `localStorage` par :
 - Pas de dégradation de la structure fixe/scroll/fixe même sur petit écran (voir filet de sécurité déjà spécifié côté web : en cas de contenu trop grand, scroll de secours plutôt que perte d'accès à un bouton).
 
 ### 4.10 Distribution
-- **Publication Play Store**, même pour une diffusion privée/interne (piste "publication interne" ou liste de diffusion restreinte du Play Console).
-- Implique : compte développeur Google Play, signature via **App Bundle (.aab)** signé par Play App Signing, fiche store minimale (titre, description courte, captures d'écran, politique de confidentialité même minimale puisqu'aucune donnée n'est collectée), et conformité aux politiques de contenu/permissions Play (déclarer explicitement l'absence de collecte de données dans le formulaire de sécurité des données).
+Deux canaux visés, **F-Droid en premier** :
+
+1. **F-Droid** : le projet coche déjà les critères d'inclusion (licence libre GPLv3,
+   100 % hors-ligne, aucune dépendance propriétaire type Google Play Services/Firebase,
+   aucun tracking). Publication via une recette de métadonnées soumise au dépôt
+   `fdroiddata`, build reproductible fait par l'infrastructure F-Droid (pas besoin de
+   gérer nous-mêmes une clé de signature de release pour ce canal). Voir
+   [`docs/publication.md`](publication.md) pour la mécanique détaillée (versioning,
+   tags, releases GitHub qui serviront de source pour la recette F-Droid).
+2. **Play Store**, à terme, y compris pour une diffusion privée/interne le cas échéant
+   (piste "publication interne" ou liste de diffusion restreinte du Play Console).
+   Implique : compte développeur Google Play, signature via **App Bundle (.aab)** signé
+   par Play App Signing, fiche store minimale, et conformité aux politiques de
+   contenu/permissions Play (déclarer explicitement l'absence de collecte de données).
+
+En attendant, les APK de test sont distribués via les **GitHub Releases** du dépôt
+(voir [`docs/publication.md`](publication.md)).
 
 ---
 
@@ -202,7 +217,7 @@ Règle de contraste à respecter dans la traduction Compose : tout texte/icône 
 | 4 | Écran Récapitulatif + archivage | Cycle complet trajet → historique |
 | 5 | Écran Historique (moyennes, export CSV, purge) | Fonctionnalité complète |
 | 6 | Widget d'écran d'accueil (Glance) : lancement rapide + affichage de l'état en cours | Widget installable, cohérent avec l'état de l'appli |
-| 7 | Polish : icônes vectorielles finales, thème système, tests sur petit écran, préparation fiche Play Store | Prêt pour publication |
+| 7 | Polish : icônes vectorielles finales, thème système, tests sur petit écran, préparation recette F-Droid puis fiche Play Store | Prêt pour publication |
 
 ---
 
@@ -222,6 +237,6 @@ Règle de contraste à respecter dans la traduction Compose : tout texte/icône 
 | # | Point | Décision |
 |---|---|---|
 | 1 | Version minimale d'Android | **API 29 (Android 10)** |
-| 2 | Distribution | **Play Store**, y compris pour une diffusion privée/interne |
+| 2 | Distribution | **F-Droid en premier**, **Play Store** à terme (voir §4.10 et `docs/publication.md`) |
 | 3 | Récupération de l'historique web existant | **Non** — l'application démarre avec un historique vierge |
 | 4 | Widget d'écran d'accueil | **Oui**, intégré dès la conception (lot 6, §3.6) — pas une évolution différée |

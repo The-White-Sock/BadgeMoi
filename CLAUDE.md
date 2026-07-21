@@ -14,6 +14,9 @@ lire :
   nomenclature, conventions de commit/branches, commandes de qualité de code. Fait
   autorité sur ces sujets ; toute mise à jour de convention se fait dans ce fichier,
   pas ici.
+- **[`docs/publication.md`](docs/publication.md)** — cinématique de publication :
+  squash merge, versioning automatique (semantic-release + gitmoji), pipeline de
+  release, distribution (APK de test → F-Droid → Play Store).
 
 ## Spécificités des sessions Claude Code
 

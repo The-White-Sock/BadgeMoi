@@ -70,10 +70,15 @@ Ne créez un package que lorsqu'il contient réellement du code — pas de dossi
 
 - Messages de commit : **gitmoji**, format `<emoji>(<scope>): <description au présent>`.
   Emojis courants : `✨` (nouvelle fonctionnalité), `🐛` (correctif), `♻️` (refactor),
-  `✅` (tests), `📝` (docs), `🔧` (config/outillage), `💄` (UI/visuel), `🚀` (perf).
-  Exemple : `✨(trip): ajoute la validation séquentielle des jalons`.
+  `✅` (tests), `📝` (docs), `🔧` (config/outillage), `💄` (UI/visuel), `🚀` (perf),
+  `💥` (breaking change). Exemple : `✨(trip): ajoute la validation séquentielle des jalons`.
+  L'emoji détermine aussi le versioning automatique — voir
+  [`publication.md`](publication.md).
 - Branches : `feat/<sujet>`, `fix/<sujet>`, `chore/<sujet>` en anglais ou français
   court, cohérent avec le scope du commit principal.
+- Les PR sont fusionnées vers `main` en **squash merge** — voir
+  [`publication.md`](publication.md) pour la cinématique complète (branches, versioning,
+  release, distribution).
 
 ## Qualité de code
 
