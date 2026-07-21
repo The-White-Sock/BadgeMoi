@@ -5,7 +5,7 @@ domicile-travail en Onewheel, jalon par jalon.
 
 - Cahier des charges : [`docs/cahier-des-charges.md`](docs/cahier-des-charges.md)
 - POC HTML de référence (design/ergonomie) : [`docs/poc/trajet.html`](docs/poc/trajet.html)
-- Conventions du dépôt (structure, nommage, commandes) : [`CLAUDE.md`](CLAUDE.md)
+- Conventions du dépôt (stack, structure, nommage, commandes) : [`docs/conventions.md`](docs/conventions.md)
 
 ## Compilation
 
