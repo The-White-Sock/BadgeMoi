@@ -18,15 +18,13 @@ distribution finale (F-Droid puis Play Store).
   versioning automatique (§ suivante) : respecter le format gitmoji même en résumant
   plusieurs commits d'une PR en un seul.
 
-⚠️ Restreindre le dépôt au squash merge est un réglage GitHub (Settings → General →
-Pull Requests → décocher "Allow merge commits" et "Allow rebase merging", garder
-uniquement "Allow squash merging") qui n'est pas accessible depuis les outils de cette
-session — à faire manuellement une fois.
+Réglage GitHub configuré (Settings → General → Pull Requests) : "Allow merge commits"
+et "Allow rebase merging" décochés, seule "Allow squash merging" reste active — le dépôt
+n'accepte donc que le squash merge.
 
 ## Protection de `main` (ruleset)
 
-Réglages GitHub (Settings → Rules → Rulesets), pas accessibles depuis les outils de
-cette session — à configurer manuellement :
+Réglages GitHub (Settings → Rules → Rulesets), configurés :
 
 - Restrict deletions, block force pushes, require linear history : activés.
 - Require status checks to pass : le check `build` (`android-ci.yml`) requis avant de
