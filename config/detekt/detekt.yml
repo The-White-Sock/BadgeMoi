@@ -5,3 +5,7 @@
 style:
   MaxLineLength:
     maxLineLength: 120
+  # Les fonctions @Composable suivent la convention PascalCase de Jetpack
+  # Compose (voir aussi ktlint_standard_function-naming dans .editorconfig).
+  FunctionNaming:
+    ignoreAnnotated: ['Composable']

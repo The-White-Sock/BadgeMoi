@@ -1,3 +1,5 @@
+@file:Suppress("MagicNumber") // Palette de couleurs : les littéraux hexadécimaux sont les valeurs elles-mêmes.
+
 package fr.whitytoes.badgemoi.ui.theme
 
 import androidx.compose.ui.graphics.Color
