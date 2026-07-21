@@ -23,6 +23,36 @@ Pull Requests → décocher "Allow merge commits" et "Allow rebase merging", gar
 uniquement "Allow squash merging") qui n'est pas accessible depuis les outils de cette
 session — à faire manuellement une fois.
 
+## Protection de `main` (ruleset)
+
+Réglages GitHub (Settings → Rules → Rulesets), pas accessibles depuis les outils de
+cette session — à configurer manuellement :
+
+- Restrict deletions, block force pushes, require linear history : activés.
+- Require status checks to pass : le check `build` (`android-ci.yml`) requis avant de
+  merger une PR.
+- Require a pull request before merging : activé, avec une **exception de bypass** pour
+  le commit de version automatique poussé directement sur `main` par `release.yml`
+  (voir ci-dessous). Le `GITHUB_TOKEN` par défaut des Actions **n'est pas éligible** au
+  bypass d'un ruleset, quel que soit le compte (personnel ou organisation) — il faut un
+  deploy key ou une GitHub App dédiée.
+
+### Deploy key pour le bot de release
+
+1. Une paire de clés ed25519 dédiée est générée (`badgemoi-release-bot`, jamais commitée).
+2. La **clé publique** est ajoutée en tant que *Deploy key* du dépôt (Settings → Deploy
+   keys → Add deploy key), avec **"Allow write access"** coché.
+3. La **clé privée** est stockée dans un secret Actions nommé `DEPLOY_KEY` (Settings →
+   Secrets and variables → Actions → New repository secret).
+4. Ce deploy key est ajouté à la **bypass list** du ruleset sur `main` (Settings → Rules
+   → Rulesets → éditer → Bypass list → Deploy keys) — il n'apparaît dans la liste qu'une
+   fois ajouté au dépôt (étape 2).
+5. `release.yml` utilise ce deploy key pour le checkout (`ssh-key: ${{ secrets.DEPLOY_KEY }}`),
+   ce qui fait passer les `git push` de `@semantic-release/git` en SSH authentifié par le
+   deploy key. Seul le push du commit de version bump a besoin de ce bypass — la création
+   de la Release GitHub et l'upload de l'APK (`@semantic-release/github`) passent par
+   l'API REST avec le `GITHUB_TOKEN` standard, non concernés par le ruleset de branche.
+
 ## Versioning automatique
 
 [semantic-release](https://semantic-release.gitbook.io/) avec le plugin
