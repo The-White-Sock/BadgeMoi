@@ -1,0 +1,27 @@
+version: 2
+updates:
+  # Dépendances Android/Kotlin centralisées dans gradle/libs.versions.toml
+  - package-ecosystem: "gradle"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      gradle-dependencies:
+        patterns:
+          - "*"
+
+  # Outillage de release (semantic-release), voir package.json
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      npm-dependencies:
+        patterns:
+          - "*"
+
+  # Actions GitHub épinglées par SHA (voir docs/conventions.md)
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
