@@ -1,8 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    alias(libs.plugins.kotlin.kapt)
+    alias(libs.plugins.ksp)
     alias(libs.plugins.google.hilt)
     alias(libs.plugins.ktlint)
     alias(libs.plugins.detekt)
@@ -29,13 +28,11 @@ android {
         }
     }
 
+    // Le Kotlin intégré à AGP 9+ dérive jvmTarget de compileOptions ci-dessous ;
+    // pas de bloc kotlinOptions séparé (https://kotl.in/gradle/agp-built-in-kotlin).
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
-    }
-
-    kotlinOptions {
-        jvmTarget = "17"
     }
 
     buildFeatures {
@@ -67,7 +64,7 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 
     implementation(libs.google.hilt.android)
-    kapt(libs.google.hilt.compiler)
+    ksp(libs.google.hilt.compiler)
     implementation(libs.androidx.hilt.compose.viewmodel)
 
     testImplementation(libs.junit)
