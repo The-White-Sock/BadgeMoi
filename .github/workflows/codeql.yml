@@ -29,6 +29,10 @@ jobs:
 
       - name: Configurer Gradle
         uses: gradle/actions/setup-gradle@0b6dd653ba04f4f93bf581ec31e66cbd7dcb644d # v4
+        with:
+          # Cache désactivé : un build entièrement servi par le cache n'invoque pas
+          # le compilateur Kotlin, et CodeQL ne peut alors rien tracer/analyser.
+          cache-disabled: true
 
       - name: Initialiser CodeQL
         uses: github/codeql-action/init@e4c79b4e9ebfe577d446333c2e31ed81079e7b03 # v4
@@ -36,8 +40,8 @@ jobs:
           languages: java-kotlin
           build-mode: manual
 
-      - name: Compilation debug
-        run: ./gradlew assembleDebug
+      - name: Compilation debug (sans cache, pour que CodeQL trace la compilation)
+        run: ./gradlew clean assembleDebug --no-build-cache
 
       - name: Analyse CodeQL
         uses: github/codeql-action/analyze@e4c79b4e9ebfe577d446333c2e31ed81079e7b03 # v4
