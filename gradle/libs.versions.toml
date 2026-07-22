@@ -1,7 +1,7 @@
 [versions]
 # Toolchain
-agp = "9.2.0"
-kotlin = "2.3.20"
+agp = "9.3.0"
+kotlin = "2.4.10"
 
 # AndroidX / Jetpack
 coreKtx = "1.19.0"
@@ -18,11 +18,11 @@ datastore = "1.2.1"
 glance = "1.1.1"
 
 # Sérialisation (persistance Room/DataStore)
-kotlinxSerialization = "1.9.0"
+kotlinxSerialization = "1.11.0"
 
 # Injection de dépendances
 hilt = "2.60.1"
-hiltComposeViewModel = "1.3.0"
+hiltComposeViewModel = "1.4.0"
 ksp = "2.3.10"
 
 # Coroutines
