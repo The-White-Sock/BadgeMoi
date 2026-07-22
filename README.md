@@ -15,3 +15,8 @@ domicile-travail en Onewheel, jalon par jalon.
 ```
 
 Nécessite Android Studio / le SDK Android en local (compileSdk 37, JDK 17).
+
+Sans environnement de build local, chaque push et chaque PR produisent un APK de
+test téléchargeable depuis l'onglet **Actions** → run concerné → section **Artifacts**
+(rétention 30 jours). Voir [`docs/publication.md`](docs/publication.md) pour la
+distinction entre ces builds de test et les releases officielles.

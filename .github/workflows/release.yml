@@ -1,8 +1,8 @@
 name: Release
 
 on:
-  push:
-    branches: [main]
+  # Déclenchement manuel uniquement : une release est un choix volontaire, pas
+  # une conséquence automatique de chaque merge — voir docs/publication.md.
   workflow_dispatch:
 
 concurrency:
