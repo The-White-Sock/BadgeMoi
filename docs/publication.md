@@ -27,8 +27,10 @@ n'accepte donc que le squash merge.
 Réglages GitHub (Settings → Rules → Rulesets), configurés :
 
 - Restrict deletions, block force pushes, require linear history : activés.
-- Require status checks to pass : le check `build` (`android-ci.yml`) requis avant de
-  merger une PR.
+- Require status checks to pass : les checks `build` (`android-ci.yml`), `analyze`
+  (CodeQL) et `dependency-review` requis avant de merger une PR — une PR ne peut donc
+  pas être fusionnée si la compilation, l'analyse de sécurité ou la revue de dépendances
+  échoue.
 - Require a pull request before merging : activé, avec une **exception de bypass** pour
   le commit de version automatique poussé directement sur `main` par `release.yml`
   (voir ci-dessous). Le `GITHUB_TOKEN` par défaut des Actions **n'est pas éligible** au
