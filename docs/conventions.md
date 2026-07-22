@@ -19,8 +19,10 @@ commentaires sont concernés.
 - Module unique `:app`, organisé **par fonctionnalité** (pas par couche technique) :
   pas de multi-module tant que le projet reste solo et de cette taille.
 - Injection de dépendances : **Hilt**.
-- Persistance (à venir, lot 1) : Room (archive des trajets) + DataStore Preferences
-  (trajet en cours, thème) — partagée entre l'appli et le widget Glance.
+- Persistance : Room (archive des trajets) + DataStore Preferences (trajet en cours,
+  thème) — partagée entre l'appli et le widget Glance. Sérialisation via
+  `kotlinx-serialization` (`StoredTrip`). Le modèle du domaine (`domain/`) reste pur
+  (aucune annotation Room/serialization) ; le mapping vit dans `data/local/`.
 - 100% hors-ligne : ne jamais ajouter la permission `INTERNET` ni de dépendance réseau.
 
 Toutes les versions sont centralisées dans `gradle/libs.versions.toml`. Ne jamais
