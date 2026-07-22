@@ -19,8 +19,10 @@ commentaires sont concernés.
 - Module unique `:app`, organisé **par fonctionnalité** (pas par couche technique) :
   pas de multi-module tant que le projet reste solo et de cette taille.
 - Injection de dépendances : **Hilt**.
-- Persistance (à venir, lot 1) : Room (archive des trajets) + DataStore Preferences
-  (trajet en cours, thème) — partagée entre l'appli et le widget Glance.
+- Persistance : Room (archive des trajets) + DataStore Preferences (trajet en cours,
+  thème) — partagée entre l'appli et le widget Glance. Sérialisation via
+  `kotlinx-serialization` (`StoredTrip`). Le modèle du domaine (`domain/`) reste pur
+  (aucune annotation Room/serialization) ; le mapping vit dans `data/local/`.
 - 100% hors-ligne : ne jamais ajouter la permission `INTERNET` ni de dépendance réseau.
 
 Toutes les versions sont centralisées dans `gradle/libs.versions.toml`. Ne jamais
@@ -98,6 +100,10 @@ Un build/lint local avant de pousser évite les allers-retours CI.
   sur chaque push/PR vers `main` et une fois par semaine.
 - **Dependabot** (`.github/dependabot.yml`) : met à jour automatiquement les dépendances
   Gradle (`gradle/libs.versions.toml`), npm (`package.json`) et les Actions GitHub.
+- **Dependency Review** (`.github/workflows/dependency-review.yml`) : sur chaque PR,
+  bloque l'introduction d'une dépendance connue comme vulnérable (sévérité modérée ou
+  plus). Complémentaire de Dependabot, qui met à jour l'existant de façon planifiée
+  alors que Dependency Review agit *avant* le merge sur ce qu'une PR ajoute.
 - **Actions épinglées par SHA** : toute Action tierce dans un workflow (`.github/workflows/`)
   est référencée par son SHA de commit complet, jamais par un tag flottant (`@v4`) —
   un tag peut être déplacé, un SHA ne peut pas. Format :

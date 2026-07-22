@@ -1,0 +1,23 @@
+name: Dependency Review
+
+# Bloque une PR qui introduit une dépendance connue comme vulnérable, avant le
+# merge. Complémentaire de Dependabot (qui, lui, met à jour les dépendances
+# existantes de façon planifiée) — voir docs/conventions.md.
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  dependency-review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Analyse des dépendances
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          # Échoue la CI si une dépendance ajoutée a une vulnérabilité de
+          # sévérité modérée ou supérieure.
+          fail-on-severity: moderate
