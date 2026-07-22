@@ -18,19 +18,19 @@ distribution finale (F-Droid puis Play Store).
   versioning automatique (§ suivante) : respecter le format gitmoji même en résumant
   plusieurs commits d'une PR en un seul.
 
-⚠️ Restreindre le dépôt au squash merge est un réglage GitHub (Settings → General →
-Pull Requests → décocher "Allow merge commits" et "Allow rebase merging", garder
-uniquement "Allow squash merging") qui n'est pas accessible depuis les outils de cette
-session — à faire manuellement une fois.
+Réglage GitHub configuré (Settings → General → Pull Requests) : "Allow merge commits"
+et "Allow rebase merging" décochés, seule "Allow squash merging" reste active — le dépôt
+n'accepte donc que le squash merge.
 
 ## Protection de `main` (ruleset)
 
-Réglages GitHub (Settings → Rules → Rulesets), pas accessibles depuis les outils de
-cette session — à configurer manuellement :
+Réglages GitHub (Settings → Rules → Rulesets), configurés :
 
 - Restrict deletions, block force pushes, require linear history : activés.
-- Require status checks to pass : le check `build` (`android-ci.yml`) requis avant de
-  merger une PR.
+- Require status checks to pass : les checks `build` (`android-ci.yml`), `analyze`
+  (CodeQL) et `dependency-review` requis avant de merger une PR — une PR ne peut donc
+  pas être fusionnée si la compilation, l'analyse de sécurité ou la revue de dépendances
+  échoue.
 - Require a pull request before merging : activé, avec une **exception de bypass** pour
   le commit de version automatique poussé directement sur `main` par `release.yml`
   (voir ci-dessous). Le `GITHUB_TOKEN` par défaut des Actions **n'est pas éligible** au
@@ -49,8 +49,9 @@ cette session — à configurer manuellement :
    fois ajouté au dépôt (étape 2). Mode de bypass : **Exempt**, pas "Always" — "Always"
    est un bypass "coup de poing" avec signal d'audit à chaque usage, pensé pour une
    action humaine ponctuelle ; "Exempt" contourne la règle silencieusement, prévu par
-   GitHub spécifiquement pour l'automatisation de confiance à haute fréquence (notre
-   bot de release, qui pousse à chaque merge sur `main`).
+   GitHub spécifiquement pour l'automatisation de confiance (notre bot de release,
+   déclenché manuellement mais qui pousse ensuite sans intervention humaine le commit
+   de version bump).
 5. `release.yml` utilise ce deploy key pour le checkout (`ssh-key: ${{ secrets.DEPLOY_KEY }}`),
    ce qui fait passer les `git push` de `@semantic-release/git` en SSH authentifié par le
    deploy key. Seul le push du commit de version bump a besoin de ce bypass — la création
@@ -71,16 +72,33 @@ depuis le dernier tag (config : [`.releaserc.js`](../.releaserc.js)).
 | 🐛 · ♻️ · 💄 · 🚀 | Patch (correctif, refactor, UI, perf) |
 | 📝 · ✅ · 🔧 · autres | Aucune release déclenchée à elles seules |
 
-Un push sur `main` sans commit "releasable" depuis le dernier tag ne produit aucune
-release (comportement normal, pas une erreur).
+Déclencher le pipeline de release (§ suivante) sans commit "releasable" depuis le
+dernier tag ne produit aucune release (comportement normal, pas une erreur).
+
+## Builds de test (CI)
+
+Chaque push et chaque PR déclenchent [`android-ci.yml`](../.github/workflows/android-ci.yml),
+qui construit l'APK debug et le publie comme **artifact de workflow GitHub Actions**
+(onglet Actions → run → Artifacts), téléchargeable et sideloadable pour tester une
+branche en cours de dev. Rétention 30 jours, pas de tag, pas de numéro de version, pas
+de GitHub Release : ça n'a aucun effet sur le pipeline de release ni sur l'historique
+public des livrables. C'est le canal à utiliser pour tester avant qu'un changement soit
+prêt à devenir une version officielle.
 
 ## Pipeline de release
 
-Déclenché par [`.github/workflows/release.yml`](../.github/workflows/release.yml) à
-chaque push sur `main` (donc après chaque squash merge) :
+Déclenché **manuellement** (`workflow_dispatch`) sur
+[`.github/workflows/release.yml`](../.github/workflows/release.yml), depuis l'onglet
+Actions. Volontairement pas automatique sur chaque push sur `main` : en dev solo
+trunk-based, la quasi-totalité des PR mergées contiennent un commit "releasable"
+(`✨`, `🐛`...) — un déclenchement automatique produirait une release numérotée à
+chaque merge, y compris pour du travail intermédiaire pas encore prêt à être distribué.
+Le déclenchement manuel réserve les releases aux moments où c'est réellement voulu (fin
+de lot, version stable à distribuer) :
 
 1. `semantic-release-gitmoji` analyse les commits et calcule le prochain numéro de
-   version (tag `vX.Y.Z`).
+   version (tag `vX.Y.Z`) depuis le dernier tag — inchangé, que le déclenchement soit
+   manuel ou automatique.
 2. `scripts/bump-version.sh` met à jour `versionName`/`versionCode` dans
    `app/build.gradle.kts`, puis `./gradlew assembleDebug` construit l'APK.
 3. Le changement de version est commité sur `main` (`🔖(release): vX.Y.Z [skip ci]` —
@@ -101,6 +119,29 @@ chaque push sur `main` (donc après chaque squash merge) :
 - **Play Store** (à terme) : nécessitera une clé de signature de release gérée séparément
   (Play App Signing) et un `.aab` signé — non mis en place tant que F-Droid n'est pas
   livré.
+
+## Cycle de vie d'un livrable
+
+Ce qui se passe après la publication d'une release, une fois `vX.Y.Z` créée.
+
+- **Rétention** : les GitHub Releases sont conservées **indéfiniment**, aucune purge —
+  le volume reste faible pour un projet solo et l'historique sert de changelog. La
+  rétention des artifacts de build de test (§ précédente) est distincte et courte
+  (30 jours) car ils sont reproductibles depuis n'importe quel commit.
+- **Version défectueuse** : pas de suppression de la release fautive (elle fait partie
+  de la traçabilité). Le correctif part sur une branche `fix/`, merge normal, la
+  prochaine release patch (`🐛`) la remplace. Sur la release fautive elle-même, cocher
+  a posteriori **"Set as a pre-release"** pour signaler qu'elle est déconseillée sans la
+  retirer.
+- **Mise à jour côté utilisateur** : tant que la distribution passe uniquement par
+  GitHub Releases, l'APK sideloadé n'a pas d'auto-update — limite connue et acceptée,
+  propre à ce canal transitoire (usage perso pendant le dev, lots 1 à 7). Elle disparaît
+  d'elle-même au passage sur F-Droid, qui gère l'auto-update nativement — pas
+  d'investissement à faire ici.
+- **Fin de vie d'un canal** : les canaux de distribution sont **cumulatifs**, pas de
+  dépréciation forcée. GitHub Releases reste actif même une fois F-Droid disponible ;
+  F-Droid devient simplement le canal recommandé dans la doc utilisateur. Même logique
+  plus tard pour Play Store.
 
 ## Limite connue
 
