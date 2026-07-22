@@ -98,6 +98,10 @@ Un build/lint local avant de pousser évite les allers-retours CI.
   sur chaque push/PR vers `main` et une fois par semaine.
 - **Dependabot** (`.github/dependabot.yml`) : met à jour automatiquement les dépendances
   Gradle (`gradle/libs.versions.toml`), npm (`package.json`) et les Actions GitHub.
+- **Dependency Review** (`.github/workflows/dependency-review.yml`) : sur chaque PR,
+  bloque l'introduction d'une dépendance connue comme vulnérable (sévérité modérée ou
+  plus). Complémentaire de Dependabot, qui met à jour l'existant de façon planifiée
+  alors que Dependency Review agit *avant* le merge sur ce qu'une PR ajoute.
 - **Actions épinglées par SHA** : toute Action tierce dans un workflow (`.github/workflows/`)
   est référencée par son SHA de commit complet, jamais par un tag flottant (`@v4`) —
   un tag peut être déplacé, un SHA ne peut pas. Format :
