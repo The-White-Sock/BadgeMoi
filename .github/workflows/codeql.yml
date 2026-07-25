@@ -29,10 +29,11 @@ jobs:
 
       - name: Configurer Gradle
         uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
-        with:
-          # Cache désactivé : un build entièrement servi par le cache n'invoque pas
-          # le compilateur Kotlin, et CodeQL ne peut alors rien tracer/analyser.
-          cache-disabled: true
+        # Cache des dépendances conservé (téléchargements Maven/Gradle, distribution
+        # Gradle) pour accélérer le job. La fraîcheur de compilation dont CodeQL a
+        # besoin est garantie par `clean … --no-build-cache` ci-dessous, qui désactive
+        # le *build cache* de tâches — c'est lui, et non le cache de dépendances, qui
+        # court-circuiterait le compilateur Kotlin.
 
       - name: Initialiser CodeQL
         uses: github/codeql-action/init@e0647621c2984b5ed2f768cb892365bf2a616ad1 # v4
