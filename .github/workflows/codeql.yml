@@ -20,14 +20,41 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Historique complet pour differ la base de la PR (détection ci-dessous).
+          fetch-depth: 0
+
+      # Sur une PR qui ne touche à aucun code compilé (doc, config, autres
+      # workflows…), l'analyse CodeQL n'apporte rien : on saute alors les étapes
+      # coûteuses. Le job se termine quand même en succès, donc le check requis
+      # « analyze » reste vert — sans attendre ~2-3 min de compilation inutile.
+      # Hors PR (push main, cron), on analyse toujours.
+      - name: Détecter les changements de code
+        id: changes
+        run: |
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          changed="$(git diff --name-only \
+            "${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}")"
+          if printf '%s\n' "$changed" \
+            | grep -qE '^app/|^gradle/|^gradle\.properties$|^gradlew|^\.github/workflows/codeql\.yml$'; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "code=false" >> "$GITHUB_OUTPUT"
+            echo "Aucun changement de code compilé — analyse CodeQL sautée."
+          fi
 
       - name: Configurer le JDK
+        if: steps.changes.outputs.code == 'true'
         uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4.8.0
         with:
           distribution: temurin
           java-version: "17"
 
       - name: Configurer Gradle
+        if: steps.changes.outputs.code == 'true'
         uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
         # Cache des dépendances conservé (téléchargements Maven/Gradle, distribution
         # Gradle) pour accélérer le job. La fraîcheur de compilation dont CodeQL a
@@ -36,13 +63,16 @@ jobs:
         # court-circuiterait le compilateur Kotlin.
 
       - name: Initialiser CodeQL
+        if: steps.changes.outputs.code == 'true'
         uses: github/codeql-action/init@e0647621c2984b5ed2f768cb892365bf2a616ad1 # v4
         with:
           languages: java-kotlin
           build-mode: manual
 
       - name: Compilation debug (sans cache, pour que CodeQL trace la compilation)
+        if: steps.changes.outputs.code == 'true'
         run: ./gradlew clean assembleDebug --no-build-cache
 
       - name: Analyse CodeQL
+        if: steps.changes.outputs.code == 'true'
         uses: github/codeql-action/analyze@e0647621c2984b5ed2f768cb892365bf2a616ad1 # v4
