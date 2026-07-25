@@ -15,7 +15,9 @@ commentaires sont concernés.
 
 ## Stack
 
-- Kotlin 2.3.20, Jetpack Compose + Material 3, AGP 9.2.0, Gradle 9.4.1 (JDK 17).
+- Kotlin 2.3.20, Jetpack Compose + Material 3, AGP 9.3.0, Gradle 9.6.1 (JDK 17).
+  Kotlin est volontairement maintenu sous 2.4.10 — contrainte CodeQL, voir
+  « Sécurité et automatisation CI ».
 - Module unique `:app`, organisé **par fonctionnalité** (pas par couche technique) :
   pas de multi-module tant que le projet reste solo et de cette taille.
 - Injection de dépendances : **Hilt**.
@@ -97,7 +99,24 @@ Un build/lint local avant de pousser évite les allers-retours CI.
 ## Sécurité et automatisation CI
 
 - **CodeQL** (`.github/workflows/codeql.yml`) : analyse statique de sécurité (Java/Kotlin),
-  sur chaque push/PR vers `main` et une fois par semaine.
+  sur chaque push/PR vers `main` et une fois par semaine. Trois choix à connaître avant
+  de toucher au workflow ou à la version Kotlin :
+  - **Contrainte Kotlin < 2.4.10** : l'extracteur Kotlin du bundle CodeQL actuel (2.26.1,
+    le plus récent publié) refuse Kotlin ≥ 2.4.10 — le job `analyze` échoue alors avec
+    « Kotlin version 2.4.10 is too recent ». Kotlin reste donc épinglé sous 2.4.10 dans
+    `gradle/libs.versions.toml` jusqu'à ce qu'un bundle CodeQL > 2.26.1 relève ce plafond.
+    Les PR Dependabot qui bumpent Kotlin à 2.4.x restent rouges sur `analyze` en attendant :
+    ne pas forcer leur merge, reprendre plutôt les autres bumps du groupe séparément.
+  - **Cache & compilation** : le job conserve le cache de *dépendances* Gradle mais force
+    la recompilation (`clean assembleDebug --no-build-cache`). Le build cache de tâches est
+    désactivé exprès — sinon une compilation servie par le cache n'invoquerait pas le
+    compilateur Kotlin et CodeQL n'aurait rien à tracer. Ne pas réactiver `--build-cache`
+    ni désactiver tout le cache Gradle (les deux dégradent, l'un la fiabilité, l'autre la
+    vitesse).
+  - **Skip sur PR sans code** : sur une PR ne touchant ni `app/`, ni `gradle/`, ni le
+    wrapper, ni `codeql.yml`, le job saute ses étapes lourdes et se termine en quelques
+    secondes. Le check requis `analyze` remonte quand même vert, donc aucun changement du
+    ruleset n'est nécessaire.
 - **Dependabot** (`.github/dependabot.yml`) : met à jour automatiquement les dépendances
   Gradle (`gradle/libs.versions.toml`), npm (`package.json`) et les Actions GitHub.
 - **Dependency Review** (`.github/workflows/dependency-review.yml`) : sur chaque PR,
