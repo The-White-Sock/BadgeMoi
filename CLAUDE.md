@@ -27,3 +27,10 @@ Le SDK Android est installé automatiquement dans les sessions Claude Code on th
 reste bloqué par le scope GitHub de la session — `./gradlew` local n'y fonctionne donc
 pas encore, mais la CI GitHub Actions a un accès réseau complet et fait foi : se fier à
 ses résultats pour valider un build plutôt qu'à une exécution locale dans cette session.
+
+## Auto-merge des PR
+
+Toute PR ouverte par Claude Code est mise en **auto-merge (squash)** juste après sa
+création, sauf mention explicite du contraire ou contrainte technique (auto-merge
+désactivé sur le dépôt, PR en *draft*, aucun check requis, ou conflit / check requis en
+échec). Elle fusionne donc d'elle-même dès que les checks requis passent.
