@@ -23,6 +23,9 @@
     <string name="milestone_no_value">—</string>
     <string name="trip_validate">Valider</string>
     <string name="trip_skip">Passer</string>
+    <string name="trip_departure">Départ</string>
+    <string name="trip_elapsed">Écoulé</string>
+    <string name="trip_since_last_milestone">%1$s depuis le dernier jalon</string>
 
     <!-- Emplacements en attente d'implémentation -->
     <string name="summary_coming_soon">Récapitulatif à venir.</string>
