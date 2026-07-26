@@ -1,5 +1,6 @@
 package fr.whitytoes.badgemoi.ui.trip
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -32,6 +33,7 @@ fun TripActiveScreen(
     viewModel: TripViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val timers = viewModel.timers.collectAsStateWithLifecycle()
 
     // Le trajet a disparu (abandonné depuis l'accueil, ou jamais existé) : cet écran
     // n'a plus d'objet. `Loading` est volontairement exclu, sinon on repartirait à
@@ -50,9 +52,14 @@ fun TripActiveScreen(
     if (trip != null) {
         TripActiveScreen(
             trip = trip,
-            onMilestoneClick = null,
-            onValidate = viewModel::validateCurrentMilestone,
-            onSkip = viewModel::skipCurrentMilestone,
+            actions =
+                TripActions(
+                    onValidate = viewModel::validateCurrentMilestone,
+                    onSkip = viewModel::skipCurrentMilestone,
+                ),
+            // Lambda plutôt que valeur : la lecture de l'état est différée au bandeau,
+            // seul à se recomposer à chaque seconde.
+            timers = timers::value,
             modifier = modifier,
         )
     }
@@ -62,9 +69,8 @@ fun TripActiveScreen(
 @Composable
 internal fun TripActiveScreen(
     trip: Trip,
-    onMilestoneClick: ((Int) -> Unit)?,
-    onValidate: () -> Unit,
-    onSkip: () -> Unit,
+    actions: TripActions,
+    timers: () -> TripTimers,
     modifier: Modifier = Modifier,
 ) {
     // Écran maintenu allumé pendant toute la saisie ; le drapeau tombe de lui-même
@@ -75,10 +81,15 @@ internal fun TripActiveScreen(
 
     ScreenScaffold(
         modifier = modifier,
-        top = { TripProgressFrieze(rows = rows) },
-        bottom = { TripActionBar(onValidate = onValidate, onSkip = onSkip) },
+        top = {
+            Column {
+                TripTimerBanner(departureAt = trip.departureAt, timers = timers)
+                TripProgressFrieze(rows = rows)
+            }
+        },
+        bottom = { TripActionBar(onValidate = actions.onValidate, onSkip = actions.onSkip) },
     ) {
-        MilestoneList(rows = rows, onMilestoneClick = onMilestoneClick)
+        MilestoneList(rows = rows, onMilestoneClick = actions.onMilestoneClick)
     }
 }
 
@@ -97,7 +108,11 @@ private fun previewTrip(): Trip {
 @Composable
 private fun TripActiveScreenNightPreview() {
     BadgeMoiTheme(darkTheme = true) {
-        TripActiveScreen(trip = previewTrip(), onMilestoneClick = {}, onValidate = {}, onSkip = {})
+        TripActiveScreen(
+            trip = previewTrip(),
+            actions = TripActions(onValidate = {}, onSkip = {}, onMilestoneClick = {}),
+            timers = { TripTimers.EMPTY },
+        )
     }
 }
 
@@ -105,6 +120,10 @@ private fun TripActiveScreenNightPreview() {
 @Composable
 private fun TripActiveScreenDayPreview() {
     BadgeMoiTheme(darkTheme = false) {
-        TripActiveScreen(trip = previewTrip(), onMilestoneClick = {}, onValidate = {}, onSkip = {})
+        TripActiveScreen(
+            trip = previewTrip(),
+            actions = TripActions(onValidate = {}, onSkip = {}, onMilestoneClick = {}),
+            timers = { TripTimers.EMPTY },
+        )
     }
 }
