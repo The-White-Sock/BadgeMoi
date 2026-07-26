@@ -4,7 +4,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -49,6 +52,10 @@ fun TripActiveScreen(
         if (trip?.isComplete == true) onNavigateToSummary()
     }
 
+    // Index du jalon en cours de correction. Porté ici plutôt que dans la version sans
+    // état, qui reste ainsi purement descriptive et prévisualisable.
+    var correctingIndex by rememberSaveable { mutableStateOf<Int?>(null) }
+
     if (trip != null) {
         TripActiveScreen(
             trip = trip,
@@ -56,12 +63,37 @@ fun TripActiveScreen(
                 TripActions(
                     onValidate = viewModel::validateCurrentMilestone,
                     onSkip = viewModel::skipCurrentMilestone,
+                    onMilestoneClick = { index -> correctingIndex = index },
                 ),
             // Lambda plutôt que valeur : la lecture de l'état est différée au bandeau,
             // seul à se recomposer à chaque seconde.
             timers = timers::value,
             modifier = modifier,
         )
+
+        val index = correctingIndex
+        if (index != null) {
+            MilestoneCorrectionDialog(
+                label = trip.milestoneRows()[index].label,
+                seedAt = trip.correctionSeedInstant(index),
+                actions =
+                    MilestoneCorrectionActions(
+                        onSave = { hour, minute ->
+                            viewModel.poseMilestone(index, trip.correctionInstant(index, hour, minute))
+                            correctingIndex = null
+                        },
+                        onSkip = {
+                            viewModel.skipMilestone(index)
+                            correctingIndex = null
+                        },
+                        onClear = {
+                            viewModel.clearMilestone(index)
+                            correctingIndex = null
+                        },
+                        onDismiss = { correctingIndex = null },
+                    ),
+            )
+        }
     }
 }
 
