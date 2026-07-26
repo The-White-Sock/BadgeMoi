@@ -1,0 +1,193 @@
+@file:Suppress("MagicNumber") // Données de test : indices de jalons en clair.
+
+package fr.whitytoes.badgemoi.ui.trip
+
+import fr.whitytoes.badgemoi.domain.ActiveTripRepository
+import fr.whitytoes.badgemoi.domain.Direction
+import fr.whitytoes.badgemoi.domain.Routes
+import fr.whitytoes.badgemoi.domain.Trip
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Test
+import java.time.Clock
+import java.time.Instant
+import java.time.ZoneOffset
+
+@OptIn(ExperimentalCoroutinesApi::class)
+class TripViewModelTest {
+    private val dispatcher = StandardTestDispatcher()
+    private val departure = Instant.parse("2026-07-26T08:00:00Z")
+    private val now = Instant.parse("2026-07-26T08:12:00Z")
+    private val clock = Clock.fixed(now, ZoneOffset.UTC)
+
+    @Before
+    fun setUp() {
+        Dispatchers.setMain(dispatcher)
+    }
+
+    @After
+    fun tearDown() {
+        Dispatchers.resetMain()
+    }
+
+    private fun trip() = Trip.start(id = "t1", direction = Direction.ALLER, departureAt = departure)
+
+    @Test
+    fun `l'état initial est le chargement`() =
+        runTest(dispatcher) {
+            val viewModel = TripViewModel(FakeActiveTripRepository(), clock)
+
+            assertEquals(TripUiState.Loading, viewModel.uiState.value)
+        }
+
+    @Test
+    fun `sans trajet l'écran signale qu'il n'a plus d'objet`() =
+        runTest(dispatcher) {
+            val viewModel = TripViewModel(FakeActiveTripRepository(), clock)
+
+            advanceUntilIdle()
+
+            assertEquals(TripUiState.NoTrip, viewModel.uiState.value)
+        }
+
+    @Test
+    fun `valider pose le jalon courant à l'heure de l'horloge`() =
+        runTest(dispatcher) {
+            val repository = FakeActiveTripRepository(trip())
+            val viewModel = TripViewModel(repository, clock)
+            advanceUntilIdle()
+
+            viewModel.validateCurrentMilestone()
+            advanceUntilIdle()
+
+            // Le jalon 0 est le départ : le premier jalon à poser est le 1.
+            assertEquals(now, repository.current?.times?.get(1))
+            assertEquals(2, repository.current?.currentStep)
+        }
+
+    @Test
+    fun `passer ignore le jalon courant sans l'horodater`() =
+        runTest(dispatcher) {
+            val repository = FakeActiveTripRepository(trip())
+            val viewModel = TripViewModel(repository, clock)
+            advanceUntilIdle()
+
+            viewModel.skipCurrentMilestone()
+            advanceUntilIdle()
+
+            assertNull(repository.current?.times?.get(1))
+            assertTrue(repository.current?.skipped?.get(1) == true)
+            assertEquals(2, repository.current?.currentStep)
+        }
+
+    /** Garde-fou : agir sur un trajet terminé le modifierait après coup. */
+    @Test
+    fun `valider est sans effet sur un trajet déjà terminé`() =
+        runTest(dispatcher) {
+            val complet =
+                (1 until Routes.MILESTONE_COUNT).fold(trip()) { trip, index ->
+                    trip.poseMilestone(index, departure.plusSeconds(index * 60L))
+                }
+            val repository = FakeActiveTripRepository(complet)
+            val viewModel = TripViewModel(repository, clock)
+            advanceUntilIdle()
+
+            viewModel.validateCurrentMilestone()
+            advanceUntilIdle()
+
+            assertEquals(complet, repository.current)
+        }
+
+    @Test
+    fun `valider est sans effet tant que le trajet n'est pas chargé`() =
+        runTest(dispatcher) {
+            val repository = FakeActiveTripRepository()
+            val viewModel = TripViewModel(repository, clock)
+
+            viewModel.validateCurrentMilestone()
+            advanceUntilIdle()
+
+            assertNull(repository.current)
+        }
+
+    @Test
+    fun `corriger un jalon fixe l'heure fournie, pas celle de l'horloge`() =
+        runTest(dispatcher) {
+            val repository = FakeActiveTripRepository(trip())
+            val viewModel = TripViewModel(repository, clock)
+            advanceUntilIdle()
+            val corrigee = departure.plusSeconds(300)
+
+            viewModel.poseMilestone(index = 2, at = corrigee)
+            advanceUntilIdle()
+
+            assertEquals(corrigee, repository.current?.times?.get(2))
+        }
+
+    @Test
+    fun `effacer un jalon posé le remet en attente et fait reculer le jalon courant`() =
+        runTest(dispatcher) {
+            val repository =
+                FakeActiveTripRepository(trip().poseMilestone(1, departure.plusSeconds(60)))
+            val viewModel = TripViewModel(repository, clock)
+            advanceUntilIdle()
+            assertEquals(2, repository.current?.currentStep)
+
+            viewModel.clearMilestone(1)
+            advanceUntilIdle()
+
+            assertNull(repository.current?.times?.get(1))
+            assertEquals(1, repository.current?.currentStep)
+        }
+
+    @Test
+    fun `chaque action est persistée immédiatement`() =
+        runTest(dispatcher) {
+            val repository = FakeActiveTripRepository(trip())
+            val viewModel = TripViewModel(repository, clock)
+            advanceUntilIdle()
+
+            viewModel.validateCurrentMilestone()
+            advanceUntilIdle()
+            viewModel.skipCurrentMilestone()
+            advanceUntilIdle()
+
+            // Deux écritures distinctes : l'application peut être tuée entre les deux.
+            assertEquals(2, repository.saveCount)
+        }
+}
+
+private class FakeActiveTripRepository(
+    initial: Trip? = null,
+) : ActiveTripRepository {
+    private val state = MutableStateFlow(initial)
+    var saveCount: Int = 0
+        private set
+
+    val current: Trip? get() = state.value
+
+    override fun observe(): Flow<Trip?> = state
+
+    override suspend fun get(): Trip? = state.value
+
+    override suspend fun save(trip: Trip) {
+        saveCount++
+        state.value = trip
+    }
+
+    override suspend fun clear() {
+        state.value = null
+    }
+}

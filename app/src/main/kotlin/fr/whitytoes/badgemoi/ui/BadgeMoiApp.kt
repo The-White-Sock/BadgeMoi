@@ -22,11 +22,21 @@ import fr.whitytoes.badgemoi.ui.components.AppTopBar
 import fr.whitytoes.badgemoi.ui.components.TopLevelDestination
 import fr.whitytoes.badgemoi.ui.history.HistoryScreen
 import fr.whitytoes.badgemoi.ui.home.HomeScreen
+import fr.whitytoes.badgemoi.ui.summary.SummaryScreen
+import fr.whitytoes.badgemoi.ui.trip.TripActiveScreen
 import kotlinx.serialization.Serializable
 
 /** Destination « Trajet » : accueil, puis trajet actif (lot 3). */
 @Serializable
 internal data object TripRoute
+
+/** Destination « Trajet actif » : saisie des jalons (lot 3). Onglet « Trajet ». */
+@Serializable
+internal data object ActiveTripRoute
+
+/** Destination « Récapitulatif » : relecture avant archivage (lot 4). Onglet « Trajet ». */
+@Serializable
+internal data object SummaryRoute
 
 /** Destination « Historique » : moyennes et trajets récents (lot 5). */
 @Serializable
@@ -51,8 +61,10 @@ fun BadgeMoiApp(
 ) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
+    // L'onglet « Trajet » couvre l'accueil, le trajet actif et le récapitulatif : on
+    // se repère sur l'Historique, seule destination de l'autre onglet.
     val isTripSelected =
-        backStackEntry?.destination?.hierarchy?.any { it.hasRoute(TripRoute::class) } != false
+        backStackEntry?.destination?.hierarchy?.none { it.hasRoute(HistoryRoute::class) } != false
 
     Column(
         modifier =
@@ -79,7 +91,26 @@ fun BadgeMoiApp(
             startDestination = TripRoute,
             modifier = Modifier.weight(1f),
         ) {
-            composable<TripRoute> { HomeScreen() }
+            composable<TripRoute> {
+                HomeScreen(onNavigateToActiveTrip = { navController.navigate(ActiveTripRoute) })
+            }
+            composable<ActiveTripRoute> {
+                TripActiveScreen(
+                    // `popUpTo` plutôt qu'un simple navigate : sans cela, la pile
+                    // accumulerait un écran de trajet mort à chaque aller-retour.
+                    onNavigateHome = {
+                        navController.navigate(TripRoute) {
+                            popUpTo(TripRoute) { inclusive = true }
+                        }
+                    },
+                    onNavigateToSummary = {
+                        navController.navigate(SummaryRoute) {
+                            popUpTo(ActiveTripRoute) { inclusive = true }
+                        }
+                    },
+                )
+            }
+            composable<SummaryRoute> { SummaryScreen() }
             composable<HistoryRoute> { HistoryScreen() }
         }
     }

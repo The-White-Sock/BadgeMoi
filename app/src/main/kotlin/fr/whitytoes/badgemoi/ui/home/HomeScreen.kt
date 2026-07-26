@@ -38,16 +38,23 @@ private val ActionButtonHeight = 72.dp
 
 @Composable
 fun HomeScreen(
+    onNavigateToActiveTrip: () -> Unit,
     modifier: Modifier = Modifier,
-    onResumeTrip: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     HomeScreen(
         uiState = uiState,
-        onStartTrip = viewModel::startTrip,
-        onResumeTrip = onResumeTrip,
+        // Démarrer puis naviguer : la persistance est asynchrone, mais l'écran de
+        // trajet observe le même dépôt et affichera le trajet dès son écriture. Les
+        // boutons de démarrage n'existent qu'à l'état Idle, il y aura donc bien un
+        // trajet à l'arrivée.
+        onStartTrip = { direction ->
+            viewModel.startTrip(direction)
+            onNavigateToActiveTrip()
+        },
+        onResumeTrip = onNavigateToActiveTrip,
         onAbandonTrip = viewModel::abandonTrip,
         modifier = modifier,
     )

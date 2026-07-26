@@ -19,5 +19,7 @@
     <string name="home_abandon_dialog_dismiss">Annuler</string>
 
     <!-- Emplacements en attente d'implémentation -->
+    <string name="trip_active_coming_soon">Saisie des jalons à venir.</string>
+    <string name="summary_coming_soon">Récapitulatif à venir.</string>
     <string name="history_coming_soon">Historique à venir.</string>
 </resources>
