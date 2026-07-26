@@ -50,6 +50,8 @@ fun TripActiveScreen(
         TripActiveScreen(
             trip = trip,
             onMilestoneClick = null,
+            onValidate = viewModel::validateCurrentMilestone,
+            onSkip = viewModel::skipCurrentMilestone,
             modifier = modifier,
         )
     }
@@ -60,6 +62,8 @@ fun TripActiveScreen(
 internal fun TripActiveScreen(
     trip: Trip,
     onMilestoneClick: ((Int) -> Unit)?,
+    onValidate: () -> Unit,
+    onSkip: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val rows = remember(trip) { trip.milestoneRows() }
@@ -67,6 +71,7 @@ internal fun TripActiveScreen(
     ScreenScaffold(
         modifier = modifier,
         top = { TripProgressFrieze(rows = rows) },
+        bottom = { TripActionBar(onValidate = onValidate, onSkip = onSkip) },
     ) {
         MilestoneList(rows = rows, onMilestoneClick = onMilestoneClick)
     }
@@ -87,7 +92,7 @@ private fun previewTrip(): Trip {
 @Composable
 private fun TripActiveScreenNightPreview() {
     BadgeMoiTheme(darkTheme = true) {
-        TripActiveScreen(trip = previewTrip(), onMilestoneClick = {})
+        TripActiveScreen(trip = previewTrip(), onMilestoneClick = {}, onValidate = {}, onSkip = {})
     }
 }
 
@@ -95,6 +100,6 @@ private fun TripActiveScreenNightPreview() {
 @Composable
 private fun TripActiveScreenDayPreview() {
     BadgeMoiTheme(darkTheme = false) {
-        TripActiveScreen(trip = previewTrip(), onMilestoneClick = {})
+        TripActiveScreen(trip = previewTrip(), onMilestoneClick = {}, onValidate = {}, onSkip = {})
     }
 }
