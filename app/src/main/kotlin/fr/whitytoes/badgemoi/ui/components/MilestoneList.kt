@@ -13,23 +13,30 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import fr.whitytoes.badgemoi.R
 import fr.whitytoes.badgemoi.ui.formatDuration
 import fr.whitytoes.badgemoi.ui.theme.numericTextStyle
 import fr.whitytoes.badgemoi.ui.trip.MilestoneRow
 import fr.whitytoes.badgemoi.ui.trip.MilestoneStatus
+import fr.whitytoes.badgemoi.ui.trip.isCorrectable
+import kotlin.time.Duration
 
 private val BadgeSize = 12.dp
 private val CurrentBadgeSize = 16.dp
 private val RowMinHeight = 56.dp
+private val RowShape = RoundedCornerShape(12.dp)
 
 /**
  * Liste des jalons d'un trajet (cahier des charges §3.2).
@@ -38,19 +45,31 @@ private val RowMinHeight = 56.dp
  * précédent** — jamais l'heure absolue, réservée au bandeau. Ce n'est pas un détail de
  * présentation mais une règle d'ergonomie du cahier.
  *
- * Le même composant sert au récapitulatif du lot 4 (§3.3). [onMilestoneClick] est
- * facultatif : le récapitulatif est en lecture seule, la correction d'un jalon (§3.5) se
- * faisant depuis l'écran actif.
+ * Le même composant sert au récapitulatif du lot 4 (§3.3), d'où deux paramètres
+ * facultatifs : le récapitulatif est en lecture seule et figé, alors que l'écran actif
+ * corrige un jalon (§3.5) et fait courir un chronomètre.
+ *
+ * @param onMilestoneClick ouvre la correction d'un jalon. Seuls les jalons **déjà
+ *   tranchés** (posés ou ignorés) sont cliquables : corriger un jalon qu'on n'a pas
+ *   encore atteint reviendrait à inventer un passage.
+ * @param runningSince temps écoulé depuis le dernier jalon posé, affiché sur la ligne du
+ *   jalon **courant**. Volontairement une lambda : la lecture de l'état est différée
+ *   jusqu'à cette seule ligne, qui est donc la seule à se recomposer chaque seconde.
  */
 @Composable
 fun MilestoneList(
     rows: List<MilestoneRow>,
     modifier: Modifier = Modifier,
     onMilestoneClick: ((Int) -> Unit)? = null,
+    runningSince: (() -> Duration?)? = null,
 ) {
     LazyColumn(modifier = modifier.fillMaxWidth()) {
         items(items = rows, key = { it.index }) { row ->
-            MilestoneListRow(row = row, onClick = onMilestoneClick?.let { { it(row.index) } })
+            MilestoneListRow(
+                row = row,
+                onClick = if (row.status.isCorrectable) onMilestoneClick?.let { { it(row.index) } } else null,
+                runningSince = runningSince,
+            )
         }
     }
 }
@@ -59,16 +78,23 @@ fun MilestoneList(
 private fun MilestoneListRow(
     row: MilestoneRow,
     onClick: (() -> Unit)?,
+    runningSince: (() -> Duration?)?,
 ) {
+    val current = row.status == MilestoneStatus.CURRENT
     val clickable = if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier
 
     Row(
         modifier =
             Modifier
                 .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 2.dp)
+                // Découpe avant le fond et le clic : sans elle l'ondulation de l'appui
+                // déborde de la ligne et bave sur ses voisines.
+                .clip(RowShape)
+                .background(if (current) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent)
                 .then(clickable)
                 .heightIn(min = RowMinHeight)
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .padding(horizontal = 8.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         StatusBadge(status = row.status)
@@ -76,11 +102,11 @@ private fun MilestoneListRow(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = row.label,
-                style = MaterialTheme.typography.bodyLarge,
+                style = if (current) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyLarge,
                 color = labelColor(row.status),
             )
         }
-        TrailingValue(row = row)
+        TrailingValue(row = row, runningSince = runningSince)
     }
 }
 
@@ -110,10 +136,30 @@ private fun StatusBadge(status: MilestoneStatus) {
 }
 
 @Composable
-private fun TrailingValue(row: MilestoneRow) {
+private fun TrailingValue(
+    row: MilestoneRow,
+    runningSince: (() -> Duration?)?,
+) {
     val colors = MaterialTheme.colorScheme
+    val current = row.status == MilestoneStatus.CURRENT
+    // Le chronomètre en cours vit sur la ligne du jalon à valider, là où le regard se
+    // pose, plutôt que dans le bandeau où il doublait la valeur « Écoulé ».
+    val running = if (current) runningSince?.invoke() else null
 
     when {
+        running != null -> {
+            val value = formatDuration(running)
+            // Hors contexte, un chronomètre nu ne dit pas ce qu'il compte : la
+            // description sonore reprend la phrase que portait le bandeau.
+            val description = stringResource(R.string.trip_since_last_milestone, value)
+            Text(
+                text = value,
+                style = numericTextStyle,
+                color = colors.onSecondaryContainer,
+                modifier = Modifier.semantics { contentDescription = description },
+            )
+        }
+
         // « Ignoré » plutôt qu'une durée vide : le jalon a été traité, pas oublié.
         row.status == MilestoneStatus.SKIPPED ->
             Text(
@@ -133,7 +179,7 @@ private fun TrailingValue(row: MilestoneRow) {
             Text(
                 text = stringResource(R.string.milestone_no_value),
                 style = numericTextStyle,
-                color = colors.onSurfaceVariant,
+                color = if (current) colors.onSecondaryContainer else colors.onSurfaceVariant,
             )
     }
 }
@@ -141,7 +187,7 @@ private fun TrailingValue(row: MilestoneRow) {
 @Composable
 private fun labelColor(status: MilestoneStatus) =
     when (status) {
-        MilestoneStatus.CURRENT -> MaterialTheme.colorScheme.secondary
+        MilestoneStatus.CURRENT -> MaterialTheme.colorScheme.onSecondaryContainer
         MilestoneStatus.PENDING -> MaterialTheme.colorScheme.onSurfaceVariant
         else -> MaterialTheme.colorScheme.onSurface
     }

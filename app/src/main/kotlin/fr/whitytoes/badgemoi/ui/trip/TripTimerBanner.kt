@@ -23,8 +23,11 @@ import fr.whitytoes.badgemoi.ui.theme.numericTextStyle
 import java.time.Instant
 
 /**
- * Bandeau Départ / Écoulé et mini-indicateur « depuis le dernier jalon »
- * (cahier des charges §3.2).
+ * Bandeau Départ / Écoulé (cahier des charges §3.2).
+ *
+ * Le compteur « depuis le dernier jalon » n'est plus ici mais sur la **ligne du jalon
+ * courant** : deux chronomètres côte à côte dans le bandeau se lisaient mal, et celui qui
+ * compte le tronçon en cours appartient au jalon qu'il mesure.
  *
  * [timers] est une **lambda** et non une valeur : la lecture de l'état est ainsi
  * différée jusqu'ici, ce qui cantonne la recomposition à la seconde à ce seul bandeau
@@ -38,32 +41,20 @@ fun TripTimerBanner(
 ) {
     val current = timers()
 
-    Column(modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Bottom,
-        ) {
-            // L'heure de départ est figée : elle ne bouge plus une fois le trajet lancé.
-            TimerField(
-                labelRes = R.string.trip_departure,
-                value = departureAt?.let { formatTime(it) },
-            )
-            TimerField(
-                labelRes = R.string.trip_elapsed,
-                value = current.elapsed?.let(::formatDuration),
-            )
-        }
-
-        // Discret par nature : c'est une information de confort, pas le repère principal.
-        val sinceLast = current.sinceLastMilestone
-        if (sinceLast != null) {
-            Text(
-                text = stringResource(R.string.trip_since_last_milestone, formatDuration(sinceLast)),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+    Row(
+        modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.Bottom,
+    ) {
+        // L'heure de départ est figée : elle ne bouge plus une fois le trajet lancé.
+        TimerField(
+            labelRes = R.string.trip_departure,
+            value = departureAt?.let { formatTime(it) },
+        )
+        TimerField(
+            labelRes = R.string.trip_elapsed,
+            value = current.elapsed?.let(::formatDuration),
+        )
     }
 }
 

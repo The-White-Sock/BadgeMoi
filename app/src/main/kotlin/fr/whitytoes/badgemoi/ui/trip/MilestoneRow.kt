@@ -15,6 +15,14 @@ import kotlin.time.Duration.Companion.milliseconds
 enum class MilestoneStatus { POSED, SKIPPED, CURRENT, PENDING }
 
 /**
+ * Un jalon est corrigible (§3.5) une fois **tranché** : posé ou ignoré. Ouvrir l'overlay
+ * sur un jalon courant ou à venir reviendrait à inventer un passage qui n'a pas eu lieu —
+ * et à faire de la correction un second moyen de valider, en doublon de la barre d'action.
+ */
+val MilestoneStatus.isCorrectable: Boolean
+    get() = this == MilestoneStatus.POSED || this == MilestoneStatus.SKIPPED
+
+/**
  * Une ligne de la liste des jalons, prête à afficher.
  *
  * [sincePrevious] est la durée écoulée depuis le jalon précédent — le cahier §3.2 est

@@ -25,8 +25,8 @@ import java.time.Instant
  * Écran « Trajet actif » (cahier des charges §3.2).
  *
  * La frise de progression occupe la zone haute fixe — c'est une information de statut,
- * pas une liste — et la liste des jalons la zone scrollable. La barre d'action
- * Valider / Passer arrive avec l'issue dédiée du lot 3.
+ * pas une liste — la liste des jalons la zone scrollable, et la barre Valider / Passer
+ * la zone basse fixe.
  */
 @Composable
 fun TripActiveScreen(
@@ -121,7 +121,13 @@ internal fun TripActiveScreen(
         },
         bottom = { TripActionBar(onValidate = actions.onValidate, onSkip = actions.onSkip) },
     ) {
-        MilestoneList(rows = rows, onMilestoneClick = actions.onMilestoneClick)
+        MilestoneList(
+            rows = rows,
+            onMilestoneClick = actions.onMilestoneClick,
+            // Lecture différée elle aussi : seule la ligne du jalon courant se recompose
+            // à la seconde, pas la liste entière.
+            runningSince = { timers().sinceLastMilestone },
+        )
     }
 }
 
