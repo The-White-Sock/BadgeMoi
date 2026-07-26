@@ -15,7 +15,7 @@ commentaires sont concernés.
 
 ## Stack
 
-- Kotlin 2.3.20, Jetpack Compose + Material 3, AGP 9.3.0, Gradle 9.6.1 (JDK 17).
+- Kotlin 2.3.20, Jetpack Compose + Material 3, AGP 9.3.1, Gradle 9.6.1 (JDK 17).
   Kotlin est volontairement maintenu sous 2.4.10 — contrainte CodeQL, voir
   « Sécurité et automatisation CI ».
 - Module unique `:app`, organisé **par fonctionnalité** (pas par couche technique) :
@@ -120,6 +120,11 @@ Un build/lint local avant de pousser évite les allers-retours CI.
     ruleset n'est nécessaire.
 - **Dependabot** (`.github/dependabot.yml`) : met à jour automatiquement les dépendances
   Gradle (`gradle/libs.versions.toml`), npm (`package.json`) et les Actions GitHub.
+- **Auto-merge des PR Dependabot** (`.github/workflows/dependabot-auto-merge.yml`) : chaque
+  PR ouverte par Dependabot est mise en auto-merge (squash) dès sa création. La fusion
+  n'a lieu que si les checks requis passent : une mise à jour qui casse la CI reste
+  ouverte et rouge, sans intervention. Les PR de Claude Code suivent la même règle,
+  décrite dans `CLAUDE.md`.
 - **Dependency Review** (`.github/workflows/dependency-review.yml`) : sur chaque PR,
   bloque l'introduction d'une dépendance connue comme vulnérable (sévérité modérée ou
   plus). Complémentaire de Dependabot, qui met à jour l'existant de façon planifiée

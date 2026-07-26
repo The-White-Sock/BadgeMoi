@@ -1,0 +1,29 @@
+name: Auto-merge Dependabot
+
+# Met les PR de Dependabot en auto-merge (squash) dès leur ouverture, comme le fait
+# Claude Code pour les siennes (voir CLAUDE.md).
+#
+# La sécurité ne vient pas de ce workflow mais des checks requis par le ruleset
+# `main-protection` : `--auto` ne fusionne que lorsque `build`, `analyze` et
+# `dependency-review` sont verts. Une PR qui casse la CI — typiquement un bump Kotlin
+# au-delà du plafond supporté par CodeQL, voir docs/conventions.md — reste donc
+# ouverte et rouge, sans intervention.
+on: pull_request
+
+# Pour un évènement déclenché par Dependabot, le GITHUB_TOKEN est en lecture seule
+# par défaut : ces permissions explicites sont nécessaires pour armer l'auto-merge.
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      # `gh` est préinstallé sur les runners : pas d'Action tierce à épingler ici.
+      - name: Activer l'auto-merge
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr merge --auto --squash "$PR_URL"
