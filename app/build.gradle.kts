@@ -22,7 +22,27 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    // Clé de debug partagée et versionnée : chaque exécution de CI part d'une machine
+    // neuve et génèrerait sinon une clé différente à chaque build, rendant les APK de
+    // test impossibles à installer par-dessus le précédent. Sans rapport avec la
+    // signature de release, assurée par F-Droid (docs/publication.md).
+    signingConfigs {
+        getByName("debug") {
+            storeFile = rootProject.file("config/debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
+        debug {
+            // L'APK de test s'installe à côté d'une éventuelle version de release au
+            // lieu d'entrer en conflit avec elle.
+            applicationIdSuffix = ".debug"
+            signingConfig = signingConfigs.getByName("debug")
+        }
+
         release {
             isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")

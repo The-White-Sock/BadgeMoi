@@ -29,6 +29,11 @@ render.experimental.xml
 # Fichiers de signature (keystore)
 *.jks
 *.keystore
+# Exception : clé de *debug* partagée, volontairement versionnée. Ce n'est pas un
+# secret — elle ne sert qu'aux builds de test, jamais à une release (voir
+# docs/publication.md). La versionner garantit que tous les APK de test portent la
+# même signature et peuvent donc se remplacer sur un appareil.
+!config/debug.keystore
 
 # Services Google (APIs, Firebase, etc.)
 google-services.json
