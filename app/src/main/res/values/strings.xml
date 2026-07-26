@@ -21,6 +21,8 @@
     <!-- Écran « Trajet actif » -->
     <string name="milestone_skipped">Ignoré</string>
     <string name="milestone_no_value">—</string>
+    <string name="trip_validate">Valider</string>
+    <string name="trip_skip">Passer</string>
 
     <!-- Emplacements en attente d'implémentation -->
     <string name="summary_coming_soon">Récapitulatif à venir.</string>
