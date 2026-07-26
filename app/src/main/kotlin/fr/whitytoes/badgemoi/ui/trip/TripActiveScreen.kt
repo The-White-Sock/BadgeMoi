@@ -1,26 +1,27 @@
 package fr.whitytoes.badgemoi.ui.trip
 
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import fr.whitytoes.badgemoi.R
+import fr.whitytoes.badgemoi.domain.Direction
+import fr.whitytoes.badgemoi.domain.Trip
+import fr.whitytoes.badgemoi.ui.components.MilestoneList
 import fr.whitytoes.badgemoi.ui.components.ScreenScaffold
+import fr.whitytoes.badgemoi.ui.components.TripProgressFrieze
+import fr.whitytoes.badgemoi.ui.theme.BadgeMoiTheme
+import java.time.Instant
 
 /**
  * Écran « Trajet actif » (cahier des charges §3.2).
  *
- * Cette version pose la plomberie : état, persistance et sorties de l'écran. La frise
- * de progression et la liste des jalons arrivent avec l'issue dédiée du lot 3, la barre
- * d'action Valider / Passer avec la sienne.
+ * La frise de progression occupe la zone haute fixe — c'est une information de statut,
+ * pas une liste — et la liste des jalons la zone scrollable. La barre d'action
+ * Valider / Passer arrive avec l'issue dédiée du lot 3.
  */
 @Composable
 fun TripActiveScreen(
@@ -45,13 +46,55 @@ fun TripActiveScreen(
         if (trip?.isComplete == true) onNavigateToSummary()
     }
 
-    ScreenScaffold(modifier = modifier) {
-        if (trip != null) {
-            Text(
-                text = stringResource(R.string.trip_active_coming_soon),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.align(Alignment.Center).padding(16.dp),
-            )
-        }
+    if (trip != null) {
+        TripActiveScreen(
+            trip = trip,
+            onMilestoneClick = null,
+            modifier = modifier,
+        )
+    }
+}
+
+/** Version sans état, prévisualisable. */
+@Composable
+internal fun TripActiveScreen(
+    trip: Trip,
+    onMilestoneClick: ((Int) -> Unit)?,
+    modifier: Modifier = Modifier,
+) {
+    val rows = remember(trip) { trip.milestoneRows() }
+
+    ScreenScaffold(
+        modifier = modifier,
+        top = { TripProgressFrieze(rows = rows) },
+    ) {
+        MilestoneList(rows = rows, onMilestoneClick = onMilestoneClick)
+    }
+}
+
+/** Durée du premier tronçon des aperçus : 9 min 20 s, une valeur plausible de trajet. */
+private const val PREVIEW_FIRST_LEG_SECONDS = 560L
+
+private fun previewTrip(): Trip {
+    val departure = Instant.parse("2026-07-26T07:12:00Z")
+    return Trip
+        .start(id = "preview", direction = Direction.ALLER, departureAt = departure)
+        .poseMilestone(1, departure.plusSeconds(PREVIEW_FIRST_LEG_SECONDS))
+        .skipMilestone(2)
+}
+
+@Preview(name = "Trajet actif — nuit", showBackground = true)
+@Composable
+private fun TripActiveScreenNightPreview() {
+    BadgeMoiTheme(darkTheme = true) {
+        TripActiveScreen(trip = previewTrip(), onMilestoneClick = {})
+    }
+}
+
+@Preview(name = "Trajet actif — jour", showBackground = true)
+@Composable
+private fun TripActiveScreenDayPreview() {
+    BadgeMoiTheme(darkTheme = false) {
+        TripActiveScreen(trip = previewTrip(), onMilestoneClick = {})
     }
 }
