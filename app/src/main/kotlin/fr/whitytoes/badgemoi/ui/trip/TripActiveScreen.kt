@@ -10,6 +10,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import fr.whitytoes.badgemoi.domain.Direction
 import fr.whitytoes.badgemoi.domain.Trip
+import fr.whitytoes.badgemoi.ui.components.KeepScreenOn
 import fr.whitytoes.badgemoi.ui.components.MilestoneList
 import fr.whitytoes.badgemoi.ui.components.ScreenScaffold
 import fr.whitytoes.badgemoi.ui.components.TripProgressFrieze
@@ -66,6 +67,10 @@ internal fun TripActiveScreen(
     onSkip: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // Écran maintenu allumé pendant toute la saisie ; le drapeau tombe de lui-même
+    // quand cet écran quitte la composition (cahier §4.4).
+    KeepScreenOn()
+
     val rows = remember(trip) { trip.milestoneRows() }
 
     ScreenScaffold(
