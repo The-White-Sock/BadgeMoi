@@ -10,9 +10,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
@@ -24,6 +26,7 @@ import org.junit.Test
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
+import kotlin.time.Duration.Companion.minutes
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class TripViewModelTest {
@@ -150,6 +153,42 @@ class TripViewModelTest {
 
             assertNull(repository.current?.times?.get(1))
             assertEquals(1, repository.current?.currentStep)
+        }
+
+    /**
+     * La conversion heure locale → instant vit dans le ViewModel : elle a besoin de
+     * l'horloge pour écarter une occurrence future, et l'écran n'en a pas.
+     */
+    @Test
+    fun `corriger un jalon convertit l'heure saisie avec l'horloge du ViewModel`() =
+        runTest(dispatcher) {
+            val repository = FakeActiveTripRepository(trip())
+            val viewModel = TripViewModel(repository, clock)
+            advanceUntilIdle()
+
+            // 08h05 UTC, soit cinq minutes après le départ — et avant `now` (08h12).
+            viewModel.correctMilestone(index = 1, hour = 8, minute = 5)
+            advanceUntilIdle()
+
+            assertEquals(departure.plusSeconds(300), repository.current?.times?.get(1))
+        }
+
+    /** Reproduction : le bandeau doit refléter une correction du départ. */
+    @Test
+    fun `corriger le départ ajuste le temps écoulé`() =
+        runTest(dispatcher) {
+            val repository = FakeActiveTripRepository(trip())
+            val viewModel = TripViewModel(repository, clock)
+            backgroundScope.launch { viewModel.timers.collect {} }
+            runCurrent()
+
+            assertEquals(12.minutes, viewModel.timers.value.elapsed)
+
+            // Le départ était en réalité dix minutes plus tôt.
+            viewModel.poseMilestone(0, departure.minusSeconds(600))
+            runCurrent()
+
+            assertEquals(22.minutes, viewModel.timers.value.elapsed)
         }
 
     @Test
