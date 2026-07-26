@@ -4,13 +4,15 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dagger.hilt.android.AndroidEntryPoint
 import fr.whitytoes.badgemoi.ui.BadgeMoiApp
+import fr.whitytoes.badgemoi.ui.ThemeViewModel
 import fr.whitytoes.badgemoi.ui.theme.BadgeMoiTheme
+import fr.whitytoes.badgemoi.ui.theme.isDark
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -18,17 +20,21 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            // État de thème temporaire, en mémoire, par défaut nuit comme le POC.
-            // Il est remplacé par la préférence persistée (SettingsRepository, lot 1)
-            // à l'issue suivante du lot 2 — la bascule ne survit donc pas encore à
-            // la fermeture de l'application.
-            var isDarkTheme by rememberSaveable { mutableStateOf(true) }
+            val viewModel: ThemeViewModel = hiltViewModel()
+            val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
+            val systemInDarkTheme = isSystemInDarkTheme()
 
-            BadgeMoiTheme(darkTheme = isDarkTheme) {
-                BadgeMoiApp(
-                    isDarkTheme = isDarkTheme,
-                    onToggleTheme = { isDarkTheme = !isDarkTheme },
-                )
+            // Rien n'est composé tant que la préférence n'a pas été lue du DataStore :
+            // afficher un thème par défaut puis le corriger produirait un flash au
+            // lancement.
+            themeMode?.let { mode ->
+                val darkTheme = mode.isDark(systemInDarkTheme)
+                BadgeMoiTheme(darkTheme = darkTheme) {
+                    BadgeMoiApp(
+                        isDarkTheme = darkTheme,
+                        onToggleTheme = { viewModel.toggleTheme(systemInDarkTheme) },
+                    )
+                }
             }
         }
     }

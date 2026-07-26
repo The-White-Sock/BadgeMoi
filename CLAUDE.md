@@ -40,6 +40,14 @@ que les exécutions locales en session.
 LANG=C.UTF-8 ./gradlew testDebugUnitTest
 ```
 
+Le démon Kotlin hérite de la locale du premier lancement : si une commande a déjà été
+lancée sans `LANG`, l'erreur persiste malgré le préfixe. Le remède est de repartir d'un
+démon neuf.
+
+```bash
+./gradlew --stop && pkill -f KotlinCompileDaemon
+```
+
 Note : `--offline` ne fonctionne pas tant que le cache Gradle est vide (les plugins
 Android/Kotlin doivent être résolus depuis le réseau au premier build).
 
