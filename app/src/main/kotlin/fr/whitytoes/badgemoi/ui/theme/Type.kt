@@ -1,14 +1,50 @@
 package fr.whitytoes.badgemoi.ui.theme
 
 import androidx.compose.material3.Typography
+import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
+import fr.whitytoes.badgemoi.R
 
-// TODO(lot 2/7) : remplacer par les polices embarquées JetBrains Mono / Manrope
-// (docs/cahier-des-charges.md §4.7) une fois les fichiers .ttf ajoutés en ressources.
-private val SansFontFamily = FontFamily.Default
-private val MonoFontFamily = FontFamily.Monospace
+/**
+ * Déclare une graisse d'une police **variable** : le même fichier sert toutes les
+ * graisses, via l'axe `wght`. Exploitable dès l'API 26, en deçà du `minSdk 29`.
+ *
+ * Les polices sont embarquées dans l'APK (cahier §4.7). Le POC les chargeait depuis
+ * Google Fonts ; les embarquer supprime toute dépendance réseau à l'exécution et évite
+ * d'avoir à déclarer la permission `INTERNET` (§4.8).
+ *
+ * Licences SIL Open Font License 1.1, embarquées avec les polices
+ * (`res/raw/ofl_manrope.txt`, `res/raw/ofl_jetbrains_mono.txt`).
+ */
+@OptIn(ExperimentalTextApi::class)
+private fun variableFont(
+    resId: Int,
+    weight: FontWeight,
+) = Font(
+    resId = resId,
+    weight = weight,
+    variationSettings = FontVariation.Settings(FontVariation.weight(weight.weight)),
+)
+
+/** Manrope : texte d'interface. */
+private val SansFontFamily =
+    FontFamily(
+        variableFont(R.font.manrope, FontWeight.Medium),
+        variableFont(R.font.manrope, FontWeight.Bold),
+        variableFont(R.font.manrope, FontWeight.ExtraBold),
+    )
+
+/** JetBrains Mono : valeurs chiffrées uniquement (heures, chronomètres). */
+private val MonoFontFamily =
+    FontFamily(
+        variableFont(R.font.jetbrains_mono, FontWeight.Medium),
+        variableFont(R.font.jetbrains_mono, FontWeight.Bold),
+        variableFont(R.font.jetbrains_mono, FontWeight.ExtraBold),
+    )
 
 val BadgeMoiTypography =
     Typography(
