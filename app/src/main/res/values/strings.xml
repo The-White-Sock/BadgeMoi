@@ -8,7 +8,16 @@
     <string name="theme_switch_to_day">Jour</string>
     <string name="theme_switch_to_night">Nuit</string>
 
+    <!-- Écran d'accueil -->
+    <string name="direction_aller">Aller</string>
+    <string name="direction_retour">Retour</string>
+    <string name="home_departure_at">Départ à %1$s</string>
+    <string name="home_resume">Reprendre</string>
+    <string name="home_abandon">Abandonner</string>
+    <string name="home_abandon_dialog_title">Abandonner le trajet ?</string>
+    <string name="home_abandon_dialog_message">Le trajet en cours sera effacé définitivement.</string>
+    <string name="home_abandon_dialog_dismiss">Annuler</string>
+
     <!-- Emplacements en attente d'implémentation -->
-    <string name="home_coming_soon">Écran d\'accueil à venir.</string>
     <string name="history_coming_soon">Historique à venir.</string>
 </resources>
