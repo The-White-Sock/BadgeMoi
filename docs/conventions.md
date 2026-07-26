@@ -39,9 +39,10 @@ fr.whitytoes.badgemoi/
   MainActivity.kt
   ui/
     theme/                 # Color.kt, Theme.kt, Type.kt — tokens du design system
+    components/            # composants partagés entre écrans (patron fixe/scroll/fixe…)
     home/                  # écran d'accueil (lot 2)
     trip/                  # écran "trajet actif" (lot 3)
-    summary/                # écran récapitulatif (lot 4)
+    summary/               # écran récapitulatif (lot 4)
     history/               # écran historique (lot 5)
     widget/                # widget Glance (lot 6)
   domain/                  # modèles + interfaces de repository (lot 1)

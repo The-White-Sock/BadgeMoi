@@ -5,6 +5,11 @@
 style:
   MaxLineLength:
     maxLineLength: 120
+  # Les aperçus @Preview ne sont jamais appelés depuis le code : c'est l'outillage
+  # Compose qui les instancie. Sans cette exception, chaque aperçu serait signalé
+  # comme fonction privée inutilisée.
+  UnusedPrivateMember:
+    ignoreAnnotated: ['Preview']
 
 naming:
   # Les fonctions @Composable suivent la convention PascalCase de Jetpack
