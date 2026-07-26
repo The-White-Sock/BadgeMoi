@@ -1,4 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">BadgeMoi</string>
+
+    <!-- Bandeau haut : onglets de navigation et bascule de thème -->
+    <string name="destination_trip">Trajet</string>
+    <string name="destination_history">Historique</string>
+    <string name="theme_switch_to_day">Jour</string>
+    <string name="theme_switch_to_night">Nuit</string>
+
+    <!-- Emplacements en attente d'implémentation -->
+    <string name="home_coming_soon">Écran d\'accueil à venir.</string>
+    <string name="history_coming_soon">Historique à venir.</string>
 </resources>
