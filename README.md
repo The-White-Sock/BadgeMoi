@@ -8,6 +8,17 @@ domicile-travail en Onewheel, jalon par jalon.
 - Conventions du dépôt (stack, structure, nommage, commandes) : [`docs/conventions.md`](docs/conventions.md)
 - Cinématique de publication (branches, versioning, release, distribution) : [`docs/publication.md`](docs/publication.md)
 
+## Polices
+
+L'application embarque deux polices variables, sous **SIL Open Font License 1.1** :
+
+- [Manrope](https://github.com/sharanda/manrope) — texte d'interface ;
+- [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono) — valeurs chiffrées.
+
+Le texte des licences est distribué avec l'application (`app/src/main/res/raw/`).
+Les polices sont embarquées plutôt que chargées à distance : l'application n'émet
+aucune requête réseau et ne déclare pas la permission `INTERNET`.
+
 ## Compilation
 
 ```bash
