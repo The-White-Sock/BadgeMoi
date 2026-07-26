@@ -18,6 +18,11 @@
     <string name="home_abandon_dialog_message">Le trajet en cours sera effacé définitivement.</string>
     <string name="home_abandon_dialog_dismiss">Annuler</string>
 
+    <!-- Écran « Trajet actif » -->
+    <string name="milestone_skipped">Ignoré</string>
+    <string name="milestone_no_value">—</string>
+
     <!-- Emplacements en attente d'implémentation -->
+    <string name="summary_coming_soon">Récapitulatif à venir.</string>
     <string name="history_coming_soon">Historique à venir.</string>
 </resources>
