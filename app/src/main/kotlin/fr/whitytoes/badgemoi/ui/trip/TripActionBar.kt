@@ -34,6 +34,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import fr.whitytoes.badgemoi.R
 import fr.whitytoes.badgemoi.ui.components.TapGuard
+import fr.whitytoes.badgemoi.ui.components.rememberTripHaptics
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -65,12 +66,26 @@ fun TripActionBar(
     onSkip: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // Le retour haptique est déclenché ici, au plus près du geste : c'est souvent la
+    // seule confirmation perceptible en roulant (cahier §1.4).
+    val haptics = rememberTripHaptics()
+
     Row(
         modifier = modifier.fillMaxWidth().padding(16.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        ValidateButton(onValidate = onValidate)
-        SkipButton(onSkip = onSkip)
+        ValidateButton(
+            onValidate = {
+                haptics.milestoneValidated()
+                onValidate()
+            },
+        )
+        SkipButton(
+            onSkip = {
+                haptics.milestoneSkipped()
+                onSkip()
+            },
+        )
     }
 }
 
