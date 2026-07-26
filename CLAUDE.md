@@ -22,11 +22,26 @@ lire :
 
 Le SDK Android est installé automatiquement dans les sessions Claude Code on the web via
 `.claude/hooks/session-start.sh` (command-line tools, `platforms;android-37.0`,
-`build-tools;37.0.0`). Le téléchargement de la distribution Gradle elle-même
-(`gradle-9.4.1-bin.zip`, redirigée vers un release GitHub `gradle/gradle-distributions`)
-reste bloqué par le scope GitHub de la session — `./gradlew` local n'y fonctionne donc
-pas encore, mais la CI GitHub Actions a un accès réseau complet et fait foi : se fier à
-ses résultats pour valider un build plutôt qu'à une exécution locale dans cette session.
+`build-tools;37.0.0`).
+
+**`./gradlew` fonctionne dans ces sessions** : la distribution Gradle se télécharge et
+`assembleDebug`, `testDebugUnitTest`, `ktlintCheck` et `detekt` s'exécutent localement.
+Les lancer avant de pousser évite un aller-retour de CI. Celle-ci reste l'arbitre final
+(environnement propre, accès réseau complet).
+
+⚠️ **Préfixer les commandes Gradle par `LANG=C.UTF-8`.** Le conteneur démarre avec `LANG`
+vide, donc `sun.jnu.encoding = ANSI_X3.4-1968` : le compilateur Kotlin échoue alors à
+écrire le fichier `.class` d'une lambda déclarée dans un test au nom français accentué —
+un test de dépôt écrit avec `= runTest { … }` produit un nom de fichier portant les
+accents du nom de la méthode. Les runners GitHub étant en UTF-8, ce point ne concerne
+que les exécutions locales en session.
+
+```bash
+LANG=C.UTF-8 ./gradlew testDebugUnitTest
+```
+
+Note : `--offline` ne fonctionne pas tant que le cache Gradle est vide (les plugins
+Android/Kotlin doivent être résolus depuis le réseau au premier build).
 
 ## Auto-merge des PR
 
