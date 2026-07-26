@@ -67,13 +67,58 @@ class MilestoneCorrectionTest {
 
     /**
      * Corriger le départ vers une heure antérieure est légitime — l'avancer d'un jour
-     * serait absurde. Le décalage ne s'applique donc qu'aux jalons suivants.
+     * serait absurde.
      */
     @Test
     fun `corriger le départ vers une heure antérieure ne le reporte pas au lendemain`() {
         val corrected = trip().correctionInstant(index = 0, hour = 6, minute = 30, zone = paris)
 
         assertEquals(Instant.parse("2026-07-26T04:30:00Z"), corrected)
+    }
+
+    /**
+     * Le défaut corrigé par l'issue #56 : rectifier un jalon vers une heure légèrement
+     * antérieure — on a pointé un peu tard — le reportait au lendemain, soit 24 heures
+     * d'écart affichées sur le tronçon.
+     */
+    @Test
+    fun `corriger un jalon vers une heure antérieure le laisse le même jour`() {
+        // Jalon 1 posé à 19h29 heure de Paris ; on rectifie le jalon 2 à 19h00.
+        val trajet = trip().poseMilestone(1, Instant.parse("2026-07-26T17:29:00Z"))
+
+        val corrected = trajet.correctionInstant(index = 2, hour = 19, minute = 0, zone = paris)
+
+        assertEquals(Instant.parse("2026-07-26T17:00:00Z"), corrected)
+    }
+
+    /** Même règle pour un jalon déjà posé que l'on rectifie de quelques minutes. */
+    @Test
+    fun `rectifier un jalon déjà posé vers l'arrière ne change pas de jour`() {
+        val trajet =
+            trip()
+                .poseMilestone(1, Instant.parse("2026-07-26T05:20:00Z")) // 07h20
+                .poseMilestone(2, Instant.parse("2026-07-26T05:35:00Z")) // 07h35
+
+        val corrected = trajet.correctionInstant(index = 2, hour = 7, minute = 22, zone = paris)
+
+        assertEquals(Instant.parse("2026-07-26T05:22:00Z"), corrected)
+    }
+
+    /**
+     * Le changement d'heure d'octobre : le décalage de jour se fait sur le calendrier
+     * local, l'heure murale saisie est donc conservée telle quelle. Un décalage de
+     * 24 heures fixes aurait rendu 00h05 en 23h05 la veille.
+     */
+    @Test
+    fun `le report au lendemain conserve l'heure murale malgré le changement d'heure`() {
+        // Départ le 24/10/2026 à 23h50 heure de Paris (UTC+2, avant le basculement).
+        val nuit = trip(Instant.parse("2026-10-24T21:50:00Z"))
+
+        val corrected = nuit.correctionInstant(index = 1, hour = 0, minute = 5, zone = paris)
+
+        assertEquals(25, corrected.atZone(paris).dayOfMonth)
+        assertEquals(0, corrected.atZone(paris).hour)
+        assertEquals(5, corrected.atZone(paris).minute)
     }
 
     @Test

@@ -70,6 +70,20 @@ class MilestoneRowTest {
         assertEquals("l'écart remonte au jalon 1, pas au jalon 2", 30.minutes, rows[3].sincePrevious)
     }
 
+    /**
+     * §3.5 : seul un jalon tranché se corrige. Sur un trajet neuf, cela veut dire le
+     * départ et rien d'autre — le jalon courant se valide, il ne se rectifie pas.
+     */
+    @Test
+    fun `seuls les jalons posés ou ignorés sont corrigibles`() {
+        val rows = trip().skipMilestone(1).milestoneRows()
+
+        assertEquals("le départ, posé", true, rows[0].status.isCorrectable)
+        assertEquals("le jalon ignoré", true, rows[1].status.isCorrectable)
+        assertEquals("le jalon courant", false, rows[2].status.isCorrectable)
+        assertEquals("un jalon à venir", false, rows[3].status.isCorrectable)
+    }
+
     @Test
     fun `un trajet terminé n'a plus de jalon courant`() {
         val complet =

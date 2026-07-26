@@ -4,21 +4,27 @@ import fr.whitytoes.badgemoi.domain.Trip
 import java.time.Instant
 import java.time.LocalTime
 import java.time.ZoneId
-import java.time.temporal.ChronoUnit
+import kotlin.math.abs
 
 /**
  * Convertit l'heure locale saisie pour le jalon [index] en [Instant].
  *
- * Le sélecteur ne rend qu'une heure et des minutes : le **jour** doit être déduit. Il
- * est pris sur le jalon posé précédent — ou sur le départ pour le premier jalon.
+ * Le sélecteur ne rend qu'une heure et des minutes : le **jour** doit être déduit. La
+ * référence est le jalon posé précédent — ou le départ pour le premier jalon.
  *
- * Le cas piégeux est le trajet qui franchit **minuit** : un départ à 23h50 et une
- * correction à 00h05 tomberaient, sur le jour du départ, *avant* celui-ci. La date est
- * donc décalée d'un jour lorsque le résultat précède sa référence, ce qui reflète l'ordre
- * séquentiel du parcours.
+ * La règle retenue est celle de l'**occurrence la plus proche** : parmi les trois
+ * occurrences possibles de l'heure saisie (veille, jour de la référence, lendemain), on
+ * garde celle dont l'écart à la référence est le plus faible. Elle traite d'un même
+ * mouvement les deux cas qui comptent :
  *
- * Le jalon de départ échappe à ce décalage : le corriger vers une heure antérieure est
- * légitime, et l'avancer d'un jour serait absurde.
+ * - un trajet qui franchit **minuit** — départ à 23h50, jalon corrigé à 00h05 : c'est
+ *   l'occurrence du lendemain (+15 min) qui gagne, pas celle du jour du départ (−23h45) ;
+ * - une correction **vers l'arrière** — jalon de référence à 19h29, saisie à 19h00 :
+ *   c'est bien le même jour (−29 min), et non le lendemain (+23h31).
+ *
+ * Le décalage se fait sur le calendrier local (`plusDays`) et non par tranches de
+ * 24 heures : lors d'un changement d'heure, l'occurrence garde ainsi l'heure murale
+ * saisie.
  */
 fun Trip.correctionInstant(
     index: Int,
@@ -27,17 +33,11 @@ fun Trip.correctionInstant(
     zone: ZoneId = ZoneId.systemDefault(),
 ): Instant {
     val reference = referenceInstantFor(index)
-    val candidate =
-        reference
-            .atZone(zone)
-            .with(LocalTime.of(hour, minute))
-            .toInstant()
+    val referenceDay = reference.atZone(zone)
 
-    return if (index > 0 && candidate.isBefore(reference)) {
-        candidate.plus(1, ChronoUnit.DAYS)
-    } else {
-        candidate
-    }
+    return (-1L..1L)
+        .map { referenceDay.plusDays(it).with(LocalTime.of(hour, minute)).toInstant() }
+        .minBy { abs(it.toEpochMilli() - reference.toEpochMilli()) }
 }
 
 /** Jalon posé le plus proche en amont, à défaut le départ, à défaut la création. */
