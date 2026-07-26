@@ -3,6 +3,7 @@ package fr.whitytoes.badgemoi.ui
 import fr.whitytoes.badgemoi.domain.SettingsRepository
 import fr.whitytoes.badgemoi.domain.ThemeMode
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -16,6 +17,7 @@ import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class ThemeViewModelTest {
     private val dispatcher = StandardTestDispatcher()
 
