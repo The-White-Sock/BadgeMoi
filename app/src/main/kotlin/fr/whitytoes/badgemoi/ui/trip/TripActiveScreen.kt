@@ -79,7 +79,7 @@ fun TripActiveScreen(
                 actions =
                     MilestoneCorrectionActions(
                         onSave = { hour, minute ->
-                            viewModel.poseMilestone(index, trip.correctionInstant(index, hour, minute))
+                            viewModel.correctMilestone(index, hour, minute)
                             correctingIndex = null
                         },
                         onSkip = {
