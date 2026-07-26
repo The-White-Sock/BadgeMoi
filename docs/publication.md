@@ -85,6 +85,29 @@ de GitHub Release : ça n'a aucun effet sur le pipeline de release ni sur l'hist
 public des livrables. C'est le canal à utiliser pour tester avant qu'un changement soit
 prêt à devenir une version officielle.
 
+L'artifact est **toujours livré sous forme d'archive `.zip`** : c'est le format de
+stockage imposé par GitHub Actions, même pour un fichier unique. Il faut donc le
+décompresser avant d'installer l'APK.
+
+### Signature des builds de test
+
+Les APK de test sont signés par une **clé de debug partagée et versionnée**
+(`config/debug.keystore`), déclarée dans `app/build.gradle.kts`.
+
+Sans elle, chaque exécution de CI — qui part d'une machine neuve — générerait une clé
+différente, et Android refuserait d'installer un APK par-dessus le précédent (« package
+conflicts with an existing package »). La versionner garantit que tous les builds de test
+partagent la même signature et se remplacent normalement.
+
+Ce n'est **pas un secret** : cette clé ne sert qu'aux builds de debug. La signature des
+versions publiées est assurée par F-Droid depuis les tags git (voir plus bas), et aucune
+clé de release ne figure dans le dépôt — `.gitignore` continue d'exclure tout `*.jks` et
+`*.keystore`, à cette seule exception près.
+
+Le build debug porte par ailleurs le suffixe d'application `.debug`
+(`fr.whitytoes.badgemoi.debug`) : l'APK de test cohabite ainsi avec une éventuelle
+installation de release au lieu d'entrer en conflit avec elle.
+
 ## Pipeline de release
 
 Déclenché **manuellement** (`workflow_dispatch`) sur
