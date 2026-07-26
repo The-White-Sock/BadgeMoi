@@ -123,6 +123,14 @@ Un build/lint local avant de pousser évite les allers-retours CI.
   bloque l'introduction d'une dépendance connue comme vulnérable (sévérité modérée ou
   plus). Complémentaire de Dependabot, qui met à jour l'existant de façon planifiée
   alors que Dependency Review agit *avant* le merge sur ce qu'une PR ajoute.
+- **Cohérence de la documentation** (`.github/workflows/docs-coherence.yml`) : chaque lundi,
+  `scripts/check-docs-coherence.sh` compare la documentation à l'état réel du dépôt
+  (versions de la stack annoncées ici vs `gradle/libs.versions.toml` et le wrapper,
+  respect du plafond Kotlin imposé par CodeQL, existence des fichiers et liens
+  référencés). En cas d'écart, une issue « 📝 Audit doc » est ouverte (ou commentée si
+  elle existe déjà) ; sinon le workflow est silencieux. Il ne modifie jamais le dépôt.
+  Ce contrôle ne couvre que les invariants mécaniques : la dérive de la prose
+  (conventions, décisions d'architecture) reste du ressort de la relecture.
 - **Actions épinglées par SHA** : toute Action tierce dans un workflow (`.github/workflows/`)
   est référencée par son SHA de commit complet, jamais par un tag flottant (`@v4`) —
   un tag peut être déplacé, un SHA ne peut pas. Format :
