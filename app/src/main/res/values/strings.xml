@@ -26,6 +26,10 @@
     <string name="trip_departure">Départ</string>
     <string name="trip_elapsed">Écoulé</string>
     <string name="trip_since_last_milestone">%1$s depuis le dernier jalon</string>
+    <string name="correction_save">Enregistrer</string>
+    <string name="correction_skip">Ignorer ce jalon</string>
+    <string name="correction_clear">Effacer</string>
+    <string name="correction_cancel">Annuler</string>
 
     <!-- Emplacements en attente d'implémentation -->
     <string name="summary_coming_soon">Récapitulatif à venir.</string>
