@@ -111,31 +111,53 @@ class MilestoneCorrectionTest {
     }
 
     /**
-     * Le défaut trouvé en cherchant pourquoi le temps écoulé ne suivait pas : une
-     * correction de grande amplitude retenait le lendemain, plus proche dans l'absolu.
-     * Le départ passait dans le futur et le bandeau, borné à zéro, se figeait.
+     * Le dérapage du critère de proximité : au-delà de 12 h d'écart entre l'heure saisie
+     * et celle de la référence, le lendemain devient « plus proche » que le même jour.
+     * Référence à 19h00, saisie à 06h00 : +11 h contre −13 h. Le jalon partait dans le
+     * futur et le temps écoulé du bandeau, borné à zéro, se figeait.
      */
     @Test
-    fun `une correction de grande amplitude ne place pas le jalon dans le futur`() {
-        // Départ enregistré à 19h00, corrigé à 08h00, alors qu'il est 19h25.
+    fun `au-delà de douze heures d'écart le jalon ne bascule pas au lendemain`() {
+        // Départ à 19h00, on corrige le jalon 1 à 06h00, alors qu'il est 19h25.
         val soir = trip(Instant.parse("2026-07-26T17:00:00Z"))
         val maintenant = Instant.parse("2026-07-26T17:25:00Z")
 
-        val corrected = soir.correctionInstant(0, hour = 8, minute = 0, now = maintenant, zone = paris)
-
-        assertEquals(Instant.parse("2026-07-26T06:00:00Z"), corrected)
-        assertEquals("le départ reste dans le passé", false, corrected.isAfter(maintenant))
-    }
-
-    /** Même garde-fou sur un jalon intermédiaire, dont la référence est le jalon précédent. */
-    @Test
-    fun `un jalon intermédiaire ne bascule pas au lendemain pour se rapprocher`() {
-        val trajet = trip().poseMilestone(1, Instant.parse("2026-07-26T17:00:00Z")) // 19h00
-        val maintenant = Instant.parse("2026-07-26T17:25:00Z")
-
-        val corrected = trajet.correctionInstant(2, hour = 6, minute = 0, now = maintenant, zone = paris)
+        val corrected = soir.correctionInstant(1, hour = 6, minute = 0, now = maintenant, zone = paris)
 
         assertEquals("le même jour, pas le lendemain", 26, corrected.atZone(paris).dayOfMonth)
+        assertEquals(6, corrected.atZone(paris).hour)
+        assertEquals("le jalon reste dans le passé", false, corrected.isAfter(maintenant))
+    }
+
+    /**
+     * Contre-partie du garde-fou : une heure saisie légèrement en avance sur l'horloge —
+     * arrondi à la minute supérieure, montre en avance — doit rester le jour même. Un
+     * refus strict du futur la renverrait à la veille, soit 24 h d'erreur.
+     */
+    @Test
+    fun `une heure saisie juste en avance sur l'horloge reste le jour même`() {
+        val trajet = trip().poseMilestone(1, Instant.parse("2026-07-26T17:50:00Z")) // 19h50
+        val maintenant = Instant.parse("2026-07-26T18:05:00Z") // 20h05
+
+        // 20h10, cinq minutes après l'horloge.
+        val corrected = trajet.correctionInstant(2, hour = 20, minute = 10, now = maintenant, zone = paris)
+
+        assertEquals(Instant.parse("2026-07-26T18:10:00Z"), corrected)
+    }
+
+    /**
+     * La tolérance reste étroite : une saisie très en avance sur l'horloge relève de
+     * l'erreur, pas de l'arrondi, et ne doit pas placer le jalon dans le futur.
+     */
+    @Test
+    fun `une heure saisie très en avance sur l'horloge est ramenée en arrière`() {
+        val trajet = trip().poseMilestone(1, Instant.parse("2026-07-26T17:50:00Z")) // 19h50
+        val maintenant = Instant.parse("2026-07-26T18:05:00Z") // 20h05
+
+        // 06h00 : ni le lendemain (futur de dix heures), ni la veille — le jour même.
+        val corrected = trajet.correctionInstant(2, hour = 6, minute = 0, now = maintenant, zone = paris)
+
+        assertEquals("le même jour", 26, corrected.atZone(paris).dayOfMonth)
         assertEquals(6, corrected.atZone(paris).hour)
     }
 
