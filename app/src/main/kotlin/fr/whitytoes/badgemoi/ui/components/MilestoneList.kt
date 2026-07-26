@@ -1,7 +1,11 @@
 package fr.whitytoes.badgemoi.ui.components
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,6 +21,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,6 +43,7 @@ private val BadgeSize = 12.dp
 private val CurrentBadgeSize = 16.dp
 private val RowMinHeight = 56.dp
 private val RowShape = RoundedCornerShape(12.dp)
+private const val PRESS_FADE_MILLIS = 120
 
 /**
  * Liste des jalons d'un trajet (cahier des charges §3.2).
@@ -80,18 +87,46 @@ private fun MilestoneListRow(
     onClick: (() -> Unit)?,
     runningSince: (() -> Duration?)?,
 ) {
+    val colors = MaterialTheme.colorScheme
     val current = row.status == MilestoneStatus.CURRENT
-    val clickable = if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier
+
+    // Retour d'appui en **aplat**, et non par l'ondulation Material. Celle-ci est un
+    // dégradé radial à faible opacité : sur le fond quasi noir du thème nuit, le GPU le
+    // trame et le rend granuleux — le « bruit blanc » constaté sur appareil. Un aplat
+    // n'a pas de dégradé, donc rien à tramer.
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val background by
+        animateColorAsState(
+            targetValue =
+                when {
+                    pressed -> colors.surfaceVariant
+                    current -> colors.secondaryContainer
+                    else -> Color.Transparent
+                },
+            animationSpec = tween(durationMillis = PRESS_FADE_MILLIS),
+            label = "fond de la ligne de jalon",
+        )
+
+    val clickable =
+        if (onClick != null) {
+            Modifier.clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick,
+            )
+        } else {
+            Modifier
+        }
 
     Row(
         modifier =
             Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 8.dp, vertical = 2.dp)
-                // Découpe avant le fond et le clic : sans elle l'ondulation de l'appui
-                // déborde de la ligne et bave sur ses voisines.
+                // Découpe avant le fond : le coin arrondi vaut aussi pour l'aplat d'appui.
                 .clip(RowShape)
-                .background(if (current) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent)
+                .background(background)
                 .then(clickable)
                 .heightIn(min = RowMinHeight)
                 .padding(horizontal = 8.dp, vertical = 8.dp),
