@@ -1,0 +1,49 @@
+name: Cohérence de la documentation
+
+# Audit hebdomadaire : vérifie que la documentation n'a pas dérivé par rapport à
+# l'état réel du dépôt (versions de la stack, fichiers et liens référencés) et
+# ouvre une issue de suivi en cas d'écart. Ne modifie jamais le dépôt.
+on:
+  schedule:
+    - cron: "0 6 * * 1" # tous les lundis à 06:00 UTC (08:00 Paris)
+  workflow_dispatch: # déclenchement manuel pour tester
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  docs-coherence:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Vérifier la cohérence de la documentation
+        id: check
+        run: |
+          if ./scripts/check-docs-coherence.sh > rapport.md; then
+            echo "drift=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "drift=true" >> "$GITHUB_OUTPUT"
+          fi
+          cat rapport.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Ouvrir ou mettre à jour l'issue de suivi
+        if: steps.check.outputs.drift == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          # Une seule issue de suivi à la fois : si une précédente est encore
+          # ouverte, on la commente au lieu d'en empiler une nouvelle.
+          existante="$(gh issue list --state open --limit 50 --json number,title \
+            --jq '[.[] | select(.title | startswith("📝 Audit doc")) | .number] | first // empty')"
+
+          if [ -n "${existante}" ]; then
+            gh issue comment "${existante}" --body-file rapport.md
+            echo "Issue #${existante} mise à jour."
+          else
+            titre="📝 Audit doc — écarts détectés le $(date -u +%d/%m/%Y)"
+            gh issue create --title "${titre}" --body-file rapport.md --label documentation \
+              || gh issue create --title "${titre}" --body-file rapport.md
+          fi
