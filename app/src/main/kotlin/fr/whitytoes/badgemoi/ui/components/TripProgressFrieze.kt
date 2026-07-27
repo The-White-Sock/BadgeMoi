@@ -56,11 +56,13 @@ fun TripProgressFrieze(
 @Composable
 private fun Node(status: MilestoneStatus) {
     val colors = MaterialTheme.colorScheme
+    // Répartition du POC (`.route-node.done` en teal, `.route-node.current` en ambre),
+    // identique à celle de la liste des jalons. Je les avais inversées dans les deux.
     val color =
         when (status) {
-            MilestoneStatus.POSED -> colors.primary
+            MilestoneStatus.POSED -> colors.secondary
             MilestoneStatus.SKIPPED -> colors.outline
-            MilestoneStatus.CURRENT -> colors.secondary
+            MilestoneStatus.CURRENT -> colors.primary
             MilestoneStatus.PENDING -> colors.surfaceVariant
         }
 
@@ -81,6 +83,7 @@ private fun RowScope.Connector(reached: Boolean) {
             Modifier
                 .weight(1f)
                 .height(ConnectorHeight)
-                .background(if (reached) colors.primary else colors.surfaceVariant),
+                // Le trait suit la couleur des jalons franchis, pas celle du jalon courant.
+                .background(if (reached) colors.secondary else colors.surfaceVariant),
     )
 }

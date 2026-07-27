@@ -26,6 +26,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -43,6 +45,7 @@ private val BadgeSize = 12.dp
 private val CurrentBadgeSize = 16.dp
 private val RowMinHeight = 56.dp
 private val RowShape = RoundedCornerShape(12.dp)
+private val CurrentAccentWidth = 5.dp
 private const val PRESS_FADE_MILLIS = 120
 
 /**
@@ -89,6 +92,7 @@ private fun MilestoneListRow(
 ) {
     val colors = MaterialTheme.colorScheme
     val current = row.status == MilestoneStatus.CURRENT
+    val accent = colors.primary
 
     // Retour d'appui en **aplat**, et non par l'ondulation Material. Celle-ci est un
     // dégradé radial à faible opacité : sur le fond quasi noir du thème nuit, le GPU le
@@ -101,7 +105,9 @@ private fun MilestoneListRow(
             targetValue =
                 when {
                     pressed -> colors.surfaceVariant
-                    current -> colors.secondaryContainer
+                    // Ambre du POC (`.mrow.current{background:var(--amber-soft)}`), et non
+                    // le teal : celui-ci est la couleur des jalons **posés**.
+                    current -> colors.primaryContainer
                     else -> Color.Transparent
                 },
             animationSpec = tween(durationMillis = PRESS_FADE_MILLIS),
@@ -127,7 +133,15 @@ private fun MilestoneListRow(
                 // Découpe avant le fond : le coin arrondi vaut aussi pour l'aplat d'appui.
                 .clip(RowShape)
                 .background(background)
-                .then(clickable)
+                // Barre d'accent du POC (`border-left:5px solid var(--amber)`). C'est elle
+                // qui porte le « vous êtes ici » : un aplat seul se confond avec l'aplat
+                // d'appui et donne au jalon courant — le seul non modifiable — l'air d'être
+                // la ligne cliquable.
+                .drawBehind {
+                    if (current) {
+                        drawRect(color = accent, size = Size(CurrentAccentWidth.toPx(), size.height))
+                    }
+                }.then(clickable)
                 .heightIn(min = RowMinHeight)
                 .padding(horizontal = 8.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -153,11 +167,13 @@ private fun MilestoneListRow(
 @Composable
 private fun StatusBadge(status: MilestoneStatus) {
     val colors = MaterialTheme.colorScheme
+    // Répartition du POC : teal pour ce qui est fait (`.mrow.done`), ambre pour le jalon
+    // courant (`.mrow.current`). Je les avais inversées.
     val color =
         when (status) {
-            MilestoneStatus.POSED -> colors.primary
+            MilestoneStatus.POSED -> colors.secondary
             MilestoneStatus.SKIPPED -> colors.outline
-            MilestoneStatus.CURRENT -> colors.secondary
+            MilestoneStatus.CURRENT -> colors.primary
             MilestoneStatus.PENDING -> colors.surfaceVariant
         }
 
@@ -190,7 +206,7 @@ private fun TrailingValue(
             Text(
                 text = value,
                 style = numericTextStyle,
-                color = colors.onSecondaryContainer,
+                color = colors.onPrimaryContainer,
                 modifier = Modifier.semantics { contentDescription = description },
             )
         }
@@ -214,7 +230,7 @@ private fun TrailingValue(
             Text(
                 text = stringResource(R.string.milestone_no_value),
                 style = numericTextStyle,
-                color = if (current) colors.onSecondaryContainer else colors.onSurfaceVariant,
+                color = if (current) colors.onPrimaryContainer else colors.onSurfaceVariant,
             )
     }
 }
@@ -222,7 +238,7 @@ private fun TrailingValue(
 @Composable
 private fun labelColor(status: MilestoneStatus) =
     when (status) {
-        MilestoneStatus.CURRENT -> MaterialTheme.colorScheme.onSecondaryContainer
+        MilestoneStatus.CURRENT -> MaterialTheme.colorScheme.onPrimaryContainer
         MilestoneStatus.PENDING -> MaterialTheme.colorScheme.onSurfaceVariant
         else -> MaterialTheme.colorScheme.onSurface
     }
