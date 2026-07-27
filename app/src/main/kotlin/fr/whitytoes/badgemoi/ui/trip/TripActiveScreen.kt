@@ -68,6 +68,7 @@ fun TripActiveScreen(
             // Lambda plutôt que valeur : la lecture de l'état est différée au bandeau,
             // seul à se recomposer à chaque seconde.
             timers = timers::value,
+            correctingIndex = correctingIndex,
             modifier = modifier,
         )
 
@@ -97,12 +98,18 @@ fun TripActiveScreen(
     }
 }
 
-/** Version sans état, prévisualisable. */
+/**
+ * Version sans état, prévisualisable.
+ *
+ * [correctingIndex] n'est pas de la logique mais de l'affichage : la ligne dont l'overlay
+ * est ouvert reste allumée, ce qui rattache la fenêtre au jalon qu'elle modifie.
+ */
 @Composable
 internal fun TripActiveScreen(
     trip: Trip,
     actions: TripActions,
     timers: () -> TripTimers,
+    correctingIndex: Int? = null,
     modifier: Modifier = Modifier,
 ) {
     // Écran maintenu allumé pendant toute la saisie ; le drapeau tombe de lui-même
@@ -127,6 +134,7 @@ internal fun TripActiveScreen(
             // Lecture différée elle aussi : seule la ligne du jalon courant se recompose
             // à la seconde, pas la liste entière.
             runningSince = { timers().sinceLastMilestone },
+            selectedIndex = correctingIndex,
         )
     }
 }
