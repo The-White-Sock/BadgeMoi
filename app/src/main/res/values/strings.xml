@@ -31,6 +31,10 @@
     <string name="correction_clear">Effacer</string>
     <string name="correction_cancel">Annuler</string>
 
+    <!-- Écran « Récapitulatif » -->
+    <string name="segment_between">%1$s → %2$s</string>
+    <string name="segment_not_measured">Non mesuré</string>
+
     <!-- Emplacements en attente d'implémentation -->
     <string name="summary_coming_soon">Récapitulatif à venir.</string>
     <string name="history_coming_soon">Historique à venir.</string>
