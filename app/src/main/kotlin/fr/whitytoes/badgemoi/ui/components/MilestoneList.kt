@@ -13,8 +13,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -22,6 +20,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -69,6 +68,11 @@ private const val PRESS_FADE_MILLIS = 120
  * @param selectedIndex jalon dont l'overlay de correction est ouvert. Sa ligne reste
  *   allumée tant que la fenêtre est là : c'est ce qui rattache la fenêtre à la ligne
  *   qu'elle modifie, une fois le doigt relevé.
+ *
+ * Le **défilement appartient à l'appelant**, d'où une simple [Column]. Le récapitulatif
+ * empile cette liste sous celle des tronçons dans une même colonne défilante : une liste
+ * paresseuse y serait mesurée sous une hauteur maximale infinie, ce que Compose refuse.
+ * Cinq lignes de hauteur fixe ne justifiaient de toute façon pas la paresse.
  */
 @Composable
 fun MilestoneList(
@@ -78,14 +82,21 @@ fun MilestoneList(
     runningSince: (() -> Duration?)? = null,
     selectedIndex: Int? = null,
 ) {
-    LazyColumn(modifier = modifier.fillMaxWidth()) {
-        items(items = rows, key = { it.index }) { row ->
-            MilestoneListRow(
-                row = row,
-                onClick = if (row.status.isCorrectable) onMilestoneClick?.let { { it(row.index) } } else null,
-                runningSince = runningSince,
-                selected = row.index == selectedIndex,
-            )
+    Column(modifier = modifier.fillMaxWidth()) {
+        rows.forEach { row ->
+            key(row.index) {
+                MilestoneListRow(
+                    row = row,
+                    onClick =
+                        if (row.status.isCorrectable) {
+                            onMilestoneClick?.let { { it(row.index) } }
+                        } else {
+                            null
+                        },
+                    runningSince = runningSince,
+                    selected = row.index == selectedIndex,
+                )
+            }
         }
     }
 }

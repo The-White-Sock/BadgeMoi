@@ -1,6 +1,8 @@
 package fr.whitytoes.badgemoi.ui.trip
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -47,9 +49,24 @@ fun TripActiveScreen(
 
     val trip = (uiState as? TripUiState.Active)?.trip
 
-    // Dernier jalon posé ou ignoré : place au récapitulatif (lot 4).
+    // Dernier jalon posé ou ignoré : place au récapitulatif (§3.3).
+    //
+    // Le passage n'a lieu **qu'une fois par complétion**. Sans ce garde-fou, revenir ici
+    // depuis le récapitulatif pour corriger un jalon y renverrait aussitôt, le trajet
+    // étant toujours complet — le bouton « Corriger » n'aurait aucun effet visible.
+    // `rememberSaveable` survit au retour arrière, donc le drapeau est bien retrouvé.
+    //
+    // Il retombe dès que le trajet redevient incomplet : effacer un jalon, le reposer, et
+    // le récapitulatif se rouvre de lui-même.
+    var summaryShown by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(trip?.isComplete) {
-        if (trip?.isComplete == true) onNavigateToSummary()
+        when {
+            trip?.isComplete != true -> summaryShown = false
+            !summaryShown -> {
+                summaryShown = true
+                onNavigateToSummary()
+            }
+        }
     }
 
     // Index du jalon en cours de correction. Porté ici plutôt que dans la version sans
@@ -130,6 +147,9 @@ internal fun TripActiveScreen(
     ) {
         MilestoneList(
             rows = rows,
+            // Le défilement est porté ici : la liste elle-même n'en a plus, pour pouvoir
+            // s'empiler sous celle des tronçons au récapitulatif.
+            modifier = Modifier.verticalScroll(rememberScrollState()),
             onMilestoneClick = actions.onMilestoneClick,
             // Lecture différée elle aussi : seule la ligne du jalon courant se recompose
             // à la seconde, pas la liste entière.
