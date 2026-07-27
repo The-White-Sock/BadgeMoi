@@ -1,25 +1,21 @@
 package fr.whitytoes.badgemoi.ui.trip
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fr.whitytoes.badgemoi.R
 import fr.whitytoes.badgemoi.domain.Direction
 import fr.whitytoes.badgemoi.domain.Trip
+import fr.whitytoes.badgemoi.ui.components.LabelledValue
 import fr.whitytoes.badgemoi.ui.formatDuration
 import fr.whitytoes.badgemoi.ui.formatTime
 import fr.whitytoes.badgemoi.ui.theme.BadgeMoiTheme
-import fr.whitytoes.badgemoi.ui.theme.numericTextStyle
 import java.time.Instant
 
 /**
@@ -47,32 +43,13 @@ fun TripTimerBanner(
         verticalAlignment = Alignment.Bottom,
     ) {
         // L'heure de départ est figée : elle ne bouge plus une fois le trajet lancé.
-        TimerField(
+        LabelledValue(
             labelRes = R.string.trip_departure,
             value = departureAt?.let { formatTime(it) },
         )
-        TimerField(
+        LabelledValue(
             labelRes = R.string.trip_elapsed,
             value = current.elapsed?.let(::formatDuration),
-        )
-    }
-}
-
-@Composable
-private fun TimerField(
-    labelRes: Int,
-    value: String?,
-) {
-    Column {
-        Text(
-            text = stringResource(labelRes),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Text(
-            text = value ?: stringResource(R.string.milestone_no_value),
-            style = numericTextStyle,
-            color = MaterialTheme.colorScheme.onSurface,
         )
     }
 }

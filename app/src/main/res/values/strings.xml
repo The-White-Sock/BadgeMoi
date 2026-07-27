@@ -34,8 +34,10 @@
     <!-- Écran « Récapitulatif » -->
     <string name="segment_between">%1$s → %2$s</string>
     <string name="segment_not_measured">Non mesuré</string>
+    <string name="summary_arrival">Arrivée</string>
+    <string name="summary_save">Enregistrer</string>
+    <string name="summary_cancel">Corriger</string>
 
     <!-- Emplacements en attente d'implémentation -->
-    <string name="summary_coming_soon">Récapitulatif à venir.</string>
     <string name="history_coming_soon">Historique à venir.</string>
 </resources>

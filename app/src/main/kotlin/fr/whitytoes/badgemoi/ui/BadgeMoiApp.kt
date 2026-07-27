@@ -103,14 +103,22 @@ fun BadgeMoiApp(
                             popUpTo(TripRoute) { inclusive = true }
                         }
                     },
-                    onNavigateToSummary = {
-                        navController.navigate(SummaryRoute) {
-                            popUpTo(ActiveTripRoute) { inclusive = true }
-                        }
-                    },
+                    // L'écran actif reste dans la pile, contrairement au retour à
+                    // l'accueil : « Corriger » depuis le récapitulatif est un simple
+                    // retour arrière, qui retrouve l'écran et son état.
+                    onNavigateToSummary = { navController.navigate(SummaryRoute) },
                 )
             }
-            composable<SummaryRoute> { SummaryScreen() }
+            composable<SummaryRoute> {
+                SummaryScreen(
+                    onNavigateHome = {
+                        navController.navigate(TripRoute) {
+                            popUpTo(TripRoute) { inclusive = true }
+                        }
+                    },
+                    onNavigateBackToTrip = { navController.popBackStack() },
+                )
+            }
             composable<HistoryRoute> { HistoryScreen() }
         }
     }
