@@ -21,8 +21,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -39,6 +42,7 @@ import fr.whitytoes.badgemoi.ui.theme.numericTextStyle
 import fr.whitytoes.badgemoi.ui.trip.MilestoneRow
 import fr.whitytoes.badgemoi.ui.trip.MilestoneStatus
 import fr.whitytoes.badgemoi.ui.trip.isCorrectable
+import kotlinx.coroutines.delay
 import kotlin.time.Duration
 
 private val BadgeSize = 12.dp
@@ -47,6 +51,13 @@ private val RowMinHeight = 56.dp
 private val RowShape = RoundedCornerShape(12.dp)
 private val CurrentAccentWidth = 5.dp
 private const val PRESS_FADE_MILLIS = 120
+
+/**
+ * Durée plancher du retour d'appui. Un tap dure moins que le temps de montée du fondu :
+ * sans plancher, la couleur d'appui commence à peine à apparaître qu'elle repart déjà.
+ * Même remède que le flash de validation de la barre d'action.
+ */
+private const val PRESS_HOLD_MILLIS = 180L
 
 /**
  * Liste des jalons d'un trajet (cahier des charges §3.2).
@@ -94,25 +105,8 @@ private fun MilestoneListRow(
     val current = row.status == MilestoneStatus.CURRENT
     val accent = colors.primary
 
-    // Retour d'appui en **aplat**, et non par l'ondulation Material. Celle-ci est un
-    // dégradé radial à faible opacité : sur le fond quasi noir du thème nuit, le GPU le
-    // trame et le rend granuleux — le « bruit blanc » constaté sur appareil. Un aplat
-    // n'a pas de dégradé, donc rien à tramer.
     val interactionSource = remember { MutableInteractionSource() }
-    val pressed by interactionSource.collectIsPressedAsState()
-    val background by
-        animateColorAsState(
-            targetValue =
-                when {
-                    pressed -> colors.surfaceVariant
-                    // Ambre du POC (`.mrow.current{background:var(--amber-soft)}`), et non
-                    // le teal : celui-ci est la couleur des jalons **posés**.
-                    current -> colors.primaryContainer
-                    else -> Color.Transparent
-                },
-            animationSpec = tween(durationMillis = PRESS_FADE_MILLIS),
-            label = "fond de la ligne de jalon",
-        )
+    val background = rowBackgroundColor(interactionSource = interactionSource, current = current)
 
     val clickable =
         if (onClick != null) {
@@ -157,6 +151,57 @@ private fun MilestoneListRow(
         }
         TrailingValue(row = row, runningSince = runningSince)
     }
+}
+
+/**
+ * Fond d'une ligne de jalon, appui compris.
+ *
+ * Le retour d'appui est un **aplat**, et non l'ondulation Material : celle-ci est un
+ * dégradé radial à faible opacité, que le GPU trame sur le fond quasi noir du thème nuit
+ * — le « bruit blanc » constaté sur appareil. Un aplat n'a pas de dégradé, donc rien à
+ * tramer.
+ *
+ * Deux réglages le rendent perceptible :
+ *
+ * - la couleur est `secondaryContainer` et non `surfaceVariant`, un gris de panneau à
+ *   deux doigts du fond en thème nuit. Un décalage de **teinte** se voit là où un
+ *   décalage de luminosité passait inaperçu ;
+ * - l'état est maintenu [PRESS_HOLD_MILLIS] après le relâchement, sans quoi un tap —
+ *   plus bref que le fondu — ne laisserait apparaître qu'un début de couleur.
+ */
+@Composable
+private fun rowBackgroundColor(
+    interactionSource: MutableInteractionSource,
+    current: Boolean,
+): Color {
+    val colors = MaterialTheme.colorScheme
+    val pressed by interactionSource.collectIsPressedAsState()
+
+    var held by remember { mutableStateOf(false) }
+    LaunchedEffect(pressed) {
+        if (pressed) {
+            held = true
+        } else if (held) {
+            delay(PRESS_HOLD_MILLIS)
+            held = false
+        }
+    }
+
+    val background by
+        animateColorAsState(
+            targetValue =
+                when {
+                    held -> colors.secondaryContainer
+                    // Ambre du POC (`.mrow.current{background:var(--amber-soft)}`), et non
+                    // le teal : celui-ci est la couleur des jalons **posés**.
+                    current -> colors.primaryContainer
+                    else -> Color.Transparent
+                },
+            animationSpec = tween(durationMillis = PRESS_FADE_MILLIS),
+            label = "fond de la ligne de jalon",
+        )
+
+    return background
 }
 
 /**
