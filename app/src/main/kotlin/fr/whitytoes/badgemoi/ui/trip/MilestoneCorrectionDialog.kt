@@ -8,13 +8,13 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import fr.whitytoes.badgemoi.R
+import fr.whitytoes.badgemoi.ui.components.AppTextButton
 import java.time.Instant
 import java.time.ZoneId
 
@@ -55,10 +55,10 @@ fun MilestoneCorrectionDialog(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    TextButton(onClick = actions.onSkip) {
+                    AppTextButton(onClick = actions.onSkip) {
                         Text(stringResource(R.string.correction_skip))
                     }
-                    TextButton(onClick = actions.onClear) {
+                    AppTextButton(onClick = actions.onClear) {
                         Text(
                             text = stringResource(R.string.correction_clear),
                             color = MaterialTheme.colorScheme.error,
@@ -68,12 +68,12 @@ fun MilestoneCorrectionDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = { actions.onSave(state.hour, state.minute) }) {
+            AppTextButton(onClick = { actions.onSave(state.hour, state.minute) }) {
                 Text(stringResource(R.string.correction_save))
             }
         },
         dismissButton = {
-            TextButton(onClick = actions.onDismiss) {
+            AppTextButton(onClick = actions.onDismiss) {
                 Text(stringResource(R.string.correction_cancel))
             }
         },

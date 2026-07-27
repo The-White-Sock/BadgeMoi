@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -33,6 +32,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import fr.whitytoes.badgemoi.R
+import fr.whitytoes.badgemoi.ui.components.AppButton
 import fr.whitytoes.badgemoi.ui.components.TapGuard
 import fr.whitytoes.badgemoi.ui.components.rememberTripHaptics
 import kotlinx.coroutines.delay
@@ -113,7 +113,7 @@ private fun RowScope.ValidateButton(onValidate: () -> Unit) {
         label = "validate-flash-content",
     )
 
-    Button(
+    AppButton(
         onClick = {
             // Le rejet est silencieux : signaler « trop rapide » ferait douter d'un
             // appui qui, lui, a bien été pris en compte.
