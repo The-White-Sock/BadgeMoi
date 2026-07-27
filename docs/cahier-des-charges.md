@@ -240,3 +240,23 @@ Règle de contraste à respecter dans la traduction Compose : tout texte/icône 
 | 2 | Distribution | **F-Droid en premier**, **Play Store** à terme (voir §4.10 et `docs/publication.md`) |
 | 3 | Récupération de l'historique web existant | **Non** — l'application démarre avec un historique vierge |
 | 4 | Widget d'écran d'accueil | **Oui**, intégré dès la conception (lot 6, §3.6) — pas une évolution différée |
+| 5 | Grain de l'ondulation d'appui en thème nuit | **Accepté** — on garde l'ondulation Material telle quelle, sans code de remplacement (voir ci-dessous) |
+
+### Grain de l'ondulation d'appui
+
+Depuis Android 12, `android.graphics.drawable.RippleDrawable` superpose à l'onde un
+scintillement — `FORCE_PATTERNED_STYLE = true` dans AOSP, donc sur **toute** ondulation,
+quel que soit l'appareil. Sa couleur est `DEFAULT_EFFECT_COLOR = 0x8dffffff`, du blanc à
+55 %, ce qui se voit sur le fond quasi noir du thème nuit (`#0F1115`).
+
+Le levier existe côté plateforme — `setEffectColor`, et le shader multiplie le
+scintillement par l'alpha de cette couleur — mais Compose n'y donne aucun accès : il crée
+son `UnprojectedRipple` en interne, la pose en fond d'une `RippleHostView` privée, et
+`RippleConfiguration` n'expose que la couleur et les alphas d'état. Baisser l'alpha de
+l'ondulation ne fait qu'aggraver le contraste, celui du scintillement en étant
+indépendant.
+
+Le supprimer demanderait donc de réimplémenter l'ondulation. Cela a été fait, mesuré à
+environ 220 lignes, puis **écarté** : le coût de maintenance d'un composant d'animation
+maison dépasse la gêne visuelle. À rouvrir si Compose expose un jour `effectColor`.
+
