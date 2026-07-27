@@ -7,6 +7,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.IndicationNodeFactory
 import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.RippleDefaults
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -17,8 +18,10 @@ import androidx.compose.ui.geometry.center
 import androidx.compose.ui.geometry.lerp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.ContentDrawScope
+import androidx.compose.ui.node.CompositionLocalConsumerModifierNode
 import androidx.compose.ui.node.DelegatableNode
 import androidx.compose.ui.node.DrawModifierNode
+import androidx.compose.ui.node.currentValueOf
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -60,11 +63,15 @@ private val EndRadiusOvershoot = 10.dp
  *
  * Le détourage n'est pas géré ici : il vient du `clip` que l'appelant pose en amont du
  * `clickable`, comme pour l'ondulation d'origine.
+ *
+ * @param color couleur du disque. `null` reprend [LocalContentColor], ce que fait
+ *   l'ondulation Material par défaut — de quoi servir d'indication générale sans avoir à
+ *   nommer une couleur à chaque appel.
  */
-fun solidRipple(color: Color): IndicationNodeFactory = SolidRipple(color)
+fun solidRipple(color: Color? = null): IndicationNodeFactory = SolidRipple(color)
 
 private data class SolidRipple(
-    private val color: Color,
+    private val color: Color?,
 ) : IndicationNodeFactory {
     override fun create(interactionSource: InteractionSource): DelegatableNode =
         SolidRippleNode(interactionSource, color)
@@ -72,9 +79,10 @@ private data class SolidRipple(
 
 private class SolidRippleNode(
     private val interactionSource: InteractionSource,
-    private val color: Color,
+    private val color: Color?,
 ) : Modifier.Node(),
-    DrawModifierNode {
+    DrawModifierNode,
+    CompositionLocalConsumerModifierNode {
     private var origin by mutableStateOf(Offset.Zero)
     private val expansion = Animatable(0f)
     private val opacity = Animatable(0f)
@@ -124,7 +132,7 @@ private class SolidRippleNode(
         val endRadius = sqrt(size.width * size.width + size.height * size.height) / 2 + EndRadiusOvershoot.toPx()
 
         drawCircle(
-            color = color.copy(alpha = alpha),
+            color = (color ?: currentValueOf(LocalContentColor)).copy(alpha = alpha),
             radius = startRadius + (endRadius - startRadius) * advance,
             // Le centre glisse du doigt vers le milieu de la surface à mesure que le
             // disque s'étend, comme le fait l'ondulation Material.

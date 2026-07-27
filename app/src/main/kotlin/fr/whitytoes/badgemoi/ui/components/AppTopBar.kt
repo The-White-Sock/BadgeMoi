@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,7 +48,7 @@ fun AppTopBar(
             )
         }
         Spacer(modifier = Modifier.weight(1f))
-        TextButton(onClick = onToggleTheme) {
+        AppTextButton(onClick = onToggleTheme) {
             // Libellé textuel provisoire : l'icône soleil/lune fait partie du jeu
             // vectoriel définitif livré au lot 7 (cahier §1.5).
             Text(
@@ -69,7 +68,7 @@ private fun DestinationTab(
     selected: Boolean,
     onClick: () -> Unit,
 ) {
-    TextButton(onClick = onClick) {
+    AppTextButton(onClick = onClick) {
         Text(
             text = stringResource(labelRes),
             color =
