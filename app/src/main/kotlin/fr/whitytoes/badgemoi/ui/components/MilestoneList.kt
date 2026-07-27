@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -104,12 +105,13 @@ private fun MilestoneListRow(
 
     val clickable =
         if (onClick != null) {
-            // Ondulation Material au rythme et à la géométrie de la spécification, mais
-            // dessinée par Compose : le drawable de la plateforme y superpose, depuis
-            // Android 12, un scintillement blanc qu'aucune API publique ne désactive.
+            // Ondulation Material telle quelle. Elle scintille en thème nuit — le style
+            // *patterned* d'Android 12 y superpose du blanc à 55 % — et Compose ne donne
+            // pas accès à `effectColor` pour l'éteindre. Décision tranchée au §9 du cahier
+            // des charges : on l'accepte plutôt que de réimplémenter l'ondulation.
             Modifier.clickable(
                 interactionSource = null,
-                indication = solidRipple(color = colors.secondary),
+                indication = ripple(color = colors.secondary),
                 onClick = onClick,
             )
         } else {

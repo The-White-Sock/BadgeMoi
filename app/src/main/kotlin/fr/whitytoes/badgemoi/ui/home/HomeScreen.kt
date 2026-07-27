@@ -6,9 +6,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -25,8 +27,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import fr.whitytoes.badgemoi.R
 import fr.whitytoes.badgemoi.domain.Direction
 import fr.whitytoes.badgemoi.domain.Trip
-import fr.whitytoes.badgemoi.ui.components.AppButton
-import fr.whitytoes.badgemoi.ui.components.AppTextButton
 import fr.whitytoes.badgemoi.ui.components.ScreenScaffold
 import fr.whitytoes.badgemoi.ui.formatTime
 import fr.whitytoes.badgemoi.ui.theme.BadgeMoiTheme
@@ -141,7 +141,7 @@ private fun StartTripButton(
         }
     val preview = remember(direction) { routePreview(direction) }
 
-    AppButton(
+    Button(
         onClick = onClick,
         colors = colors,
         modifier = Modifier.fillMaxWidth().heightIn(min = ActionButtonHeight),
@@ -171,7 +171,7 @@ private fun ResumeTripActions(
         verticalArrangement = Arrangement.spacedBy(8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        AppButton(
+        Button(
             onClick = onResumeTrip,
             modifier = Modifier.fillMaxWidth().heightIn(min = ActionButtonHeight),
         ) {
@@ -180,7 +180,7 @@ private fun ResumeTripActions(
                 style = MaterialTheme.typography.titleLarge,
             )
         }
-        AppTextButton(onClick = { confirmingAbandon = true }) {
+        TextButton(onClick = { confirmingAbandon = true }) {
             Text(
                 text = stringResource(R.string.home_abandon),
                 color = MaterialTheme.colorScheme.error,
@@ -196,7 +196,7 @@ private fun ResumeTripActions(
             title = { Text(stringResource(R.string.home_abandon_dialog_title)) },
             text = { Text(stringResource(R.string.home_abandon_dialog_message)) },
             confirmButton = {
-                AppTextButton(
+                TextButton(
                     onClick = {
                         confirmingAbandon = false
                         onAbandonTrip()
@@ -209,7 +209,7 @@ private fun ResumeTripActions(
                 }
             },
             dismissButton = {
-                AppTextButton(onClick = { confirmingAbandon = false }) {
+                TextButton(onClick = { confirmingAbandon = false }) {
                     Text(stringResource(R.string.home_abandon_dialog_dismiss))
                 }
             },

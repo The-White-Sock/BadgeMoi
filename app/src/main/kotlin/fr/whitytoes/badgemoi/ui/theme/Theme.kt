@@ -1,6 +1,5 @@
 package fr.whitytoes.badgemoi.ui.theme
 
-import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
@@ -9,7 +8,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
-import fr.whitytoes.badgemoi.ui.components.solidRipple
 
 /**
  * Tokens n'ayant pas d'équivalent direct dans [androidx.compose.material3.ColorScheme]
@@ -95,21 +93,10 @@ fun BadgeMoiTheme(
             BadgeMoiExtendedColors(DayPalette.amberDim, DayPalette.tealDim, DayPalette.green)
         }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = BadgeMoiTypography,
-    ) {
-        // `LocalIndication` est fourni **dans** le contenu de [MaterialTheme], et non
-        // autour : celui-ci y place lui-même l'ondulation de la plateforme, et écraserait
-        // donc une valeur posée en amont.
-        //
-        // Tout `Modifier.clickable` de l'application — présent ou à venir — hérite ainsi du
-        // retour d'appui sans scintillement. Les composants Material, eux, n'écoutent pas
-        // cette composition locale et appellent `ripple()` en dur : ils passent par
-        // [fr.whitytoes.badgemoi.ui.components.AppButton] et son pendant sans fond.
-        CompositionLocalProvider(
-            LocalBadgeMoiExtendedColors provides extendedColors,
-            LocalIndication provides solidRipple(),
+    CompositionLocalProvider(LocalBadgeMoiExtendedColors provides extendedColors) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = BadgeMoiTypography,
             content = content,
         )
     }
