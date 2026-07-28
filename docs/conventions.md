@@ -106,8 +106,11 @@ Un build/lint local avant de pousser évite les allers-retours CI.
     le plus récent publié) refuse Kotlin ≥ 2.4.10 — le job `analyze` échoue alors avec
     « Kotlin version 2.4.10 is too recent ». Kotlin reste donc épinglé sous 2.4.10 dans
     `gradle/libs.versions.toml` jusqu'à ce qu'un bundle CodeQL > 2.26.1 relève ce plafond.
-    Les PR Dependabot qui bumpent Kotlin à 2.4.x restent rouges sur `analyze` en attendant :
-    ne pas forcer leur merge, reprendre plutôt les autres bumps du groupe séparément.
+    Ce plafond est **déclaré à Dependabot** (`ignore` sur les deux plugins Kotlin dans
+    `.github/dependabot.yml`), sans quoi il repropose le bump chaque semaine et laisse
+    derrière lui une PR rouge et une branche morte. Cette exclusion est donc à **retirer**
+    en même temps que le plafond, faute de quoi plus aucune version de Kotlin ne sera
+    signalée.
   - **Cache & compilation** : le job conserve le cache de *dépendances* Gradle mais force
     la recompilation (`clean assembleDebug --no-build-cache`). Le build cache de tâches est
     désactivé exprès — sinon une compilation servie par le cache n'invoquerait pas le

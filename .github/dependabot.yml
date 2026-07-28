@@ -9,6 +9,25 @@ updates:
       gradle-dependencies:
         patterns:
           - "*"
+    ignore:
+      # Plafond Kotlin < 2.4.10 imposé par l'extracteur du bundle CodeQL — voir
+      # « Sécurité et automatisation CI » dans docs/conventions.md.
+      #
+      # Sans cette exclusion, Dependabot repropose le bump chaque semaine : six PR
+      # depuis le 22/07/2026 (#9, #14, #16, #21, #22, #76), toutes rouges sur `analyze`
+      # et donc jamais fusionnées, chacune laissant une branche derrière elle.
+      #
+      # Les deux plugins sont nommés un par un plutôt que par un joker : le motif
+      # `org.jetbrains.kotlin*` attraperait aussi `org.jetbrains.kotlinx`, et gèlerait
+      # à tort les bibliothèques kotlinx. Il n'y a pas de plugin `kotlin.android` ici,
+      # Kotlin étant intégré à AGP depuis la 9.0.
+      #
+      # **À retirer** dès qu'un bundle CodeQL > 2.26.1 relève le plafond, sans quoi les
+      # versions de Kotlin ne seront plus signalées du tout.
+      - dependency-name: "org.jetbrains.kotlin.plugin.compose"
+        versions: [">=2.4.10"]
+      - dependency-name: "org.jetbrains.kotlin.plugin.serialization"
+        versions: [">=2.4.10"]
 
   # Outillage de release (semantic-release), voir package.json
   - package-ecosystem: "npm"
