@@ -25,6 +25,7 @@ import fr.whitytoes.badgemoi.ui.summary.segmentRows
 import fr.whitytoes.badgemoi.ui.theme.BadgeMoiTheme
 import fr.whitytoes.badgemoi.ui.theme.numericTextStyle
 import java.time.Instant
+import kotlin.time.Duration
 
 private val RowMinHeight = 44.dp
 
@@ -86,7 +87,7 @@ private fun SegmentListRow(row: SegmentRow) {
 }
 
 @Composable
-private fun SegmentValue(duration: kotlin.time.Duration?) {
+private fun SegmentValue(duration: Duration?) {
     val colors = MaterialTheme.colorScheme
 
     if (duration == null) {
