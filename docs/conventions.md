@@ -15,7 +15,7 @@ commentaires sont concernés.
 
 ## Stack
 
-- Kotlin 2.3.20, Jetpack Compose + Material 3, AGP 9.3.1, Gradle 9.6.1 (JDK 17).
+- Kotlin 2.4.0, Jetpack Compose + Material 3, AGP 9.3.1, Gradle 9.6.1 (JDK 17).
   Kotlin est volontairement maintenu sous 2.4.10 — contrainte CodeQL, voir
   « Sécurité et automatisation CI ».
 - Module unique `:app`, organisé **par fonctionnalité** (pas par couche technique) :

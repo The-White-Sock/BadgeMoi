@@ -241,6 +241,32 @@ Règle de contraste à respecter dans la traduction Compose : tout texte/icône 
 | 3 | Récupération de l'historique web existant | **Non** — l'application démarre avec un historique vierge |
 | 4 | Widget d'écran d'accueil | **Oui**, intégré dès la conception (lot 6, §3.6) — pas une évolution différée |
 | 5 | Grain de l'ondulation d'appui en thème nuit | **Accepté** — on garde l'ondulation Material telle quelle, sans code de remplacement (voir ci-dessous) |
+| 6 | Correction d'un jalon | **Jalons tranchés seulement** (posés ou ignorés) — restreint le « à tout moment » du §1.2 |
+| 7 | Chrono « depuis le dernier jalon » | **Sur la ligne du jalon courant**, avec emphase — et non le mini-indicateur discret du §3.2 |
+| 8 | Second bouton du récapitulatif | **« Corriger »** plutôt que le « Annuler » du §3.3 — libellé provisoire, voir #87 |
+
+### Écarts assumés au périmètre d'origine (6 à 8)
+
+Ces trois points **contredisent la lettre** des sections citées. Ils sont le fruit d'un
+test sur appareil et ont été validés en connaissance de cause ; ils sont consignés ici
+parce que le script `scripts/check-docs-coherence.sh` ne vérifie que des invariants
+mécaniques — versions, chemins, liens — et ne verrait pas une contradiction de prose.
+
+**6. Correction restreinte.** Le §1.2 annonce une correction « à tout moment ». Elle est
+en fait réservée aux jalons **tranchés** : corriger un jalon qu'on n'a pas encore atteint
+reviendrait à inventer un passage, et ferait de l'overlay un second moyen de valider, en
+doublon de la barre d'action.
+
+**7. Chrono déplacé.** Le §3.2 décrit un « mini-indicateur discret ». Il vit désormais sur
+la **ligne du jalon courant**, avec une emphase propre : deux chronomètres côte à côte
+dans le bandeau se lisaient mal, et celui qui mesure le tronçon en cours appartient au
+jalon qu'il mesure.
+
+**8. « Corriger » au lieu d'« Annuler ».** Le §3.3 nomme le bouton « Annuler ». Sur un
+écran dont l'autre bouton archive définitivement, ce mot se lit comme un abandon du
+trajet. Le libellé est **provisoire** : #87 a relevé que le POC fait de ce bouton un
+abandon effectif et rend les jalons du récapitulatif corrigeables sur place — la
+divergence porte donc sur le comportement, pas seulement sur le mot.
 
 ### Grain de l'ondulation d'appui
 
