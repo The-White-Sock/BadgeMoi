@@ -37,7 +37,7 @@ import androidx.compose.ui.unit.dp
 import fr.whitytoes.badgemoi.R
 import fr.whitytoes.badgemoi.ui.formatDuration
 import fr.whitytoes.badgemoi.ui.formatTime
-import fr.whitytoes.badgemoi.ui.theme.numericTextStyle
+import fr.whitytoes.badgemoi.ui.theme.numeric
 import fr.whitytoes.badgemoi.ui.trip.MilestoneRow
 import fr.whitytoes.badgemoi.ui.trip.MilestoneStatus
 import fr.whitytoes.badgemoi.ui.trip.isCorrectable
@@ -242,16 +242,18 @@ private fun StatusBadge(status: MilestoneStatus) {
  * pas de durée — et distingue les deux natures que la ligne porte : un jalon est un
  * instant, la durée qu'il affiche appartient au tronçon qui le précède.
  *
- * Discrète par la **graisse et la couleur**, pas par la taille : les styles du thème sont
- * différenciés de la même façon, et la durée doit rester ce qu'on lit en premier. La
- * largeur est fixe et la cellule reste posée même sans heure, sans quoi les durées
+ * Discrète sur les trois plans : un cran plus bas dans l'échelle Material que la durée
+ * (`bodyMedium` contre `bodyLarge`), en graisse normale contre extra-grasse, et en couleur
+ * atténuée. La durée doit rester ce qu'on lit en premier.
+ *
+ * La largeur est fixe et la cellule reste posée même sans heure, sans quoi les durées
  * cesseraient d'être alignées dès qu'un jalon n'est pas posé.
  */
 @Composable
 private fun MilestoneTime(at: Instant?) {
     Text(
         text = at?.let { formatTime(it) }.orEmpty(),
-        style = numericTextStyle.copy(fontWeight = FontWeight.Medium),
+        style = MaterialTheme.typography.bodyMedium.numeric(FontWeight.Medium),
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         textAlign = TextAlign.End,
         modifier = Modifier.width(TimeWidth),
@@ -277,7 +279,9 @@ private fun TrailingValue(
             val description = stringResource(R.string.trip_since_last_milestone, value)
             Text(
                 text = value,
-                style = numericTextStyle,
+                // Un cran au-dessus des durées figées : c'est la valeur qui bouge, et la
+                // ligne du jalon courant est celle que l'on regarde en roulant.
+                style = MaterialTheme.typography.titleMedium.numeric(),
                 color = colors.onPrimaryContainer,
                 modifier = Modifier.semantics { contentDescription = description },
             )
@@ -294,14 +298,14 @@ private fun TrailingValue(
         row.sincePrevious != null ->
             Text(
                 text = formatDuration(row.sincePrevious),
-                style = numericTextStyle,
+                style = MaterialTheme.typography.bodyLarge.numeric(),
                 color = colors.onSurface,
             )
 
         else ->
             Text(
                 text = stringResource(R.string.milestone_no_value),
-                style = numericTextStyle,
+                style = MaterialTheme.typography.bodyLarge.numeric(),
                 color = if (current) colors.onPrimaryContainer else colors.onSurfaceVariant,
             )
     }

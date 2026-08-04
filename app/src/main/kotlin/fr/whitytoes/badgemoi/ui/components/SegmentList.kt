@@ -27,7 +27,7 @@ import fr.whitytoes.badgemoi.ui.formatDuration
 import fr.whitytoes.badgemoi.ui.summary.SegmentRow
 import fr.whitytoes.badgemoi.ui.summary.segmentRows
 import fr.whitytoes.badgemoi.ui.theme.BadgeMoiTheme
-import fr.whitytoes.badgemoi.ui.theme.numericTextStyle
+import fr.whitytoes.badgemoi.ui.theme.numeric
 import java.time.Instant
 import kotlin.time.Duration
 
@@ -142,7 +142,7 @@ private fun SegmentValue(duration: Duration?) {
     } else {
         Text(
             text = formatDuration(duration),
-            style = numericTextStyle,
+            style = MaterialTheme.typography.bodyLarge.numeric(),
             color = colors.onSurface,
         )
     }

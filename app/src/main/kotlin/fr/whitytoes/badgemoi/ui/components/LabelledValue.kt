@@ -8,7 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import fr.whitytoes.badgemoi.R
-import fr.whitytoes.badgemoi.ui.theme.numericTextStyle
+import fr.whitytoes.badgemoi.ui.theme.numeric
 
 /**
  * Champ chiffré des bandeaux : un libellé discret surmontant une valeur en monospace.
@@ -18,6 +18,10 @@ import fr.whitytoes.badgemoi.ui.theme.numericTextStyle
  *
  * [value] à `null` affiche le tiret des valeurs absentes plutôt qu'un vide, pour que la
  * ligne garde sa hauteur et que l'absence se distingue d'un oubli d'affichage.
+ *
+ * La valeur emprunte les métriques de `titleLarge` : c'est le chiffre que l'on lit d'un
+ * coup d'œil en roulant, et la zone de statut est la seule qui puisse lui donner cette
+ * taille sans bousculer une liste.
  */
 @Composable
 fun LabelledValue(
@@ -33,7 +37,7 @@ fun LabelledValue(
         )
         Text(
             text = value ?: stringResource(R.string.milestone_no_value),
-            style = numericTextStyle,
+            style = MaterialTheme.typography.titleLarge.numeric(),
             color = MaterialTheme.colorScheme.onSurface,
         )
     }
