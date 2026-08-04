@@ -15,6 +15,11 @@ import kotlin.time.Duration
  * moyennes (lot 5, §3.4) affiche la même structure avec des durées moyennées. Concevoir
  * la ligne autour d'une durée reçue évite d'écrire une seconde liste là-bas.
  *
+ * @property toIndex jalon d'**arrivée** du tronçon — celui qui le ferme, donc celui qui
+ *   explique sa durée. C'est par lui que le récapitulatif ouvre la correction (§3.3) : les
+ *   quatre tronçons couvrent ainsi les jalons 1 à 4, le départ se corrigeant depuis le
+ *   bandeau. Le jalon de **départ** du tronçon n'est pas transporté : il est le jalon
+ *   d'arrivée du tronçon précédent, et l'ouvrir aussi rendrait le clic ambigu.
  * @property duration `null` quand le tronçon n'est **pas mesurable** — l'un de ses deux
  *   jalons n'a pas été posé. Ce n'est pas une durée nulle et cela ne doit jamais
  *   s'afficher comme telle.
@@ -24,6 +29,7 @@ data class SegmentRow(
     val label: String,
     val fromLabel: String,
     val toLabel: String,
+    val toIndex: Int,
     val duration: Duration?,
 )
 
@@ -42,6 +48,7 @@ fun Trip.segmentRows(): List<SegmentRow> {
             label = segment.label.label,
             fromLabel = route.milestones[segment.fromIndex].label,
             toLabel = route.milestones[segment.toIndex].label,
+            toIndex = segment.toIndex,
             duration = durationOf(segment),
         )
     }

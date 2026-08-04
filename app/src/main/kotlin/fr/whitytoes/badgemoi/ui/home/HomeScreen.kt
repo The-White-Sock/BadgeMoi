@@ -30,7 +30,7 @@ import fr.whitytoes.badgemoi.domain.Trip
 import fr.whitytoes.badgemoi.ui.components.ScreenScaffold
 import fr.whitytoes.badgemoi.ui.formatTime
 import fr.whitytoes.badgemoi.ui.theme.BadgeMoiTheme
-import fr.whitytoes.badgemoi.ui.theme.numericTextStyle
+import fr.whitytoes.badgemoi.ui.theme.numeric
 import java.time.Instant
 
 /** Hauteur minimale des boutons de démarrage : cible tactile utilisable au pouce. */
@@ -232,7 +232,7 @@ private fun TripStatusBanner(
         if (departure != null) {
             Text(
                 text = stringResource(R.string.home_departure_at, formatTime(departure)),
-                style = numericTextStyle,
+                style = MaterialTheme.typography.bodyMedium.numeric(),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }

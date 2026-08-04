@@ -95,16 +95,22 @@ Chaque écran suit le même patron, déjà validé pour l'usage au pouce :
 - Frise de progression façon plan de ligne (jalons reliés par un trait, jalon courant mis en évidence, jalons posés distingués visuellement).
 - Bandeau Départ / Écoulé : heure de départ figée, durée écoulée en direct tant que le dernier jalon n'est pas posé.
 - Mini-indicateur "temps depuis le dernier jalon", discret, mis à jour chaque seconde.
-- Liste des jalons : icône + libellé court + **temps écoulé depuis le jalon précédent** (pas l'heure absolue, réservée au bandeau). Correction possible par tap sur une ligne.
+- Liste des jalons : icône + libellé court + **heure de passage** en retrait + **temps écoulé depuis le jalon précédent** en avant. Correction possible par tap sur une ligne. L'heure figurait à l'origine au seul bandeau ; l'écart est consigné au §9 (entrée 9).
 - Barre d'action fixe en bas : bouton "Valider" (tap simple, retour haptique, flash de confirmation, verrou anti-double-tap de 400 ms) et bouton "Passer" (appui maintenu 650 ms).
 
 ### 3.3 Écran "Récapitulatif"
 - Bandeau Départ/Arrivée. La cellule de droite bascule sur la **durée mesurée** quand le
   dernier jalon a été ignoré et qu'il n'y a donc pas d'heure d'arrivée (`departArrivalFlap`
   du POC).
-- Liste des tronçons nommés (Ride/Attente/Train/Ride) avec durée.
-- Liste des jalons avec durée inter-jalons (même composant que l'écran actif), **cliquables** :
-  la correction d'un jalon se fait sur place, sans quitter l'écran.
+  La cellule Départ est **cliquable** : elle ouvre la correction du jalon de départ, seul
+  jalon qu'aucun tronçon ne désigne.
+- Liste des tronçons nommés (Ride/Attente/Train/Ride) avec durée. **Seule liste de l'écran** :
+  un tronçon est une durée, et c'est une durée qu'on vient relire. La liste des jalons reste
+  à l'écran actif, où elle est une liste d'actions (§9, entrée 9).
+- Les lignes de tronçon sont **cliquables** : chacune ouvre la correction de son jalon
+  d'**arrivée**, celui qui ferme le tronçon et explique sa durée. Les quatre tronçons
+  couvrent les jalons 1 à 4, le bandeau le jalon 0 : les cinq restent corrigeables sur
+  place, sans quitter l'écran.
 - Boutons **"Abandonner"** / **"Enregistrer"** fixes en bas. « Abandonner » jette le trajet
   sans l'archiver — c'est le `sumDiscard` → `discardTrip` du POC, et non un retour en
   arrière. L'action étant irréversible sur un écran atteint automatiquement, elle demande
@@ -250,10 +256,11 @@ Règle de contraste à respecter dans la traduction Compose : tout texte/icône 
 | 6 | Correction d'un jalon | **Jalons tranchés seulement** (posés ou ignorés) — restreint le « à tout moment » du §1.2 |
 | 7 | Chrono « depuis le dernier jalon » | **Sur la ligne du jalon courant**, avec emphase — et non le mini-indicateur discret du §3.2 |
 | 8 | Second bouton du récapitulatif | **« Abandonner »** — comportement du POC rétabli, voir #87 |
+| 9 | Jalons et tronçons | **Deux vues, deux rôles** — jalons à l'écran actif (avec leur heure), tronçons seuls au récapitulatif, voir #90 |
 
-### Écarts assumés au périmètre d'origine (6 à 8)
+### Écarts assumés au périmètre d'origine (6 à 9)
 
-Ces trois points **contredisent la lettre** des sections citées. Ils sont le fruit d'un
+Ces quatre points **contredisent la lettre** des sections citées. Ils sont le fruit d'un
 test sur appareil et ont été validés en connaissance de cause ; ils sont consignés ici
 parce que le script `scripts/check-docs-coherence.sh` ne vérifie que des invariants
 mécaniques — versions, chemins, liens — et ne verrait pas une contradiction de prose.
@@ -274,6 +281,33 @@ définitivement. #87 a montré que c'en est bien un : le POC y appelle `discardT
 par ailleurs les jalons du récapitulatif corrigeables **sur place**. Le §3.3 dit désormais
 les deux, et l'écart n'en est plus un — le libellé explicite simplement ce que le mot
 « Annuler » cachait.
+
+**9. Deux vues, deux rôles.** Le §3.2 réservait l'heure absolue au bandeau, et le §3.3
+faisait afficher au récapitulatif une liste de jalons **en plus** de la liste des tronçons.
+Les deux règles avaient le même défaut, hérité du POC.
+
+Un jalon est un **instant**, un tronçon est une **durée**. Notre liste de jalons était
+étiquetée par un instant mais **valorisée par une durée** : elle empruntait sa valeur au
+tronçon qui la précédait. D'où deux symptômes d'une seule cause — la ligne du départ
+n'affichait qu'un tiret, faute de tronçon avant elle (le POC le savait : son `jalonsCard`
+force `durTxt = '—'` pour `i === 0`), et les quatre durées inter-jalons du récapitulatif
+étaient **les quatre durées des tronçons**, affichées deux fois.
+
+La réponse sépare les rôles plutôt que d'arbitrer un affichage. L'écran actif garde une
+liste de **jalons**, parce que c'en est une liste d'actions : on valide un jalon à la fois,
+et l'heure y comble la première ligne. Le récapitulatif ne montre que des **tronçons** :
+c'est une lecture, et ce sont les durées qu'on vient y chercher.
+
+Deux conséquences assumées. La correction, sur le récapitulatif, passe désormais par les
+tronçons — chacun ouvre le jalon qui le ferme — et par la cellule « Départ » du bandeau
+pour le jalon 0 ; la couverture reste complète et aucun clic n'est ambigu. Et la durée
+**cumulée** qu'une ligne de jalon donnait en enjambant un jalon ignoré disparaît de cet
+écran : un tronçon non mesuré l'est honnêtement, cette durée n'étant attribuable ni à l'un
+ni à l'autre de ses deux voisins. Elle reste visible sur l'écran actif, et le tronçon
+« Non mesuré » est précisément l'endroit où l'on rebouche le trou.
+
+Le modèle de domaine n'a pas bougé : `Trip.times` reste un horodatage par jalon. C'est un
+changement de rendu.
 
 ### Grain de l'ondulation d'appui
 
