@@ -52,3 +52,17 @@ private fun between(
     from: Instant,
     to: Instant,
 ): Duration = (to.toEpochMilli() - from.toEpochMilli()).coerceAtLeast(0).milliseconds
+
+/**
+ * Durée **mesurée** du trajet : du départ au dernier jalon posé.
+ *
+ * Distincte de [Trip.totalDuration], qui exige que le **dernier** jalon soit posé et rend
+ * `null` sinon. Un trajet dont l'arrivée a été ignorée reste mesurable jusqu'à son dernier
+ * pointage — c'est ce que le bandeau du récapitulatif affiche à la place de l'heure
+ * d'arrivée, comme le `departArrivalFlap` du POC bascule sur « Écoulé ».
+ */
+fun Trip.measuredDuration(): Duration? {
+    val departure = departureAt
+    val lastPosed = times.filterNotNull().lastOrNull()
+    return if (departure != null && lastPosed != null) between(departure, lastPosed) else null
+}

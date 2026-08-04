@@ -182,7 +182,7 @@ private fun ResumeTripActions(
         }
         TextButton(onClick = { confirmingAbandon = true }) {
             Text(
-                text = stringResource(R.string.home_abandon),
+                text = stringResource(R.string.abandon_action),
                 color = MaterialTheme.colorScheme.error,
             )
         }
@@ -193,8 +193,8 @@ private fun ResumeTripActions(
         // en roulant : une confirmation explicite s'impose.
         AlertDialog(
             onDismissRequest = { confirmingAbandon = false },
-            title = { Text(stringResource(R.string.home_abandon_dialog_title)) },
-            text = { Text(stringResource(R.string.home_abandon_dialog_message)) },
+            title = { Text(stringResource(R.string.abandon_dialog_title)) },
+            text = { Text(stringResource(R.string.abandon_dialog_message)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -203,14 +203,14 @@ private fun ResumeTripActions(
                     },
                 ) {
                     Text(
-                        text = stringResource(R.string.home_abandon),
+                        text = stringResource(R.string.abandon_action),
                         color = MaterialTheme.colorScheme.error,
                     )
                 }
             },
             dismissButton = {
                 TextButton(onClick = { confirmingAbandon = false }) {
-                    Text(stringResource(R.string.home_abandon_dialog_dismiss))
+                    Text(stringResource(R.string.abandon_dialog_dismiss))
                 }
             },
         )
