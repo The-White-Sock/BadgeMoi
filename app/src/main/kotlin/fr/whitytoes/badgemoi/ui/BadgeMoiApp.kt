@@ -86,41 +86,52 @@ fun BadgeMoiApp(
             },
             onToggleTheme = onToggleTheme,
         )
-        NavHost(
-            navController = navController,
-            startDestination = TripRoute,
-            modifier = Modifier.weight(1f),
-        ) {
-            composable<TripRoute> {
-                HomeScreen(onNavigateToActiveTrip = { navController.navigate(ActiveTripRoute) })
-            }
-            composable<ActiveTripRoute> {
-                TripActiveScreen(
-                    // `popUpTo` plutôt qu'un simple navigate : sans cela, la pile
-                    // accumulerait un écran de trajet mort à chaque aller-retour.
-                    onNavigateHome = {
-                        navController.navigate(TripRoute) {
-                            popUpTo(TripRoute) { inclusive = true }
-                        }
-                    },
-                    // L'écran actif reste dans la pile, contrairement au retour à
-                    // l'accueil : « Corriger » depuis le récapitulatif est un simple
-                    // retour arrière, qui retrouve l'écran et son état.
-                    onNavigateToSummary = { navController.navigate(SummaryRoute) },
-                )
-            }
-            composable<SummaryRoute> {
-                SummaryScreen(
-                    onNavigateHome = {
-                        navController.navigate(TripRoute) {
-                            popUpTo(TripRoute) { inclusive = true }
-                        }
-                    },
-                    onNavigateBackToTrip = { navController.popBackStack() },
-                )
-            }
-            composable<HistoryRoute> { HistoryScreen() }
+        BadgeMoiNavHost(navController = navController, modifier = Modifier.weight(1f))
+    }
+}
+
+/** Graphe de navigation, extrait pour garder [BadgeMoiApp] lisible. */
+@Composable
+private fun BadgeMoiNavHost(
+    navController: NavHostController,
+    modifier: Modifier = Modifier,
+) {
+    NavHost(
+        navController = navController,
+        startDestination = TripRoute,
+        modifier = modifier,
+    ) {
+        composable<TripRoute> {
+            HomeScreen(onNavigateToActiveTrip = { navController.navigate(ActiveTripRoute) })
         }
+        composable<ActiveTripRoute> {
+            TripActiveScreen(
+                // `popUpTo` plutôt qu'un simple navigate : sans cela, la pile
+                // accumulerait un écran de trajet mort à chaque aller-retour.
+                onNavigateHome = {
+                    navController.navigate(TripRoute) {
+                        popUpTo(TripRoute) { inclusive = true }
+                    }
+                },
+                // L'écran actif est retiré de la pile : on ne corrige plus depuis
+                // là-bas une fois au récapitulatif, les jalons y étant cliquables.
+                onNavigateToSummary = {
+                    navController.navigate(SummaryRoute) {
+                        popUpTo(ActiveTripRoute) { inclusive = true }
+                    }
+                },
+            )
+        }
+        composable<SummaryRoute> {
+            SummaryScreen(
+                onNavigateHome = {
+                    navController.navigate(TripRoute) {
+                        popUpTo(TripRoute) { inclusive = true }
+                    }
+                },
+            )
+        }
+        composable<HistoryRoute> { HistoryScreen() }
     }
 }
 

@@ -7,6 +7,7 @@ import fr.whitytoes.badgemoi.domain.Direction
 import fr.whitytoes.badgemoi.domain.Routes
 import fr.whitytoes.badgemoi.domain.Trip
 import fr.whitytoes.badgemoi.domain.TripArchiveRepository
+import fr.whitytoes.badgemoi.ui.trip.MilestoneCorrections
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -22,7 +23,12 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import java.time.Clock
 import java.time.Instant
+import java.time.ZoneOffset
+
+/** Horloge figée : la correction d'un jalon en a besoin, l'archivage non. */
+private val CLOCK: Clock = Clock.fixed(Instant.parse("2026-07-26T09:00:00Z"), ZoneOffset.UTC)
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SummaryViewModelTest {
@@ -53,7 +59,7 @@ class SummaryViewModelTest {
     private fun viewModel(
         active: FakeActiveTripRepository,
         archive: FakeArchiveRepository,
-    ) = SummaryViewModel(active, archive)
+    ) = SummaryViewModel(active, archive, MilestoneCorrections(active, CLOCK))
 
     @Test
     fun `l'état initial est le chargement`() =
@@ -174,6 +180,79 @@ class SummaryViewModelTest {
 
             assertEquals(emptyList<Trip>(), archive.trips)
             assertEquals("le trajet en cours est intact", 2, active.current?.currentStep)
+        }
+
+    /**
+     * Second bouton de l'écran, modèle du POC : `sumDiscard` appelle `discardTrip`, qui
+     * jette le trajet. Rien ne part à l'archive.
+     */
+    @Test
+    fun `abandonner efface le trajet sans l'archiver`() =
+        runTest(dispatcher) {
+            val active = FakeActiveTripRepository(completedTrip())
+            val archive = FakeArchiveRepository()
+            val model = viewModel(active, archive)
+            advanceUntilIdle()
+
+            model.discardTrip()
+            advanceUntilIdle()
+
+            assertEquals("rien n'est archivé", 0, archive.addCount)
+            assertEquals("le trajet en cours est effacé", null, active.current)
+            assertEquals(SummaryUiState.NoTrip, model.uiState.value)
+        }
+
+    /**
+     * La correction se fait **sur place** depuis le récapitulatif, les lignes y étant
+     * cliquables comme sur l'écran actif. Elle passe par la même mécanique que là-bas.
+     */
+    @Test
+    fun `corriger un jalon depuis le récapitulatif met le trajet à jour`() =
+        runTest(dispatcher) {
+            val active = FakeActiveTripRepository(completedTrip())
+            val model = viewModel(active, FakeArchiveRepository())
+            advanceUntilIdle()
+
+            // 08h30 UTC, soit trente minutes après le départ — et avant l'horloge (09h00).
+            model.correctMilestone(index = 2, hour = 8, minute = 30)
+            advanceUntilIdle()
+
+            assertEquals(departure.plusSeconds(1_800), active.current?.times?.get(2))
+        }
+
+    @Test
+    fun `ignorer un jalon depuis le récapitulatif le prive de son horodatage`() =
+        runTest(dispatcher) {
+            val active = FakeActiveTripRepository(completedTrip())
+            val model = viewModel(active, FakeArchiveRepository())
+            advanceUntilIdle()
+
+            model.skipMilestone(3)
+            advanceUntilIdle()
+
+            assertEquals(null, active.current?.times?.get(3))
+            assertTrue(active.current?.skipped?.get(3) == true)
+        }
+
+    /**
+     * Effacer un jalon rend le trajet **incomplet** : il n'est alors plus archivable, et
+     * le garde-fou de [SummaryViewModel.archiveTrip] doit le refuser.
+     */
+    @Test
+    fun `effacer un jalon depuis le récapitulatif rend le trajet non archivable`() =
+        runTest(dispatcher) {
+            val active = FakeActiveTripRepository(completedTrip())
+            val archive = FakeArchiveRepository()
+            val model = viewModel(active, archive)
+            advanceUntilIdle()
+
+            model.clearMilestone(2)
+            advanceUntilIdle()
+            model.archiveTrip()
+            advanceUntilIdle()
+
+            assertEquals(0, archive.addCount)
+            assertEquals("le trajet reste à compléter", 2, active.current?.currentStep)
         }
 
     /** Le trajet a pu être abandonné depuis l'accueil pendant la relecture. */

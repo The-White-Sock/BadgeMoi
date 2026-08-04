@@ -49,24 +49,11 @@ fun TripActiveScreen(
 
     val trip = (uiState as? TripUiState.Active)?.trip
 
-    // Dernier jalon posé ou ignoré : place au récapitulatif (§3.3).
-    //
-    // Le passage n'a lieu **qu'une fois par complétion**. Sans ce garde-fou, revenir ici
-    // depuis le récapitulatif pour corriger un jalon y renverrait aussitôt, le trajet
-    // étant toujours complet — le bouton « Corriger » n'aurait aucun effet visible.
-    // `rememberSaveable` survit au retour arrière, donc le drapeau est bien retrouvé.
-    //
-    // Il retombe dès que le trajet redevient incomplet : effacer un jalon, le reposer, et
-    // le récapitulatif se rouvre de lui-même.
-    var summaryShown by rememberSaveable { mutableStateOf(false) }
+    // Dernier jalon posé ou ignoré : place au récapitulatif (§3.3), qui retire cet écran
+    // de la pile. La correction s'y fait sur place, on n'en revient donc pas ici — d'où
+    // l'absence de garde-fou contre un aller-retour.
     LaunchedEffect(trip?.isComplete) {
-        when {
-            trip?.isComplete != true -> summaryShown = false
-            !summaryShown -> {
-                summaryShown = true
-                onNavigateToSummary()
-            }
-        }
+        if (trip?.isComplete == true) onNavigateToSummary()
     }
 
     // Index du jalon en cours de correction. Porté ici plutôt que dans la version sans

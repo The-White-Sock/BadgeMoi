@@ -99,10 +99,16 @@ Chaque écran suit le même patron, déjà validé pour l'usage au pouce :
 - Barre d'action fixe en bas : bouton "Valider" (tap simple, retour haptique, flash de confirmation, verrou anti-double-tap de 400 ms) et bouton "Passer" (appui maintenu 650 ms).
 
 ### 3.3 Écran "Récapitulatif"
-- Bandeau Départ/Arrivée (les deux heures sont connues à ce stade).
+- Bandeau Départ/Arrivée. La cellule de droite bascule sur la **durée mesurée** quand le
+  dernier jalon a été ignoré et qu'il n'y a donc pas d'heure d'arrivée (`departArrivalFlap`
+  du POC).
 - Liste des tronçons nommés (Ride/Attente/Train/Ride) avec durée.
-- Liste des jalons avec durée inter-jalons (même composant que l'écran actif).
-- Boutons "Annuler" / "Enregistrer" fixes en bas.
+- Liste des jalons avec durée inter-jalons (même composant que l'écran actif), **cliquables** :
+  la correction d'un jalon se fait sur place, sans quitter l'écran.
+- Boutons **"Abandonner"** / **"Enregistrer"** fixes en bas. « Abandonner » jette le trajet
+  sans l'archiver — c'est le `sumDiscard` → `discardTrip` du POC, et non un retour en
+  arrière. L'action étant irréversible sur un écran atteint automatiquement, elle demande
+  confirmation, comme l'abandon depuis l'accueil.
 
 ### 3.4 Écran "Historique"
 - Sélecteur Aller/Retour.
@@ -243,7 +249,7 @@ Règle de contraste à respecter dans la traduction Compose : tout texte/icône 
 | 5 | Grain de l'ondulation d'appui en thème nuit | **Accepté** — on garde l'ondulation Material telle quelle, sans code de remplacement (voir ci-dessous) |
 | 6 | Correction d'un jalon | **Jalons tranchés seulement** (posés ou ignorés) — restreint le « à tout moment » du §1.2 |
 | 7 | Chrono « depuis le dernier jalon » | **Sur la ligne du jalon courant**, avec emphase — et non le mini-indicateur discret du §3.2 |
-| 8 | Second bouton du récapitulatif | **« Corriger »** plutôt que le « Annuler » du §3.3 — libellé provisoire, voir #87 |
+| 8 | Second bouton du récapitulatif | **« Abandonner »** — comportement du POC rétabli, voir #87 |
 
 ### Écarts assumés au périmètre d'origine (6 à 8)
 
@@ -262,11 +268,12 @@ la **ligne du jalon courant**, avec une emphase propre : deux chronomètres côt
 dans le bandeau se lisaient mal, et celui qui mesure le tronçon en cours appartient au
 jalon qu'il mesure.
 
-**8. « Corriger » au lieu d'« Annuler ».** Le §3.3 nomme le bouton « Annuler ». Sur un
-écran dont l'autre bouton archive définitivement, ce mot se lit comme un abandon du
-trajet. Le libellé est **provisoire** : #87 a relevé que le POC fait de ce bouton un
-abandon effectif et rend les jalons du récapitulatif corrigeables sur place — la
-divergence porte donc sur le comportement, pas seulement sur le mot.
+**8. « Abandonner » au lieu d'« Annuler ».** Le §3.3 nommait le bouton « Annuler », mot
+qui se lit comme un abandon du trajet sur un écran dont l'autre bouton archive
+définitivement. #87 a montré que c'en est bien un : le POC y appelle `discardTrip`, et rend
+par ailleurs les jalons du récapitulatif corrigeables **sur place**. Le §3.3 dit désormais
+les deux, et l'écart n'en est plus un — le libellé explicite simplement ce que le mot
+« Annuler » cachait.
 
 ### Grain de l'ondulation d'appui
 

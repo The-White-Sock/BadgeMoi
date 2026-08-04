@@ -8,15 +8,17 @@
     <string name="theme_switch_to_day">Jour</string>
     <string name="theme_switch_to_night">Nuit</string>
 
+    <!-- Abandon d'un trajet : proposé depuis l'accueil et depuis le récapitulatif -->
+    <string name="abandon_action">Abandonner</string>
+    <string name="abandon_dialog_title">Abandonner le trajet ?</string>
+    <string name="abandon_dialog_message">Le trajet en cours sera effacé définitivement.</string>
+    <string name="abandon_dialog_dismiss">Annuler</string>
+
     <!-- Écran d'accueil -->
     <string name="direction_aller">Aller</string>
     <string name="direction_retour">Retour</string>
     <string name="home_departure_at">Départ à %1$s</string>
     <string name="home_resume">Reprendre</string>
-    <string name="home_abandon">Abandonner</string>
-    <string name="home_abandon_dialog_title">Abandonner le trajet ?</string>
-    <string name="home_abandon_dialog_message">Le trajet en cours sera effacé définitivement.</string>
-    <string name="home_abandon_dialog_dismiss">Annuler</string>
 
     <!-- Écran « Trajet actif » -->
     <string name="milestone_skipped">Ignoré</string>
@@ -36,7 +38,6 @@
     <string name="segment_not_measured">Non mesuré</string>
     <string name="summary_arrival">Arrivée</string>
     <string name="summary_save">Enregistrer</string>
-    <string name="summary_cancel">Corriger</string>
 
     <!-- Emplacements en attente d'implémentation -->
     <string name="history_coming_soon">Historique à venir.</string>

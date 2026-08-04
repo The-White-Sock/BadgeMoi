@@ -47,10 +47,13 @@ class TripViewModelTest {
 
     private fun trip() = Trip.start(id = "t1", direction = Direction.ALLER, departureAt = departure)
 
+    private fun viewModel(repository: ActiveTripRepository) =
+        TripViewModel(repository, MilestoneCorrections(repository, clock), clock)
+
     @Test
     fun `l'état initial est le chargement`() =
         runTest(dispatcher) {
-            val viewModel = TripViewModel(FakeActiveTripRepository(), clock)
+            val viewModel = viewModel(FakeActiveTripRepository())
 
             assertEquals(TripUiState.Loading, viewModel.uiState.value)
         }
@@ -58,7 +61,7 @@ class TripViewModelTest {
     @Test
     fun `sans trajet l'écran signale qu'il n'a plus d'objet`() =
         runTest(dispatcher) {
-            val viewModel = TripViewModel(FakeActiveTripRepository(), clock)
+            val viewModel = viewModel(FakeActiveTripRepository())
 
             advanceUntilIdle()
 
@@ -69,7 +72,7 @@ class TripViewModelTest {
     fun `valider pose le jalon courant à l'heure de l'horloge`() =
         runTest(dispatcher) {
             val repository = FakeActiveTripRepository(trip())
-            val viewModel = TripViewModel(repository, clock)
+            val viewModel = viewModel(repository)
             advanceUntilIdle()
 
             viewModel.validateCurrentMilestone()
@@ -84,7 +87,7 @@ class TripViewModelTest {
     fun `passer ignore le jalon courant sans l'horodater`() =
         runTest(dispatcher) {
             val repository = FakeActiveTripRepository(trip())
-            val viewModel = TripViewModel(repository, clock)
+            val viewModel = viewModel(repository)
             advanceUntilIdle()
 
             viewModel.skipCurrentMilestone()
@@ -104,7 +107,7 @@ class TripViewModelTest {
                     trip.poseMilestone(index, departure.plusSeconds(index * 60L))
                 }
             val repository = FakeActiveTripRepository(complet)
-            val viewModel = TripViewModel(repository, clock)
+            val viewModel = viewModel(repository)
             advanceUntilIdle()
 
             viewModel.validateCurrentMilestone()
@@ -117,7 +120,7 @@ class TripViewModelTest {
     fun `valider est sans effet tant que le trajet n'est pas chargé`() =
         runTest(dispatcher) {
             val repository = FakeActiveTripRepository()
-            val viewModel = TripViewModel(repository, clock)
+            val viewModel = viewModel(repository)
 
             viewModel.validateCurrentMilestone()
             advanceUntilIdle()
@@ -129,7 +132,7 @@ class TripViewModelTest {
     fun `corriger un jalon fixe l'heure fournie, pas celle de l'horloge`() =
         runTest(dispatcher) {
             val repository = FakeActiveTripRepository(trip())
-            val viewModel = TripViewModel(repository, clock)
+            val viewModel = viewModel(repository)
             advanceUntilIdle()
             val corrigee = departure.plusSeconds(300)
 
@@ -144,7 +147,7 @@ class TripViewModelTest {
         runTest(dispatcher) {
             val repository =
                 FakeActiveTripRepository(trip().poseMilestone(1, departure.plusSeconds(60)))
-            val viewModel = TripViewModel(repository, clock)
+            val viewModel = viewModel(repository)
             advanceUntilIdle()
             assertEquals(2, repository.current?.currentStep)
 
@@ -163,7 +166,7 @@ class TripViewModelTest {
     fun `corriger un jalon convertit l'heure saisie avec l'horloge du ViewModel`() =
         runTest(dispatcher) {
             val repository = FakeActiveTripRepository(trip())
-            val viewModel = TripViewModel(repository, clock)
+            val viewModel = viewModel(repository)
             advanceUntilIdle()
 
             // 08h05 UTC, soit cinq minutes après le départ — et avant `now` (08h12).
@@ -178,7 +181,7 @@ class TripViewModelTest {
     fun `corriger le départ ajuste le temps écoulé`() =
         runTest(dispatcher) {
             val repository = FakeActiveTripRepository(trip())
-            val viewModel = TripViewModel(repository, clock)
+            val viewModel = viewModel(repository)
             backgroundScope.launch { viewModel.timers.collect {} }
             runCurrent()
 
@@ -195,7 +198,7 @@ class TripViewModelTest {
     fun `chaque action est persistée immédiatement`() =
         runTest(dispatcher) {
             val repository = FakeActiveTripRepository(trip())
-            val viewModel = TripViewModel(repository, clock)
+            val viewModel = viewModel(repository)
             advanceUntilIdle()
 
             viewModel.validateCurrentMilestone()

@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import fr.whitytoes.badgemoi.domain.ActiveTripRepository
 import fr.whitytoes.badgemoi.domain.TripArchiveRepository
+import fr.whitytoes.badgemoi.ui.trip.MilestoneCorrections
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -21,9 +22,10 @@ import javax.inject.Inject
  * [TripArchiveRepository] existe et est testé depuis le lot 1, mais n'avait jusqu'ici
  * aucun appelant : aucun trajet n'était archivé.
  *
- * « Annuler » n'est pas une action de ce ViewModel : revenir à l'écran actif pour corriger
- * un jalon ne touche à rien, c'est de la seule navigation. Effacer un trajet reste une
- * action distincte, offerte depuis l'accueil sous le nom d'abandon.
+ * Les deux issues de l'écran sont ici : **archiver** le trajet, ou l'**abandonner**. C'est
+ * le modèle du POC, dont `sumDiscard` appelle `discardTrip` — le second bouton jette le
+ * trajet, il ne ramène pas en arrière. La correction d'un jalon se fait **sur place**,
+ * les lignes du récapitulatif étant cliquables comme celles de l'écran actif.
  */
 @HiltViewModel
 class SummaryViewModel
@@ -31,6 +33,7 @@ class SummaryViewModel
     constructor(
         private val activeTripRepository: ActiveTripRepository,
         private val archiveRepository: TripArchiveRepository,
+        private val corrections: MilestoneCorrections,
     ) : ViewModel() {
         private val archiving = MutableStateFlow(false)
 
@@ -82,5 +85,35 @@ class SummaryViewModel
                     archiving.value = false
                 }
             }
+        }
+
+        /**
+         * Abandonne le trajet relu, sans l'archiver (`discardTrip` du POC).
+         *
+         * Irréversible, et l'écran est atteint **automatiquement** en fin de parcours :
+         * l'appelant demande confirmation, comme le fait déjà l'abandon depuis l'accueil.
+         */
+        fun discardTrip() {
+            viewModelScope.launch { activeTripRepository.clear() }
+        }
+
+        /**
+         * Corrections d'un jalon depuis le récapitulatif (cahier §3.5).
+         *
+         * Partagées avec l'écran actif : la relecture n'a pas de règle propre, corriger
+         * ici ou là-bas doit produire le même trajet.
+         */
+        fun correctMilestone(
+            index: Int,
+            hour: Int,
+            minute: Int,
+        ) = correct { corrections.correct(index, hour, minute) }
+
+        fun skipMilestone(index: Int) = correct { corrections.skip(index) }
+
+        fun clearMilestone(index: Int) = correct { corrections.clear(index) }
+
+        private fun correct(action: suspend () -> Unit) {
+            viewModelScope.launch { action() }
         }
     }

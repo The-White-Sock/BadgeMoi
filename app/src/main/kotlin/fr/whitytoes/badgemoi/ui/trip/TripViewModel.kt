@@ -42,6 +42,7 @@ class TripViewModel
     @Inject
     constructor(
         private val activeTripRepository: ActiveTripRepository,
+        private val corrections: MilestoneCorrections,
         private val clock: Clock,
     ) : ViewModel() {
         val uiState: StateFlow<TripUiState> =
@@ -102,44 +103,29 @@ class TripViewModel
             }
         }
 
-        /** Corrige l'heure d'un jalon quelconque (cahier §3.5). */
+        /**
+         * Corrections d'un jalon quelconque (cahier §3.5).
+         *
+         * Déléguées à [MilestoneCorrections], que le récapitulatif partage : le POC rend
+         * les lignes de jalon cliquables sur les deux écrans.
+         */
         fun poseMilestone(
             index: Int,
             at: Instant,
-        ) {
-            updateTrip { trip -> trip.poseMilestone(index, at) }
-        }
+        ) = correct { corrections.pose(index, at) }
 
-        /**
-         * Corrige un jalon à partir de l'heure locale saisie dans l'overlay (cahier §3.5).
-         *
-         * La déduction du jour a besoin de l'heure courante — une occurrence postérieure
-         * est écartée — et l'horloge vit ici, pas dans les composables : c'est donc le
-         * ViewModel qui convertit, l'écran se contentant de transmettre la saisie.
-         *
-         * Le fuseau vient de l'horloge injectée (`Clock.systemDefaultZone()` en
-         * production) plutôt que de [java.time.ZoneId.systemDefault] : heure courante et
-         * fuseau proviennent ainsi de la même source, et un test peut les fixer tous deux.
-         */
         fun correctMilestone(
             index: Int,
             hour: Int,
             minute: Int,
-        ) {
-            val now = clock.instant()
-            updateTrip { trip ->
-                trip.poseMilestone(index, trip.correctionInstant(index, hour, minute, now, clock.zone))
-            }
-        }
+        ) = correct { corrections.correct(index, hour, minute) }
 
-        /** Marque un jalon quelconque comme ignoré (cahier §3.5). */
-        fun skipMilestone(index: Int) {
-            updateTrip { trip -> trip.skipMilestone(index) }
-        }
+        fun skipMilestone(index: Int) = correct { corrections.skip(index) }
 
-        /** Remet un jalon quelconque en attente (cahier §3.5). */
-        fun clearMilestone(index: Int) {
-            updateTrip { trip -> trip.clearMilestone(index) }
+        fun clearMilestone(index: Int) = correct { corrections.clear(index) }
+
+        private fun correct(action: suspend () -> Unit) {
+            viewModelScope.launch { action() }
         }
 
         /**
