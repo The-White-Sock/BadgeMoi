@@ -1,5 +1,7 @@
 package fr.whitytoes.badgemoi.ui.components
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -10,9 +12,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -32,21 +36,38 @@ private val RowMinHeight = 44.dp
 /**
  * Liste des tronçons nommés d'un trajet avec leur durée (cahier des charges §3.3).
  *
+ * C'est la **seule** liste du récapitulatif : un tronçon est une durée, et c'est une durée
+ * qu'on vient y lire. La liste des jalons, qui empruntait ses valeurs à celle-ci, reste à
+ * l'écran actif où elle est une liste d'actions (§9, écart 9).
+ *
  * Prend des [SegmentRow] et non un trajet : l'écran des moyennes (lot 5, §3.4) affiche la
  * même structure avec des durées moyennées, et pourra donc réutiliser ce composant tel
  * quel plutôt qu'en écrire un second.
  *
  * Pas de `LazyColumn` ici — quatre lignes, et la liste vit dans la zone déjà scrollable du
  * récapitulatif. Une liste paresseuse y provoquerait des défilements imbriqués.
+ *
+ * @param onSegmentClick ouvre la correction du jalon **d'arrivée** du tronçon, dont la
+ *   position est passée en argument. C'est le point d'entrée de la correction sur le
+ *   récapitulatif, les lignes de jalon n'y étant plus. `null` sur l'écran des moyennes,
+ *   qui n'a rien à corriger.
+ * @param selectedIndex tronçon dont l'overlay de correction est ouvert. Sa ligne reste
+ *   allumée tant que la fenêtre est là, comme sur l'écran actif.
  */
 @Composable
 fun SegmentList(
     rows: List<SegmentRow>,
     modifier: Modifier = Modifier,
+    onSegmentClick: ((Int) -> Unit)? = null,
+    selectedIndex: Int? = null,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         rows.forEachIndexed { position, row ->
-            SegmentListRow(row = row)
+            SegmentListRow(
+                row = row,
+                onClick = onSegmentClick?.let { { it(position) } },
+                selected = position == selectedIndex,
+            )
             if (position < rows.lastIndex) {
                 HorizontalDivider(color = MaterialTheme.colorScheme.outline)
             }
@@ -55,13 +76,32 @@ fun SegmentList(
 }
 
 @Composable
-private fun SegmentListRow(row: SegmentRow) {
+private fun SegmentListRow(
+    row: SegmentRow,
+    onClick: (() -> Unit)?,
+    selected: Boolean,
+) {
     val colors = MaterialTheme.colorScheme
+
+    // Ligne rectangulaire et non arrondie, contrairement à celles des jalons : les
+    // tronçons sont séparés par des filets, qu'un coin arrondi désaffleurerait.
+    val clickable =
+        if (onClick != null) {
+            Modifier.clickable(
+                interactionSource = null,
+                indication = ripple(color = colors.secondary),
+                onClick = onClick,
+            )
+        } else {
+            Modifier
+        }
 
     Row(
         modifier =
             Modifier
                 .fillMaxWidth()
+                .background(if (selected) colors.secondaryContainer else Color.Transparent)
+                .then(clickable)
                 .heightIn(min = RowMinHeight)
                 .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,

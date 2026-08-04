@@ -3,6 +3,7 @@ package fr.whitytoes.badgemoi.ui.trip
 import fr.whitytoes.badgemoi.domain.MilestoneIcon
 import fr.whitytoes.badgemoi.domain.Routes
 import fr.whitytoes.badgemoi.domain.Trip
+import java.time.Instant
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -25,15 +26,19 @@ val MilestoneStatus.isCorrectable: Boolean
 /**
  * Une ligne de la liste des jalons, prête à afficher.
  *
- * [sincePrevious] est la durée écoulée depuis le jalon précédent — le cahier §3.2 est
- * explicite : la liste montre l'écart inter-jalons, l'heure absolue étant réservée au
- * bandeau.
+ * Un jalon est un **instant** — [at] — et il emprunte sa durée [sincePrevious] au tronçon
+ * qui le précède. Les deux sont transportés parce que la ligne montre les deux : l'heure
+ * discrète à gauche, la durée en avant à droite (§9, écart 9).
+ *
+ * @property at horodatage du jalon, `null` tant qu'il n'est pas posé — un jalon courant,
+ *   à venir ou ignoré n'a pas d'heure à montrer.
  */
 data class MilestoneRow(
     val index: Int,
     val label: String,
     val icon: MilestoneIcon,
     val status: MilestoneStatus,
+    val at: Instant?,
     val sincePrevious: Duration?,
 )
 
@@ -62,6 +67,7 @@ fun Trip.milestoneRows(): List<MilestoneRow> {
                     index == step -> MilestoneStatus.CURRENT
                     else -> MilestoneStatus.PENDING
                 },
+            at = times[index],
             sincePrevious = durationSincePreviousPosed(index),
         )
     }

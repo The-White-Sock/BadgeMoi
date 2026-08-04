@@ -34,6 +34,34 @@ class MilestoneRowTest {
         assertNull(trip().milestoneRows()[0].sincePrevious)
     }
 
+    /**
+     * Ce que l'heure vient combler : sans elle, la ligne du départ n'affiche qu'un
+     * libellé et un tiret, faute de tronçon avant elle.
+     */
+    @Test
+    fun `le départ porte son heure, à défaut d'une durée`() {
+        val rows = trip().milestoneRows()
+
+        assertEquals(departure, rows[0].at)
+        assertNull(rows[0].sincePrevious)
+    }
+
+    @Test
+    fun `un jalon non posé n'a pas d'heure à montrer`() {
+        val rows = trip().skipMilestone(1).milestoneRows()
+
+        assertNull("le jalon ignoré", rows[1].at)
+        assertNull("le jalon courant", rows[2].at)
+        assertNull("un jalon à venir", rows[3].at)
+    }
+
+    @Test
+    fun `un jalon posé porte l'horodatage qu'on lui a donné`() {
+        val rows = trip().poseMilestone(1, at(9)).milestoneRows()
+
+        assertEquals(at(9), rows[1].at)
+    }
+
     @Test
     fun `les libellés et icônes viennent du parcours du domaine`() {
         val definitions = Routes.forDirection(Direction.ALLER).milestones

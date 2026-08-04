@@ -44,6 +44,16 @@ class SegmentRowTest {
         assertEquals("Bureau", rows[3].toLabel)
     }
 
+    /**
+     * Le récapitulatif corrige un jalon en cliquant le tronçon qui s'y termine. Les
+     * quatre tronçons doivent donc couvrir les jalons 1 à 4 — le départ, lui, se corrige
+     * depuis le bandeau.
+     */
+    @Test
+    fun `les tronçons désignent leur jalon d'arrivée, du premier au dernier`() {
+        assertEquals(listOf(1, 2, 3, 4), trip().segmentRows().map { it.toIndex })
+    }
+
     @Test
     fun `les extrémités suivent le sens du trajet`() {
         val rows = trip(Direction.RETOUR).segmentRows()

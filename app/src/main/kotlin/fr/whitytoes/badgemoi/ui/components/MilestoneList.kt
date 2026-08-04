@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -30,13 +31,17 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import fr.whitytoes.badgemoi.R
 import fr.whitytoes.badgemoi.ui.formatDuration
+import fr.whitytoes.badgemoi.ui.formatTime
 import fr.whitytoes.badgemoi.ui.theme.numericTextStyle
 import fr.whitytoes.badgemoi.ui.trip.MilestoneRow
 import fr.whitytoes.badgemoi.ui.trip.MilestoneStatus
 import fr.whitytoes.badgemoi.ui.trip.isCorrectable
+import java.time.Instant
 import kotlin.time.Duration
 
 private val BadgeSize = 12.dp
@@ -45,19 +50,23 @@ private val RowMinHeight = 56.dp
 private val RowShape = RoundedCornerShape(12.dp)
 private val CurrentAccentWidth = 5.dp
 
+/** Largeur de la cellule d'heure : `HH:mm` en monospace, plus une marge de sécurité. */
+private val TimeWidth = 52.dp
+
 /** Fondu d'**extinction** du fond. L'allumage, lui, est instantané — voir [rowBackgroundColor]. */
 private const val PRESS_FADE_MILLIS = 120
 
 /**
  * Liste des jalons d'un trajet (cahier des charges §3.2).
  *
- * Chaque ligne affiche le libellé du jalon et la **durée écoulée depuis le jalon
- * précédent** — jamais l'heure absolue, réservée au bandeau. Ce n'est pas un détail de
- * présentation mais une règle d'ergonomie du cahier.
+ * Elle n'appartient qu'à l'**écran actif**, parce que c'en est une liste d'actions : on
+ * valide un jalon à la fois. Le récapitulatif, qui est une lecture, ne montre que des
+ * tronçons — voir [SegmentList] et l'écart 9 du §9.
  *
- * Le même composant sert au récapitulatif du lot 4 (§3.3), d'où deux paramètres
- * facultatifs : le récapitulatif est en lecture seule et figé, alors que l'écran actif
- * corrige un jalon (§3.5) et fait courir un chronomètre.
+ * Chaque ligne affiche le libellé du jalon, son **heure de passage** en retrait, et la
+ * **durée écoulée depuis le jalon précédent** en avant. Le §3.2 réservait l'heure au
+ * bandeau ; l'écart est assumé et consigné au §9, faute de quoi la ligne du départ n'a
+ * rien à montrer.
  *
  * @param onMilestoneClick ouvre la correction d'un jalon. Seuls les jalons **déjà
  *   tranchés** (posés ou ignorés) sont cliquables : corriger un jalon qu'on n'a pas
@@ -69,10 +78,9 @@ private const val PRESS_FADE_MILLIS = 120
  *   allumée tant que la fenêtre est là : c'est ce qui rattache la fenêtre à la ligne
  *   qu'elle modifie, une fois le doigt relevé.
  *
- * Le **défilement appartient à l'appelant**, d'où une simple [Column]. Le récapitulatif
- * empile cette liste sous celle des tronçons dans une même colonne défilante : une liste
- * paresseuse y serait mesurée sous une hauteur maximale infinie, ce que Compose refuse.
- * Cinq lignes de hauteur fixe ne justifiaient de toute façon pas la paresse.
+ * Le **défilement appartient à l'appelant**, d'où une simple [Column] : c'est l'écran qui
+ * décide de la zone défilante, la liste ne faisant qu'y prendre place. Cinq lignes de
+ * hauteur fixe ne justifient de toute façon pas la paresse.
  */
 @Composable
 fun MilestoneList(
@@ -159,6 +167,8 @@ private fun MilestoneListRow(
                 color = labelColor(row.status),
             )
         }
+        MilestoneTime(at = row.at)
+        Spacer(modifier = Modifier.size(12.dp))
         TrailingValue(row = row, runningSince = runningSince)
     }
 }
@@ -222,6 +232,29 @@ private fun StatusBadge(status: MilestoneStatus) {
                 .size(if (status == MilestoneStatus.CURRENT) CurrentBadgeSize else BadgeSize)
                 .clip(CircleShape)
                 .background(color),
+    )
+}
+
+/**
+ * Heure de passage, à gauche de la durée.
+ *
+ * Elle comble la première ligne — le jalon de départ n'a pas de tronçon avant lui, donc
+ * pas de durée — et distingue les deux natures que la ligne porte : un jalon est un
+ * instant, la durée qu'il affiche appartient au tronçon qui le précède.
+ *
+ * Discrète par la **graisse et la couleur**, pas par la taille : les styles du thème sont
+ * différenciés de la même façon, et la durée doit rester ce qu'on lit en premier. La
+ * largeur est fixe et la cellule reste posée même sans heure, sans quoi les durées
+ * cesseraient d'être alignées dès qu'un jalon n'est pas posé.
+ */
+@Composable
+private fun MilestoneTime(at: Instant?) {
+    Text(
+        text = at?.let { formatTime(it) }.orEmpty(),
+        style = numericTextStyle.copy(fontWeight = FontWeight.Medium),
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        textAlign = TextAlign.End,
+        modifier = Modifier.width(TimeWidth),
     )
 }
 
