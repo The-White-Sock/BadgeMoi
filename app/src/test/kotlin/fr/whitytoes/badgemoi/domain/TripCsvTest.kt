@@ -18,7 +18,7 @@ class TripCsvTest {
         direction: Direction = Direction.ALLER,
     ) = Trip.start(id = id, direction = direction, departureAt = departure)
 
-    private fun lines(csv: String) = csv.removePrefix("\uFEFF").split("\n")
+    private fun lines(csv: String) = csv.split("\n")
 
     /** Un fichier vide serait indistinguable d'un export raté : l'en-tête doit rester. */
     @Test
@@ -29,12 +29,55 @@ class TripCsvTest {
     }
 
     /**
-     * Excel lit le fichier en ANSI sans marque d'ordre des octets, et rend « Gare » ou
-     * « Départ » en mojibake.
+     * Le fichier n'a plus de marque d'ordre des octets : Google Sheets l'ignorait et
+     * l'affichait telle quelle (« ï»¿ ») dans la première cellule.
      */
     @Test
-    fun `le fichier commence par une marque d'ordre des octets`() {
-        assertTrue(TripCsv.serialize(emptyList(), PARIS).startsWith("\uFEFF"))
+    fun `le fichier ne commence par aucune marque d'ordre des octets`() {
+        assertEquals('"', TripCsv.serialize(emptyList(), PARIS).first())
+    }
+
+    /**
+     * Le cœur du correctif d'encodage : un fichier entièrement ASCII se lit à l'identique
+     * en UTF-8, en Latin-1 et en Windows-1252, donc aucun lecteur ne peut se tromper.
+     *
+     * Éprouvé sur un trajet complet — c'est l'export réel qui doit tenir la propriété, pas
+     * seulement la fonction de repli.
+     */
+    @Test
+    fun `l'export ne contient aucun octet non ASCII`() {
+        val complet =
+            (1 until Routes.MILESTONE_COUNT).fold(trip()) { trip, index ->
+                trip.poseMilestone(index, departure.plusSeconds(index * 600L))
+            }
+
+        val csv = TripCsv.serialize(listOf(complet, trip(id = "b", direction = Direction.RETOUR)), PARIS)
+
+        val horsAscii = csv.filter { it.code > 127 }
+        assertEquals("caractères hors ASCII : " + horsAscii, "", horsAscii)
+    }
+
+    /**
+     * Le jalon « Départ » est le seul libellé accentué du domaine : c'est lui que Sheets
+     * rendait « DÃ©part ». Il sort désormais sans accent.
+     */
+    @Test
+    fun `le jalon Départ est exporté sans accent`() {
+        val csv = TripCsv.serialize(listOf(trip()), PARIS)
+
+        assertEquals("\"Depart\"", lines(csv)[3].split(";")[2])
+    }
+
+    /**
+     * Le repli passe par la décomposition NFD plutôt que par une table d'équivalences :
+     * il doit donc valoir pour tout l'alphabet latin, pas pour le seul « é » d'aujourd'hui.
+     */
+    @Test
+    fun `le repli ASCII retire les accents sans toucher au reste`() {
+        assertEquals("Depart", TripCsv.fold("Départ"))
+        assertEquals("aeiou-cAE", TripCsv.fold("àêïôù-çÀÊ"))
+        assertEquals("Gare", TripCsv.fold("Gare"))
+        assertEquals("", TripCsv.fold(""))
     }
 
     /** Forme longue du POC : une ligne par jalon, pas une par trajet. */

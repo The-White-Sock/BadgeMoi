@@ -194,6 +194,7 @@ Remplacement de `localStorage` par :
 
 ### 4.5 Export CSV
 - Remplacement du téléchargement navigateur par le **Storage Access Framework** (`Intent.ACTION_CREATE_DOCUMENT`) ou une **feuille de partage** (`Intent.ACTION_SEND`, type `text/csv`) permettant d'envoyer le fichier vers Drive, e-mail, etc.
+- Le fichier est écrit en **ASCII pur** (voir §9, écart 13) : il se lit à l'identique quel que soit l'encodage supposé par le lecteur.
 
 ### 4.6 Thème jour/nuit
 - Conserver la bascule manuelle existante (persistée), **et** proposer un mode "suivre le thème système" en option — cohérent avec les conventions Android, absent de la version web faute d'API fiable côté navigateur mobile.
@@ -294,10 +295,11 @@ Règle de contraste à respecter dans la traduction Compose : tout texte/icône 
 | 10 | Reprise d'un trajet | **Fenêtre sur l'écran des jalons** — plus d'écran d'accueil de reprise, voir #93 |
 | 11 | Liste des jalons | **Affichage partiel et ancré en bas** — tranchés, courant, un seul à venir, voir #101 |
 | 12 | Défilement de l'Historique | **Trois blocs indépendants** au lieu d'une zone défilante unique, voir #107 |
+| 13 | Encodage de l'export CSV | **Fichier entièrement ASCII**, sans BOM UTF-8 — les accents sont repliés (« Départ » → « Depart ») |
 
-### Écarts assumés au périmètre d'origine (6 à 12)
+### Écarts assumés au périmètre d'origine (6 à 13)
 
-Ces sept points **contredisent la lettre** des sections citées. Ils sont le fruit d'un
+Ces huit points **contredisent la lettre** des sections citées. Ils sont le fruit d'un
 test sur appareil et ont été validés en connaissance de cause ; ils sont consignés ici
 parce que le script `scripts/check-docs-coherence.sh` ne vérifie que des invariants
 mécaniques — versions, chemins, liens — et ne verrait pas une contradiction de prose.
@@ -389,6 +391,25 @@ voulait justement les comparer.
 Les zones fixes haute et basse restent intactes : le motif de la règle, lui, est préservé.
 La contrepartie est que deux zones défilantes deviennent étroites à fort grossissement de
 police — à regarder au lot 7, avec les tests sur petit écran.
+
+**13. L'export CSV est en ASCII, sans BOM.** Le POC écrivait une marque d'ordre des octets
+UTF-8 en tête de fichier, seul moyen qu'Excel n'affiche pas « Départ » en mojibake. Le
+portage l'avait reprise telle quelle.
+
+À l'usage, Google Sheets **ignore** cette marque : il décode le fichier en Latin-1, affiche
+donc la marque elle-même dans la première cellule (« ï»¿ ») et manque l'accent malgré tout
+(« DÃ©part »). Un fichier, deux symptômes, et aucun levier côté application — c'est le
+lecteur qui choisit son décodage.
+
+Le constat qui tranche est que l'accent de « Départ » était le **seul** octet non ASCII de
+tout l'export : en-tête technique, sens, dates ISO et heures le sont déjà. Un détecteur
+d'encodage n'avait donc presque rien pour trancher, et il a tranché de travers.
+
+On le retire à la source plutôt que de parier sur un encodage. Un fichier ASCII se lit à
+l'identique en UTF-8, en Latin-1 et en Windows-1252 : la question de l'encodage ne se pose
+plus, chez aucun lecteur. La perte — « Depart » sans accent — ne porte que sur le fichier,
+l'écran gardant son libellé ; et l'export a de toute façon déjà son propre vocabulaire,
+son en-tête étant en minuscules techniques.
 
 ### Grain de l'ondulation d'appui
 

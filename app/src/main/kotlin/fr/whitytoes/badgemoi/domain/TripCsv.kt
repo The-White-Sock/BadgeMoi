@@ -1,5 +1,6 @@
 package fr.whitytoes.badgemoi.domain
 
+import java.text.Normalizer
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -13,26 +14,30 @@ import java.util.Locale
  * flux, aucune dépendance Android — c'est ici que se logent les erreurs de format, et
  * c'est donc ici qu'il faut pouvoir tester.
  *
- * Le format reprend quatre décisions du POC, dont aucune n'est cosmétique :
+ * Le format reprend trois décisions du POC, dont aucune n'est cosmétique :
  *
  * - séparateur **`;`** et non la virgule, seul séparateur qu'un tableur en locale
  *   française ouvre sans boîte de dialogue d'import ;
  * - **chaque cellule entre guillemets**, guillemets internes doublés — un libellé
  *   contenant un `;` corromprait sinon toutes les colonnes suivantes, en silence ;
- * - **BOM UTF-8** en tête, sans lequel Excel rend les accents en mojibake ;
  * - une ligne **par jalon et par trajet**, et non par trajet : c'est la forme longue,
  *   celle qu'un tableur croise et filtre.
+ *
+ * S'y ajoute une quatrième décision, qui **remplace** le BOM UTF-8 du POC : le fichier est
+ * entièrement **ASCII** (voir [fold]). Le POC écrivait cette marque d'ordre des octets pour
+ * qu'Excel n'affiche pas « Départ » en mojibake ; à l'usage, Google Sheets l'ignore, décode
+ * le fichier en Latin-1, et affiche donc la marque elle-même dans la première cellule
+ * (« ï»¿ ») **en plus** de manquer l'accent. Or cet accent était le seul octet non ASCII de
+ * tout l'export : le retirer à la source règle les deux symptômes d'un coup. Un fichier
+ * ASCII se lit à l'identique en UTF-8, en Latin-1 et en Windows-1252 — il n'y a plus rien
+ * à deviner pour le lecteur, donc plus rien à deviner de travers.
  */
 object TripCsv {
     private const val SEPARATOR = ";"
     private const val LINE_SEPARATOR = "\n"
 
-    /**
-     * Marque d'ordre des octets. Excel lit le fichier en ANSI sans elle, et les accents
-     * ressortent en mojibake. Écrite en séquence d'échappement : le caractère lui-même
-     * est invisible dans le source, donc impossible à relire ou à corriger sans outil.
-     */
-    private const val BOM = "\uFEFF"
+    /** Signes diacritiques isolés par la décomposition NFD : accents, cédilles, trémas. */
+    private val Diacritics = Regex("\\p{Mn}+")
 
     private val HEADER = listOf("direction", "date", "jalon", "heure")
 
@@ -83,7 +88,9 @@ object TripCsv {
                 }
             }
 
-        return BOM + rows.joinToString(LINE_SEPARATOR) { row -> row.joinToString(SEPARATOR, transform = ::escape) }
+        return rows.joinToString(LINE_SEPARATOR) { row ->
+            row.joinToString(SEPARATOR) { cell -> escape(fold(cell)) }
+        }
     }
 
     /** Nom proposé au sélecteur : `trajet-historique-AAAA-MM-JJ.csv`, comme le POC. */
@@ -102,4 +109,23 @@ object TripCsv {
      * règle qu'il prétend vérifier.
      */
     internal fun escape(cell: String): String = "\"" + cell.replace("\"", "\"\"") + "\""
+
+    /**
+     * Retire les accents d'une cellule : « Départ » devient « Depart ».
+     *
+     * Le procédé est la décomposition **NFD**, qui sépare une lettre accentuée en lettre
+     * de base + signe diacritique, suivie de la suppression de ces signes. On ne
+     * transcrit pas caractère par caractère : une table d'équivalences serait à compléter
+     * à chaque libellé nouveau, là où la décomposition vaut pour tout l'alphabet latin.
+     *
+     * C'est une perte assumée, et elle ne porte que sur le fichier : l'écran continue
+     * d'afficher « Départ ». L'export est une donnée destinée à un tableur, pas une
+     * copie de l'interface — il a d'ailleurs déjà son propre vocabulaire, l'en-tête étant
+     * en minuscules techniques.
+     *
+     * Limite connue : un caractère latin sans forme décomposée (« œ », « ß ») traverserait
+     * ce repli intact et rouvrirait la question de l'encodage. Aucun libellé n'en contient
+     * aujourd'hui, et ils sont des constantes de [Routes] — pas une saisie utilisateur.
+     */
+    internal fun fold(cell: String): String = Normalizer.normalize(cell, Normalizer.Form.NFD).replace(Diacritics, "")
 }
