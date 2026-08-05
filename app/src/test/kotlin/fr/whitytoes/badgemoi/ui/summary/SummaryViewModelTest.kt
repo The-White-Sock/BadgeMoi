@@ -308,12 +308,8 @@ class SummaryViewModelTest {
             state.value = state.value + trip
         }
 
-        override suspend fun delete(id: String) {
-            state.value = state.value.filterNot { it.id == id }
-        }
-
-        override suspend fun clear(direction: Direction) {
-            state.value = state.value.filterNot { it.direction == direction }
+        override suspend fun delete(ids: Collection<String>) {
+            state.value = state.value.filterNot { it.id in ids }
         }
     }
 }

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -53,25 +54,25 @@ private val RowMinHeight = 48.dp
  * liste paresseuse y serait mesurée sous une hauteur maximale infinie, ce que Compose
  * refuse.
  *
- * @param onTripClick sélectionne un trajet en vue de sa suppression. `null` rend la liste
- *   inerte — c'est ce qu'attendent les aperçus.
- * @param selectedId trajet dont la fenêtre de suppression est ouverte. Sa ligne reste
- *   allumée tant qu'elle est là : c'est ce qui rattache la fenêtre à la ligne qu'elle va
- *   détruire, une fois le doigt relevé.
+ * @param onTripClick action d'une ligne. Hors mode sélection elle **ouvre** le trajet ;
+ *   en mode sélection elle le coche ou le décoche. `null` rend la liste inerte.
+ * @param selectedIds identifiants cochés, `null` **hors** du mode sélection. La
+ *   distinction porte l'affichage : une coche n'apparaît que dans ce mode, y compris
+ *   vide, sans quoi rien ne dirait qu'on y est entré.
  */
 @Composable
 fun RecentTripList(
     rows: List<RecentTripRow>,
     modifier: Modifier = Modifier,
     onTripClick: ((String) -> Unit)? = null,
-    selectedId: String? = null,
+    selectedIds: Set<String>? = null,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         rows.forEachIndexed { position, row ->
             RecentTripListRow(
                 row = row,
                 onClick = onTripClick?.let { { it(row.id) } },
-                selected = row.id == selectedId,
+                selected = selectedIds?.contains(row.id),
             )
             if (position < rows.lastIndex) {
                 HorizontalDivider(color = MaterialTheme.colorScheme.outline)
@@ -84,7 +85,7 @@ fun RecentTripList(
 private fun RecentTripListRow(
     row: RecentTripRow,
     onClick: (() -> Unit)?,
-    selected: Boolean,
+    selected: Boolean?,
 ) {
     val colors = MaterialTheme.colorScheme
 
@@ -103,12 +104,18 @@ private fun RecentTripListRow(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .background(if (selected) colors.secondaryContainer else Color.Transparent)
+                .background(if (selected == true) colors.secondaryContainer else Color.Transparent)
                 .then(clickable)
                 .heightIn(min = RowMinHeight)
                 .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        // La case n'existe qu'en mode sélection : c'est elle qui annonce le mode, et son
+        // absence qui dit qu'un appui ouvrira le trajet.
+        if (selected != null) {
+            Checkbox(checked = selected, onCheckedChange = null)
+            Spacer(modifier = Modifier.size(8.dp))
+        }
         Text(
             text = formatDate(row.at),
             style = MaterialTheme.typography.bodyLarge.numeric(),
@@ -184,6 +191,19 @@ private fun previewRows(): List<RecentTripRow> {
 @Composable
 private fun RecentTripListNightPreview() {
     BadgeMoiTheme(darkTheme = true) { RecentTripList(rows = previewRows()) }
+}
+
+/** Mode sélection, deux trajets cochés : les cases s'affichent même quand rien n'est coché. */
+@Preview(name = "Trajets récents — sélection", showBackground = true)
+@Composable
+private fun RecentTripListSelectionPreview() {
+    BadgeMoiTheme(darkTheme = true) {
+        RecentTripList(
+            rows = previewRows(),
+            onTripClick = {},
+            selectedIds = setOf("1", "3"),
+        )
+    }
 }
 
 @Preview(name = "Trajets récents — jour", showBackground = true)

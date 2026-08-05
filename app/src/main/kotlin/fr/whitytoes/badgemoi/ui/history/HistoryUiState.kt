@@ -22,13 +22,17 @@ sealed interface HistoryUiState {
      *   transporter deux fois.
      * @property recentTrips les dix derniers trajets de ce sens, du plus récent au plus
      *   ancien.
-     * @property purging une purge est en cours d'écriture. Rend le verrou du ViewModel
-     *   **visible**, pour que l'écran puisse désactiver le bouton plutôt que d'ignorer
-     *   silencieusement l'appui suivant.
+     * @property selectedIds identifiants cochés en **mode sélection**. `null` hors de ce
+     *   mode : distinguer l'absence de mode d'une sélection vide est ce qui permet à
+     *   l'écran de savoir s'il doit afficher des coches et si « Supprimer » a une prise.
+     *   La sélection peut désigner des trajets **au-delà des dix affichés**, « Tout
+     *   sélectionner » portant sur l'ensemble du sens.
      */
     data class Ready(
         val statistics: DirectionStatistics,
         val recentTrips: List<RecentTripRow>,
-        val purging: Boolean = false,
-    ) : HistoryUiState
+        val selectedIds: Set<String>? = null,
+    ) : HistoryUiState {
+        val selecting: Boolean get() = selectedIds != null
+    }
 }

@@ -1,6 +1,5 @@
 package fr.whitytoes.badgemoi.data.local
 
-import fr.whitytoes.badgemoi.domain.Direction
 import fr.whitytoes.badgemoi.domain.Trip
 import fr.whitytoes.badgemoi.domain.TripArchiveRepository
 import kotlinx.coroutines.flow.Flow
@@ -18,7 +17,5 @@ class RoomTripArchiveRepository
 
         override suspend fun add(trip: Trip) = dao.insert(trip.toEntity())
 
-        override suspend fun delete(id: String) = dao.delete(id)
-
-        override suspend fun clear(direction: Direction) = dao.clear(direction.name)
+        override suspend fun delete(ids: Collection<String>) = dao.delete(ids)
     }

@@ -6,10 +6,10 @@ import fr.whitytoes.badgemoi.domain.Direction
 import fr.whitytoes.badgemoi.domain.Routes
 import fr.whitytoes.badgemoi.domain.Trip
 import fr.whitytoes.badgemoi.domain.TripArchiveRepository
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -18,6 +18,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -64,6 +65,13 @@ class HistoryViewModelTest {
 
     private fun ready(model: HistoryViewModel) = model.uiState.value as HistoryUiState.Ready
 
+    /** Deux sens dans l'archive : le socle de la plupart des cas. */
+    private fun bothDirections() =
+        FakeArchiveRepository(
+            trip("a", durationMinutes = 30),
+            trip("b", durationMinutes = 50, direction = Direction.RETOUR),
+        )
+
     @Test
     fun `l'état initial est le chargement`() =
         runTest(dispatcher) {
@@ -73,9 +81,9 @@ class HistoryViewModelTest {
         }
 
     /**
-     * L'archive vide n'a pas d'état à elle : c'est un [HistoryUiState.Ready] sans
-     * trajet. Elle doit rester **distincte du chargement**, faute de quoi le premier
-     * lancement annoncerait « aucun trajet » avant d'avoir lu le dépôt.
+     * L'archive vide n'a pas d'état à elle : c'est un [HistoryUiState.Ready] sans trajet.
+     * Elle doit rester **distincte du chargement**, faute de quoi le premier lancement
+     * annoncerait « aucun trajet » avant d'avoir lu le dépôt.
      */
     @Test
     fun `une archive vide donne des moyennes nulles et zéro trajet`() =
@@ -93,13 +101,7 @@ class HistoryViewModelTest {
     @Test
     fun `les moyennes portent sur le sens sélectionné`() =
         runTest(dispatcher) {
-            val model =
-                viewModel(
-                    FakeArchiveRepository(
-                        trip("a", durationMinutes = 30),
-                        trip("b", durationMinutes = 50, direction = Direction.RETOUR),
-                    ),
-                )
+            val model = viewModel(bothDirections())
 
             advanceUntilIdle()
 
@@ -113,11 +115,7 @@ class HistoryViewModelTest {
     @Test
     fun `changer de sens recalcule sans relire le dépôt`() =
         runTest(dispatcher) {
-            val archive =
-                FakeArchiveRepository(
-                    trip("a", durationMinutes = 30),
-                    trip("b", durationMinutes = 50, direction = Direction.RETOUR),
-                )
+            val archive = bothDirections()
             val model = viewModel(archive)
             advanceUntilIdle()
             val collectionsBefore = archive.collectionCount
@@ -131,172 +129,9 @@ class HistoryViewModelTest {
         }
 
     @Test
-    fun `purger vide l'archive et remet les statistiques à zéro`() =
-        runTest(dispatcher) {
-            val archive = FakeArchiveRepository(trip("a", durationMinutes = 30))
-            val model = viewModel(archive)
-            advanceUntilIdle()
-
-            model.clearArchive()
-            advanceUntilIdle()
-
-            assertEquals(emptyList<Trip>(), archive.trips)
-            assertEquals(0, ready(model).statistics.tripCount)
-            assertNull(ready(model).statistics.totalAverage)
-        }
-
-    /**
-     * Le défaut relevé au test sur appareil : « Effacer » vidait toute l'archive alors
-     * que l'écran est par sens de bout en bout. Purger l'Aller détruisait donc des
-     * trajets Retour que rien n'avait montrés.
-     */
-    @Test
-    fun `purger n'emporte que le sens affiché`() =
-        runTest(dispatcher) {
-            val archive =
-                FakeArchiveRepository(
-                    trip("aller", durationMinutes = 30),
-                    trip("retour", durationMinutes = 50, direction = Direction.RETOUR),
-                )
-            val model = viewModel(archive)
-            advanceUntilIdle()
-
-            model.clearArchive()
-            advanceUntilIdle()
-
-            assertEquals(listOf(Direction.ALLER), archive.clearedDirections)
-            assertEquals(listOf("retour"), archive.trips.map { it.id })
-        }
-
-    @Test
-    fun `purger porte sur le sens venant d'être sélectionné`() =
-        runTest(dispatcher) {
-            val archive =
-                FakeArchiveRepository(
-                    trip("aller", durationMinutes = 30),
-                    trip("retour", durationMinutes = 50, direction = Direction.RETOUR),
-                )
-            val model = viewModel(archive)
-            advanceUntilIdle()
-
-            model.selectDirection(Direction.RETOUR)
-            model.clearArchive()
-            advanceUntilIdle()
-
-            assertEquals(listOf(Direction.RETOUR), archive.clearedDirections)
-            assertEquals(listOf("aller"), archive.trips.map { it.id })
-        }
-
-    /**
-     * `TripArchiveRepository.delete` existait depuis le lot 1 sans appelant. Il en a un :
-     * la suppression d'un trajet isolé depuis la liste des récents.
-     */
-    @Test
-    fun `supprimer un trajet ne retire que celui-là`() =
-        runTest(dispatcher) {
-            val archive =
-                FakeArchiveRepository(
-                    trip("garde", durationMinutes = 20),
-                    trip("jette", durationMinutes = 40, daysAgo = 1),
-                    trip("retour", durationMinutes = 50, direction = Direction.RETOUR),
-                )
-            val model = viewModel(archive)
-            advanceUntilIdle()
-
-            model.deleteTrip("jette")
-            advanceUntilIdle()
-
-            assertEquals(listOf("garde", "retour"), archive.trips.map { it.id })
-            assertEquals("la moyenne suit le retrait", 20.minutes, ready(model).statistics.totalAverage)
-            assertEquals(listOf("garde"), ready(model).recentTrips.map { it.id })
-        }
-
-    /** Retirer le dernier trajet d'un sens ramène l'écran à son état vide. */
-    @Test
-    fun `supprimer le dernier trajet d'un sens vide ses statistiques`() =
-        runTest(dispatcher) {
-            val archive = FakeArchiveRepository(trip("seul", durationMinutes = 30))
-            val model = viewModel(archive)
-            advanceUntilIdle()
-
-            model.deleteTrip("seul")
-            advanceUntilIdle()
-
-            assertEquals(0, ready(model).statistics.tripCount)
-            assertNull(ready(model).statistics.totalAverage)
-        }
-
-    /**
-     * Purge **partielle** : les moyennes doivent suivre le retrait. La propriété découle
-     * de la réactivité du flux, ce qui se vérifie plutôt que se suppose.
-     */
-    @Test
-    fun `supprimer un trajet ajuste la moyenne`() =
-        runTest(dispatcher) {
-            val archive =
-                FakeArchiveRepository(
-                    trip("court", durationMinutes = 20),
-                    trip("long", durationMinutes = 40, daysAgo = 1),
-                )
-            val model = viewModel(archive)
-            advanceUntilIdle()
-            assertEquals(30.minutes, ready(model).statistics.totalAverage)
-
-            archive.delete("long")
-            advanceUntilIdle()
-
-            assertEquals(20.minutes, ready(model).statistics.totalAverage)
-            assertEquals(listOf("court"), ready(model).recentTrips.map { it.id })
-        }
-
-    @Test
-    fun `un double appui ne purge qu'une fois`() =
-        runTest(dispatcher) {
-            val archive = FakeArchiveRepository(trip("a", durationMinutes = 30))
-            val model = viewModel(archive)
-            advanceUntilIdle()
-
-            model.clearArchive()
-            model.clearArchive()
-            advanceUntilIdle()
-
-            assertEquals(1, archive.clearCount)
-        }
-
-    /**
-     * Le verrou doit être **visible** et pas seulement effectif, pour que l'écran puisse
-     * désactiver le bouton. L'écriture est retenue par une barrière, sans quoi tout
-     * s'enchaînerait dans le même tour et l'état intermédiaire serait inobservable.
-     */
-    @Test
-    fun `la purge est signalée dans l'état, pour que le bouton se désactive`() =
-        runTest(dispatcher) {
-            val barriere = CompletableDeferred<Unit>()
-            val archive = FakeArchiveRepository(trip("a", durationMinutes = 30), barriere = barriere)
-            val model = viewModel(archive)
-            advanceUntilIdle()
-
-            model.clearArchive()
-            advanceUntilIdle()
-
-            assertTrue("pendant l'écriture", ready(model).purging)
-
-            barriere.complete(Unit)
-            advanceUntilIdle()
-
-            assertEquals("une fois l'écriture finie", false, ready(model).purging)
-        }
-
-    @Test
     fun `les trajets récents suivent le sens sélectionné`() =
         runTest(dispatcher) {
-            val model =
-                viewModel(
-                    FakeArchiveRepository(
-                        trip("a", durationMinutes = 30),
-                        trip("b", durationMinutes = 50, direction = Direction.RETOUR),
-                    ),
-                )
+            val model = viewModel(bothDirections())
             advanceUntilIdle()
 
             assertEquals(listOf("a"), ready(model).recentTrips.map { it.id })
@@ -308,19 +143,191 @@ class HistoryViewModelTest {
         }
 
     /**
+     * Purge **partielle** : les moyennes doivent suivre le retrait. La propriété découle
+     * de la réactivité du flux, ce qui se vérifie plutôt que se suppose.
+     */
+    @Test
+    fun `retirer un trajet ajuste la moyenne`() =
+        runTest(dispatcher) {
+            val archive =
+                FakeArchiveRepository(
+                    trip("court", durationMinutes = 20),
+                    trip("long", durationMinutes = 40, daysAgo = 1),
+                )
+            val model = viewModel(archive)
+            advanceUntilIdle()
+            assertEquals(30.minutes, ready(model).statistics.totalAverage)
+
+            archive.delete(setOf("long"))
+            advanceUntilIdle()
+
+            assertEquals(20.minutes, ready(model).statistics.totalAverage)
+            assertEquals(listOf("court"), ready(model).recentTrips.map { it.id })
+        }
+
+    // --- Mode sélection ---
+
+    /**
+     * Entrer dans le mode et n'y rien cocher sont deux états distincts, et l'écran doit
+     * les distinguer : `null` ne montre aucune case, l'ensemble vide en montre.
+     */
+    @Test
+    fun `le mode sélection s'ouvre vide et se distingue de son absence`() =
+        runTest(dispatcher) {
+            val model = viewModel(bothDirections())
+            advanceUntilIdle()
+            assertFalse("hors du mode au départ", ready(model).selecting)
+            assertNull(ready(model).selectedIds)
+
+            model.startSelection()
+            advanceUntilIdle()
+
+            assertTrue(ready(model).selecting)
+            assertEquals(emptySet<String>(), ready(model).selectedIds)
+        }
+
+    @Test
+    fun `cocher puis décocher un trajet`() =
+        runTest(dispatcher) {
+            val model = viewModel(bothDirections())
+            advanceUntilIdle()
+            model.startSelection()
+
+            model.toggleTripSelection("a")
+            advanceUntilIdle()
+            assertEquals(setOf("a"), ready(model).selectedIds)
+
+            model.toggleTripSelection("a")
+            advanceUntilIdle()
+            assertEquals(emptySet<String>(), ready(model).selectedIds)
+        }
+
+    /** Hors du mode, un appui sur une ligne ne coche rien : il ouvrira le trajet. */
+    @Test
+    fun `cocher est sans effet hors du mode sélection`() =
+        runTest(dispatcher) {
+            val model = viewModel(bothDirections())
+            advanceUntilIdle()
+
+            model.toggleTripSelection("a")
+            advanceUntilIdle()
+
+            assertNull(ready(model).selectedIds)
+        }
+
+    /**
+     * « Tout sélectionner » remplace la purge par sens : il doit donc porter sur
+     * **l'ensemble du sens**, y compris les trajets au-delà des dix affichés.
+     */
+    @Test
+    fun `tout sélectionner couvre le sens entier, au-delà des dix affichés`() =
+        runTest(dispatcher) {
+            val trips = (0 until 14).map { trip("t$it", durationMinutes = 30, daysAgo = it.toLong()) }
+            val archive = FakeArchiveRepository(*trips.toTypedArray())
+            val model = viewModel(archive)
+            advanceUntilIdle()
+            assertEquals("la liste n'en montre que dix", 10, ready(model).recentTrips.size)
+
+            model.startSelection()
+            model.selectAllTrips()
+            advanceUntilIdle()
+
+            assertEquals(14, ready(model).selectedIds?.size)
+        }
+
+    @Test
+    fun `tout sélectionner ne déborde pas sur l'autre sens`() =
+        runTest(dispatcher) {
+            val model = viewModel(bothDirections())
+            advanceUntilIdle()
+            model.startSelection()
+
+            model.selectAllTrips()
+            advanceUntilIdle()
+
+            assertEquals(setOf("a"), ready(model).selectedIds)
+        }
+
+    @Test
+    fun `supprimer retire les trajets cochés et sort du mode`() =
+        runTest(dispatcher) {
+            val archive =
+                FakeArchiveRepository(
+                    trip("garde", durationMinutes = 20),
+                    trip("jette", durationMinutes = 40, daysAgo = 1),
+                )
+            val model = viewModel(archive)
+            advanceUntilIdle()
+            model.startSelection()
+            model.toggleTripSelection("jette")
+
+            model.deleteSelectedTrips()
+            advanceUntilIdle()
+
+            assertEquals(listOf("jette"), archive.deletedIds)
+            assertEquals(listOf("garde"), archive.trips.map { it.id })
+            assertNull("le mode se referme", ready(model).selectedIds)
+        }
+
+    @Test
+    fun `supprimer sans rien de coché ne touche pas à l'archive`() =
+        runTest(dispatcher) {
+            val archive = bothDirections()
+            val model = viewModel(archive)
+            advanceUntilIdle()
+            model.startSelection()
+
+            model.deleteSelectedTrips()
+            advanceUntilIdle()
+
+            assertEquals(emptyList<String>(), archive.deletedIds)
+            assertTrue("on reste en mode sélection", ready(model).selecting)
+        }
+
+    @Test
+    fun `annuler la sélection ne détruit rien`() =
+        runTest(dispatcher) {
+            val archive = bothDirections()
+            val model = viewModel(archive)
+            advanceUntilIdle()
+            model.startSelection()
+            model.toggleTripSelection("a")
+
+            model.cancelSelection()
+            advanceUntilIdle()
+
+            assertEquals(emptyList<String>(), archive.deletedIds)
+            assertNull(ready(model).selectedIds)
+        }
+
+    /**
+     * Une sélection oubliée sur l'Aller ne doit pas survivre au passage sur le Retour :
+     * le prochain « Supprimer » détruirait alors des trajets qu'on ne regarde plus.
+     */
+    @Test
+    fun `changer de sens vide la sélection`() =
+        runTest(dispatcher) {
+            val model = viewModel(bothDirections())
+            advanceUntilIdle()
+            model.startSelection()
+            model.toggleTripSelection("a")
+
+            model.selectDirection(Direction.RETOUR)
+            advanceUntilIdle()
+
+            assertNull(ready(model).selectedIds)
+        }
+
+    // --- Export ---
+
+    /**
      * L'export porte sur **toute** l'archive, les deux sens confondus, contrairement aux
      * statistiques. Le sens sélectionné ne doit donc rien y changer.
      */
     @Test
     fun `l'export couvre les deux sens, quel que soit celui affiché`() =
         runTest(dispatcher) {
-            val model =
-                viewModel(
-                    FakeArchiveRepository(
-                        trip("a", durationMinutes = 30),
-                        trip("b", durationMinutes = 50, direction = Direction.RETOUR),
-                    ),
-                )
+            val model = viewModel(bothDirections())
             advanceUntilIdle()
             model.selectDirection(Direction.ALLER)
 
@@ -340,16 +347,13 @@ class HistoryViewModelTest {
 
     private class FakeArchiveRepository(
         vararg initial: Trip,
-        private val barriere: CompletableDeferred<Unit>? = null,
     ) : TripArchiveRepository {
         private val state = MutableStateFlow(initial.toList())
 
         val trips: List<Trip> get() = state.value
-        var clearCount: Int = 0
-            private set
 
-        /** Sens effectivement purgés : la purge ne doit jamais déborder du sens affiché. */
-        val clearedDirections = mutableListOf<Direction>()
+        /** Identifiants effectivement supprimés, dans l'ordre des appels. */
+        val deletedIds = mutableListOf<String>()
 
         /** Compte les **abonnements** : une bascule de sens ne doit pas en produire. */
         var collectionCount: Int = 0
@@ -357,7 +361,7 @@ class HistoryViewModelTest {
 
         override fun observeAll(): Flow<List<Trip>> =
             object : Flow<List<Trip>> {
-                override suspend fun collect(collector: kotlinx.coroutines.flow.FlowCollector<List<Trip>>) {
+                override suspend fun collect(collector: FlowCollector<List<Trip>>) {
                     collectionCount++
                     state.collect(collector)
                 }
@@ -367,15 +371,9 @@ class HistoryViewModelTest {
             state.value = state.value + trip
         }
 
-        override suspend fun delete(id: String) {
-            state.value = state.value.filterNot { it.id == id }
-        }
-
-        override suspend fun clear(direction: Direction) {
-            barriere?.await()
-            clearCount++
-            clearedDirections += direction
-            state.value = state.value.filterNot { it.direction == direction }
+        override suspend fun delete(ids: Collection<String>) {
+            deletedIds += ids
+            state.value = state.value.filterNot { it.id in ids }
         }
     }
 }
