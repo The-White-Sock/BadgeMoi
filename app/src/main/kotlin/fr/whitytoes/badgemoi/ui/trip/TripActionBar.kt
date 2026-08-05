@@ -59,6 +59,8 @@ private val ActionShape = RoundedCornerShape(16.dp)
  * sans horodatage, donc un appui **maintenu** de [SKIP_HOLD_MILLIS] ms. Le cahier §1.4
  * en donne la raison — éviter les activations accidentelles dues aux vibrations du
  * board. Le remplacer par un appui simple réintroduirait le bug qu'il corrige.
+ *
+ * « Passer » est à **gauche**, « Valider » à droite : ordre retenu au test sur appareil.
  */
 @Composable
 fun TripActionBar(
@@ -74,16 +76,16 @@ fun TripActionBar(
         modifier = modifier.fillMaxWidth().padding(16.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        ValidateButton(
-            onValidate = {
-                haptics.milestoneValidated()
-                onValidate()
-            },
-        )
         SkipButton(
             onSkip = {
                 haptics.milestoneSkipped()
                 onSkip()
+            },
+        )
+        ValidateButton(
+            onValidate = {
+                haptics.milestoneValidated()
+                onValidate()
             },
         )
     }

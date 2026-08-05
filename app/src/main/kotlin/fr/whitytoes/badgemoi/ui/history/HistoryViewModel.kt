@@ -92,7 +92,10 @@ class HistoryViewModel
         suspend fun csvContent(): String = TripCsv.serialize(archiveRepository.observeAll().first(), clock.zone)
 
         /**
-         * Vide l'archive.
+         * Vide l'archive du **sens affiché**, et de lui seul.
+         *
+         * L'écran est par sens de bout en bout : purger les deux détruirait des trajets
+         * que rien n'avait montrés à l'utilisateur.
          *
          * La confirmation appartient à l'écran — le bouton du POC s'arme au premier appui
          * et se désarme seul au bout de trois secondes. Ce verrou-ci est d'une autre
@@ -100,9 +103,10 @@ class HistoryViewModel
          */
         fun clearArchive() {
             if (!purging.compareAndSet(expect = false, update = true)) return
+            val direction = selectedDirection.value
             viewModelScope.launch {
                 try {
-                    archiveRepository.clear()
+                    archiveRepository.clear(direction)
                 } finally {
                     purging.value = false
                 }

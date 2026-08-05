@@ -312,8 +312,8 @@ class SummaryViewModelTest {
             state.value = state.value.filterNot { it.id == id }
         }
 
-        override suspend fun clear() {
-            state.value = emptyList()
+        override suspend fun clear(direction: Direction) {
+            state.value = state.value.filterNot { it.direction == direction }
         }
     }
 }

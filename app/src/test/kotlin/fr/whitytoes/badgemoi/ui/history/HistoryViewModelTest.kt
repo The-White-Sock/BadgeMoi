@@ -146,6 +146,48 @@ class HistoryViewModelTest {
         }
 
     /**
+     * Le défaut relevé au test sur appareil : « Effacer » vidait toute l'archive alors
+     * que l'écran est par sens de bout en bout. Purger l'Aller détruisait donc des
+     * trajets Retour que rien n'avait montrés.
+     */
+    @Test
+    fun `purger n'emporte que le sens affiché`() =
+        runTest(dispatcher) {
+            val archive =
+                FakeArchiveRepository(
+                    trip("aller", durationMinutes = 30),
+                    trip("retour", durationMinutes = 50, direction = Direction.RETOUR),
+                )
+            val model = viewModel(archive)
+            advanceUntilIdle()
+
+            model.clearArchive()
+            advanceUntilIdle()
+
+            assertEquals(listOf(Direction.ALLER), archive.clearedDirections)
+            assertEquals(listOf("retour"), archive.trips.map { it.id })
+        }
+
+    @Test
+    fun `purger porte sur le sens venant d'être sélectionné`() =
+        runTest(dispatcher) {
+            val archive =
+                FakeArchiveRepository(
+                    trip("aller", durationMinutes = 30),
+                    trip("retour", durationMinutes = 50, direction = Direction.RETOUR),
+                )
+            val model = viewModel(archive)
+            advanceUntilIdle()
+
+            model.selectDirection(Direction.RETOUR)
+            model.clearArchive()
+            advanceUntilIdle()
+
+            assertEquals(listOf(Direction.RETOUR), archive.clearedDirections)
+            assertEquals(listOf("aller"), archive.trips.map { it.id })
+        }
+
+    /**
      * Purge **partielle** : les moyennes doivent suivre le retrait. La propriété découle
      * de la réactivité du flux, ce qui se vérifie plutôt que se suppose.
      */
@@ -267,6 +309,9 @@ class HistoryViewModelTest {
         var clearCount: Int = 0
             private set
 
+        /** Sens effectivement purgés : la purge ne doit jamais déborder du sens affiché. */
+        val clearedDirections = mutableListOf<Direction>()
+
         /** Compte les **abonnements** : une bascule de sens ne doit pas en produire. */
         var collectionCount: Int = 0
             private set
@@ -287,10 +332,11 @@ class HistoryViewModelTest {
             state.value = state.value.filterNot { it.id == id }
         }
 
-        override suspend fun clear() {
+        override suspend fun clear(direction: Direction) {
             barriere?.await()
             clearCount++
-            state.value = emptyList()
+            clearedDirections += direction
+            state.value = state.value.filterNot { it.direction == direction }
         }
     }
 }

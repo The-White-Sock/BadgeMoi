@@ -104,7 +104,7 @@ verrouillée en **portrait**.
 - Bandeau Départ / Écoulé : heure de départ figée, durée écoulée en direct tant que le dernier jalon n'est pas posé.
 - Mini-indicateur "temps depuis le dernier jalon", discret, mis à jour chaque seconde.
 - Liste des jalons : icône + libellé court + **heure de passage** en retrait + **temps écoulé depuis le jalon précédent** en avant. Correction possible par tap sur une ligne. L'heure figurait à l'origine au seul bandeau ; l'écart est consigné au §9 (entrée 9).
-- Barre d'action fixe en bas : bouton "Valider" (tap simple, retour haptique, flash de confirmation, verrou anti-double-tap de 400 ms) et bouton "Passer" (appui maintenu 650 ms).
+- Barre d'action fixe en bas : bouton "Passer" (appui maintenu 650 ms) à gauche, bouton "Valider" (tap simple, retour haptique, flash de confirmation, verrou anti-double-tap de 400 ms) à droite. Cet ordre a été retenu au test sur appareil.
 - **Fenêtre de reprise** quand on retrouve un trajet déjà entamé — jamais quand on vient de
   le démarrer. Elle rappelle la direction, l'heure de départ, le temps écoulé qui avance et
   le prochain jalon, et propose "Reprendre" ou "Abandonner". L'écarter revient à reprendre ;
@@ -134,7 +134,9 @@ verrouillée en **portrait**.
 - Bloc "Trajet complet" : durée moyenne + nombre de trajets archivés.
 - Moyennes par tronçon.
 - Liste des trajets récents (10 derniers), durée colorée selon l'écart à la moyenne (plus rapide/plus lent).
-- Export CSV, purge de l'historique (confirmation à double appui).
+- Export CSV (toute l'archive, les deux sens), purge de l'historique **du sens affiché**
+  (confirmation à double appui). L'écran étant par sens de bout en bout, une purge globale
+  détruirait des trajets que rien n'y avait montrés.
 
 ### 3.5 Correction d'un jalon
 - Overlay de saisie d'heure (sélecteur d'heure natif Android, équivalent du `<input type="time">` actuel).

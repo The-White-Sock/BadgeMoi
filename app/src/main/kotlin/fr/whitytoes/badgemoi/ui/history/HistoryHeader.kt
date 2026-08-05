@@ -59,7 +59,7 @@ fun HistoryHeader(
                 )
             }
         }
-        ClearButton(purging = purging, onClear = onClear)
+        ClearButton(direction = direction, purging = purging, onClear = onClear)
     }
 }
 
@@ -83,18 +83,24 @@ private fun DirectionTab(
 }
 
 /**
- * « Effacer » à double appui.
+ * « Effacer Aller » / « Effacer Retour », à double appui.
+ *
+ * Le sens figure dans le libellé : la purge ne porte que sur lui, et « Effacer » seul
+ * laisserait croire qu'elle emporte toute l'archive.
  *
  * L'état d'armement est volontairement en `remember` et non `rememberSaveable` : une
  * recréation du processus doit **désarmer**, jamais laisser une purge à un appui de
- * distance.
+ * distance. Il retombe aussi dès que le sens change — armer sur l'Aller puis basculer sur
+ * le Retour ne doit pas laisser un appui armé sur l'autre archive.
  */
 @Composable
 private fun ClearButton(
+    direction: Direction,
     purging: Boolean,
     onClear: () -> Unit,
 ) {
-    var armed by remember { mutableStateOf(false) }
+    // Clé sur le sens : basculer d'onglet remet le bouton au repos.
+    var armed by remember(direction) { mutableStateOf(false) }
 
     LaunchedEffect(armed) {
         if (armed) {
@@ -118,7 +124,12 @@ private fun ClearButton(
         modifier = Modifier.heightIn(min = TouchTargetHeight),
     ) {
         Text(
-            text = stringResource(if (armed) R.string.history_clear_confirm else R.string.history_clear),
+            text =
+                if (armed) {
+                    stringResource(R.string.history_clear_confirm)
+                } else {
+                    stringResource(R.string.history_clear, stringResource(direction.labelRes()))
+                },
             color = MaterialTheme.colorScheme.error,
         )
     }

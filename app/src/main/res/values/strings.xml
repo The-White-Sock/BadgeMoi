@@ -48,7 +48,9 @@
     <string name="history_segment_averages">Moyennes par tronçon</string>
     <string name="history_recent_trips">Trajets récents</string>
     <string name="history_export">Exporter CSV</string>
-    <string name="history_clear">Effacer</string>
+    <!-- La purge ne porte que sur le sens affiché : le libellé le dit, sans quoi
+         « Effacer » laisserait croire à une purge de toute l'archive. -->
+    <string name="history_clear">Effacer %1$s</string>
     <string name="history_clear_confirm">Confirmer ?</string>
     <string name="history_empty">Aucun trajet archivé.\nLes moyennes apparaîtront après votre premier trajet enregistré.</string>
     <plurals name="history_trip_count">

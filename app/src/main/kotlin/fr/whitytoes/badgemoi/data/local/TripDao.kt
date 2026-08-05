@@ -17,6 +17,12 @@ interface TripDao {
     @Query("DELETE FROM trips WHERE id = :id")
     suspend fun delete(id: String)
 
-    @Query("DELETE FROM trips")
-    suspend fun clear()
+    /**
+     * Purge d'un seul sens : l'archive est par sens de bout en bout côté écran.
+     *
+     * Une seule requête, plutôt que relire les trajets pour les supprimer un à un. La
+     * colonne n'est pas indexée — inutile sur une table de quelques dizaines de lignes.
+     */
+    @Query("DELETE FROM trips WHERE direction = :direction")
+    suspend fun clear(direction: String)
 }

@@ -47,13 +47,31 @@ class RoomTripArchiveRepositoryTest {
             assertEquals(listOf(second), repository.observeAll().first())
         }
 
+    /**
+     * La purge est **par sens** : l'écran Historique l'est de bout en bout, et emporter
+     * l'autre sens détruirait des trajets que rien n'avait montrés à l'utilisateur.
+     */
     @Test
-    fun `purger l'archive la vide entièrement`() =
+    fun `purger un sens laisse l'autre intact`() =
         runTest {
-            repository.add(mixedTrip())
-            repository.add(Trip.start(id = "trip-2", direction = Direction.ALLER, departureAt = testBase))
+            val aller = Trip.start(id = "aller", direction = Direction.ALLER, departureAt = testBase)
+            val retour = Trip.start(id = "retour", direction = Direction.RETOUR, departureAt = testBase)
+            repository.add(aller)
+            repository.add(retour)
 
-            repository.clear()
+            repository.clear(Direction.ALLER)
+
+            assertEquals(listOf(retour), repository.observeAll().first())
+        }
+
+    /** La purge emporte **tous** les trajets du sens, pas seulement le premier trouvé. */
+    @Test
+    fun `purger un sens vide tous ses trajets`() =
+        runTest {
+            repository.add(Trip.start(id = "a1", direction = Direction.ALLER, departureAt = testBase))
+            repository.add(Trip.start(id = "a2", direction = Direction.ALLER, departureAt = testBase))
+
+            repository.clear(Direction.ALLER)
 
             assertTrue(repository.observeAll().first().isEmpty())
         }
@@ -73,7 +91,7 @@ private class FakeTripDao : TripDao {
         rows.value = rows.value.filterNot { it.id == id }
     }
 
-    override suspend fun clear() {
-        rows.value = emptyList()
+    override suspend fun clear(direction: String) {
+        rows.value = rows.value.filterNot { it.direction == direction }
     }
 }

@@ -112,46 +112,45 @@ private fun BadgeMoiNavHost(
     ) {
         composable<TripRoute> {
             HomeScreen(
-                // `popUpTo` inclusif : l'accueil s'efface devant le trajet en cours.
-                // Le laisser sous la pile ferait boucler le retour, puisqu'il
-                // redirigerait aussitôt. Quitter l'écran des jalons quitte donc
-                // l'application — c'est bien elle, pendant un trajet.
                 onNavigateToActiveTrip = { resuming ->
-                    navController.navigate(ActiveTripRoute(resuming = resuming)) {
-                        popUpTo(TripRoute) { inclusive = true }
-                    }
+                    navController.replaceAll(ActiveTripRoute(resuming = resuming))
                 },
             )
         }
         composable<ActiveTripRoute> { entry ->
             TripActiveScreen(
                 resuming = entry.toRoute<ActiveTripRoute>().resuming,
-                // `popUpTo` plutôt qu'un simple navigate : sans cela, la pile
-                // accumulerait un écran de trajet mort à chaque aller-retour.
-                onNavigateHome = {
-                    navController.navigate(TripRoute) {
-                        popUpTo(TripRoute) { inclusive = true }
-                    }
-                },
-                // L'écran actif est retiré de la pile : on ne corrige plus depuis
-                // là-bas une fois au récapitulatif, les jalons y étant cliquables.
-                onNavigateToSummary = {
-                    navController.navigate(SummaryRoute) {
-                        popUpTo<ActiveTripRoute> { inclusive = true }
-                    }
-                },
+                onNavigateHome = { navController.replaceAll(TripRoute) },
+                // L'écran actif quitte la pile : on ne corrige plus depuis là-bas une
+                // fois au récapitulatif, les tronçons y étant cliquables.
+                onNavigateToSummary = { navController.replaceAll(SummaryRoute) },
             )
         }
         composable<SummaryRoute> {
-            SummaryScreen(
-                onNavigateHome = {
-                    navController.navigate(TripRoute) {
-                        popUpTo(TripRoute) { inclusive = true }
-                    }
-                },
-            )
+            SummaryScreen(onNavigateHome = { navController.replaceAll(TripRoute) })
         }
         composable<HistoryRoute> { HistoryScreen() }
+    }
+}
+
+/**
+ * Remplace **toute** la pile par [route].
+ *
+ * L'onglet « Trajet » est une succession d'états d'un même parcours — accueil, saisie,
+ * récapitulatif — et non une pile où l'on remonte : revenir en arrière depuis la saisie
+ * ou le récapitulatif doit quitter l'application.
+ *
+ * On vide le graphe entier plutôt que de dépiler jusqu'à une destination nommée. Un
+ * `popUpTo(destination)` ne dépile que jusqu'à la **première** correspondance : qu'une
+ * seconde entrée de la même destination traîne dessous, et le retour y atterrit, où un
+ * `LaunchedEffect` renavigue aussitôt vers l'avant. Le retour semble alors ne rien faire,
+ * et il faut autant d'appuis que d'entrées pour sortir — c'est le défaut constaté à
+ * l'usage. `launchSingleTop` interdit en plus le doublon à la source.
+ */
+private fun NavHostController.replaceAll(route: Any) {
+    navigate(route) {
+        popUpTo(graph.id) { inclusive = true }
+        launchSingleTop = true
     }
 }
 
