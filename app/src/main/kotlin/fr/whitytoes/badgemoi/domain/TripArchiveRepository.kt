@@ -10,5 +10,12 @@ interface TripArchiveRepository {
 
     suspend fun delete(id: String)
 
-    suspend fun clear()
+    /**
+     * Vide l'archive d'un **sens**, et de lui seul.
+     *
+     * L'écran Historique est par sens de bout en bout — sélecteur, moyennes, trajets
+     * récents. Une purge qui déborderait sur l'autre sens détruirait des trajets que rien
+     * n'avait montrés à l'utilisateur.
+     */
+    suspend fun clear(direction: Direction)
 }
