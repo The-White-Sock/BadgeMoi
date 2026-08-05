@@ -286,10 +286,11 @@ Règle de contraste à respecter dans la traduction Compose : tout texte/icône 
 | 9 | Jalons et tronçons | **Deux vues, deux rôles** — jalons à l'écran actif (avec leur heure), tronçons seuls au récapitulatif, voir #90 |
 | 10 | Reprise d'un trajet | **Fenêtre sur l'écran des jalons** — plus d'écran d'accueil de reprise, voir #93 |
 | 11 | Liste des jalons | **Affichage partiel et ancré en bas** — tranchés, courant, un seul à venir, voir #101 |
+| 12 | Défilement de l'Historique | **Trois blocs indépendants** au lieu d'une zone défilante unique, voir #107 |
 
-### Écarts assumés au périmètre d'origine (6 à 11)
+### Écarts assumés au périmètre d'origine (6 à 12)
 
-Ces six points **contredisent la lettre** des sections citées. Ils sont le fruit d'un
+Ces sept points **contredisent la lettre** des sections citées. Ils sont le fruit d'un
 test sur appareil et ont été validés en connaissance de cause ; ils sont consignés ici
 parce que le script `scripts/check-docs-coherence.sh` ne vérifie que des invariants
 mécaniques — versions, chemins, liens — et ne verrait pas une contradiction de prose.
@@ -367,6 +368,20 @@ la frise de progression porte déjà la vue d'ensemble — c'est son rôle depui
 
 Le traitement discret des jalons tranchés est **typographique** : leur cible tactile garde
 ses 48 dp et ses 8 dp d'écart, puisqu'ils restent le point d'entrée de la correction.
+
+**12. Trois défilements sur l'Historique.** Le §1.6 impose une « zone scrollable unique ».
+L'Historique en a désormais deux — moyennes par tronçon et trajets récents — sous un bloc
+« Trajet complet » fixe.
+
+La règle visait la saisie en roulant : un contenu qui grandit ne doit pas repousser un
+bouton d'action hors de l'écran. L'enjeu de l'Historique est inverse et se joue à l'arrêt —
+garder les moyennes sous les yeux **pendant** qu'on parcourt les trajets qu'elles résument.
+Avec un défilement unique, atteindre les trajets récents chassait de l'écran ce à quoi on
+voulait justement les comparer.
+
+Les zones fixes haute et basse restent intactes : le motif de la règle, lui, est préservé.
+La contrepartie est que deux zones défilantes deviennent étroites à fort grossissement de
+police — à regarder au lot 7, avec les tests sur petit écran.
 
 ### Grain de l'ondulation d'appui
 
