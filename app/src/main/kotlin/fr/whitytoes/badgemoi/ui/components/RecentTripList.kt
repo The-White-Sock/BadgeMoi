@@ -18,12 +18,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fr.whitytoes.badgemoi.R
 import fr.whitytoes.badgemoi.domain.TripPace
 import fr.whitytoes.badgemoi.ui.formatDate
 import fr.whitytoes.badgemoi.ui.formatDuration
+import fr.whitytoes.badgemoi.ui.formatTime
 import fr.whitytoes.badgemoi.ui.history.RecentTripRow
 import fr.whitytoes.badgemoi.ui.theme.BadgeMoiTheme
 import fr.whitytoes.badgemoi.ui.theme.numeric
@@ -110,10 +112,19 @@ private fun RecentTripListRow(
         Text(
             text = formatDate(row.at),
             style = MaterialTheme.typography.bodyLarge.numeric(),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.weight(1f),
+            color = colors.onSurfaceVariant,
         )
-        Spacer(modifier = Modifier.size(12.dp))
+        Spacer(modifier = Modifier.size(8.dp))
+        // Heure de départ, en retrait de la date : deux trajets d'un même jour ne se
+        // distinguaient que par leur durée, ce qui n'aide pas à retrouver le bon. Même
+        // traitement que l'heure des jalons — plus petite, plus claire, monospace comme
+        // toute valeur chiffrée.
+        Text(
+            text = formatTime(row.at),
+            style = MaterialTheme.typography.bodyMedium.numeric(FontWeight.Medium),
+            color = colors.outline,
+        )
+        Spacer(modifier = Modifier.weight(1f))
         TripTotal(row = row)
     }
 }
@@ -151,15 +162,21 @@ private fun paceColor(pace: TripPace?): Color =
         TripPace.TYPICAL, null -> MaterialTheme.colorScheme.onSurface
     }
 
-/** Les quatre cas de la liste, dans l'ordre où on veut pouvoir les distinguer. */
-@Suppress("MagicNumber") // Données d'aperçu : durées en clair.
+/**
+ * Les quatre cas de la liste, dans l'ordre où on veut pouvoir les distinguer.
+ *
+ * Les deux premières lignes tombent **le même jour** : c'est précisément le cas que
+ * l'heure de départ vient trancher.
+ */
+@Suppress("MagicNumber") // Données d'aperçu : durées et décalages en clair.
 private fun previewRows(): List<RecentTripRow> {
-    val day = Instant.parse("2026-07-26T07:12:00Z")
+    val morning = Instant.parse("2026-07-26T05:12:00Z")
+    val evening = morning.plusSeconds(11 * 3_600)
     return listOf(
-        RecentTripRow("1", day, 24.minutes, TripPace.FASTER),
-        RecentTripRow("2", day.minusSeconds(86_400), 31.minutes, TripPace.SLOWER),
-        RecentTripRow("3", day.minusSeconds(172_800), 28.minutes, TripPace.TYPICAL),
-        RecentTripRow("4", day.minusSeconds(259_200), null, null),
+        RecentTripRow("1", evening, 24.minutes, TripPace.FASTER),
+        RecentTripRow("2", morning, 31.minutes, TripPace.SLOWER),
+        RecentTripRow("3", morning.minusSeconds(86_400), 28.minutes, TripPace.TYPICAL),
+        RecentTripRow("4", morning.minusSeconds(172_800), null, null),
     )
 }
 
