@@ -140,7 +140,9 @@ verrouillée en **portrait**.
 - Sélecteur Aller/Retour.
 - Bloc "Trajet complet" : durée moyenne + nombre de trajets archivés.
 - Moyennes par tronçon.
-- Liste des trajets récents (10 derniers), durée colorée selon l'écart à la moyenne (plus rapide/plus lent).
+- Liste des trajets récents (10 derniers) : date et **heure de départ**, durée colorée selon
+  l'écart à la moyenne (plus rapide/plus lent). L'heure distingue deux trajets d'un même
+  jour, que la seule date confondait.
 - Export CSV (toute l'archive, les deux sens), purge de l'historique **du sens affiché**
   (confirmation à double appui). L'écran étant par sens de bout en bout, une purge globale
   détruirait des trajets que rien n'y avait montrés.
