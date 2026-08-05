@@ -1,5 +1,7 @@
 package fr.whitytoes.badgemoi.ui.components
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -10,6 +12,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,8 +31,12 @@ import java.time.Instant
 import kotlin.time.Duration.Companion.minutes
 
 /**
- * Hauteur de ligne. La liste n'est **pas** interactive : ce n'est donc pas une contrainte
- * de cible tactile mais de lisibilité, l'écran se consultant à l'arrêt.
+ * Hauteur de ligne : le minimum d'une **cible tactile** (`docs/ergonomie.md` §4).
+ *
+ * La contrainte n'était que de lisibilité tant que la liste n'était pas interactive. Elle
+ * l'est depuis que toucher une ligne ouvre la suppression du trajet, et la même valeur
+ * change donc de justification — c'est la dérive qu'avait connue `SegmentList` en
+ * devenant cliquable.
  */
 private val RowMinHeight = 48.dp
 
@@ -43,15 +50,27 @@ private val RowMinHeight = 48.dp
  * Pas de `LazyColumn` : dix lignes au plus, dans la zone déjà défilante de l'écran. Une
  * liste paresseuse y serait mesurée sous une hauteur maximale infinie, ce que Compose
  * refuse.
+ *
+ * @param onTripClick sélectionne un trajet en vue de sa suppression. `null` rend la liste
+ *   inerte — c'est ce qu'attendent les aperçus.
+ * @param selectedId trajet dont la fenêtre de suppression est ouverte. Sa ligne reste
+ *   allumée tant qu'elle est là : c'est ce qui rattache la fenêtre à la ligne qu'elle va
+ *   détruire, une fois le doigt relevé.
  */
 @Composable
 fun RecentTripList(
     rows: List<RecentTripRow>,
     modifier: Modifier = Modifier,
+    onTripClick: ((String) -> Unit)? = null,
+    selectedId: String? = null,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         rows.forEachIndexed { position, row ->
-            RecentTripListRow(row = row)
+            RecentTripListRow(
+                row = row,
+                onClick = onTripClick?.let { { it(row.id) } },
+                selected = row.id == selectedId,
+            )
             if (position < rows.lastIndex) {
                 HorizontalDivider(color = MaterialTheme.colorScheme.outline)
             }
@@ -60,11 +79,30 @@ fun RecentTripList(
 }
 
 @Composable
-private fun RecentTripListRow(row: RecentTripRow) {
+private fun RecentTripListRow(
+    row: RecentTripRow,
+    onClick: (() -> Unit)?,
+    selected: Boolean,
+) {
+    val colors = MaterialTheme.colorScheme
+
+    val clickable =
+        if (onClick != null) {
+            Modifier.clickable(
+                interactionSource = null,
+                indication = ripple(color = colors.secondary),
+                onClick = onClick,
+            )
+        } else {
+            Modifier
+        }
+
     Row(
         modifier =
             Modifier
                 .fillMaxWidth()
+                .background(if (selected) colors.secondaryContainer else Color.Transparent)
+                .then(clickable)
                 .heightIn(min = RowMinHeight)
                 .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,

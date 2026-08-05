@@ -92,6 +92,20 @@ class HistoryViewModel
         suspend fun csvContent(): String = TripCsv.serialize(archiveRepository.observeAll().first(), clock.zone)
 
         /**
+         * Retire un trajet de l'archive.
+         *
+         * Pas de verrou : contrairement à la purge, deux suppressions du même
+         * identifiant sont indiscernables d'une seule, et la fenêtre de confirmation
+         * disparaît avec le trajet.
+         *
+         * `TripArchiveRepository.delete` existe depuis le lot 1 et n'avait jamais eu
+         * d'appelant : #79 l'avait laissé de côté faute de besoin exprimé.
+         */
+        fun deleteTrip(id: String) {
+            viewModelScope.launch { archiveRepository.delete(id) }
+        }
+
+        /**
          * Vide l'archive du **sens affiché**, et de lui seul.
          *
          * L'écran est par sens de bout en bout : purger les deux détruirait des trajets

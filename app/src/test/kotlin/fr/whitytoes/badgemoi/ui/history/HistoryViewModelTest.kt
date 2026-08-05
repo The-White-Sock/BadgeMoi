@@ -188,6 +188,45 @@ class HistoryViewModelTest {
         }
 
     /**
+     * `TripArchiveRepository.delete` existait depuis le lot 1 sans appelant. Il en a un :
+     * la suppression d'un trajet isolé depuis la liste des récents.
+     */
+    @Test
+    fun `supprimer un trajet ne retire que celui-là`() =
+        runTest(dispatcher) {
+            val archive =
+                FakeArchiveRepository(
+                    trip("garde", durationMinutes = 20),
+                    trip("jette", durationMinutes = 40, daysAgo = 1),
+                    trip("retour", durationMinutes = 50, direction = Direction.RETOUR),
+                )
+            val model = viewModel(archive)
+            advanceUntilIdle()
+
+            model.deleteTrip("jette")
+            advanceUntilIdle()
+
+            assertEquals(listOf("garde", "retour"), archive.trips.map { it.id })
+            assertEquals("la moyenne suit le retrait", 20.minutes, ready(model).statistics.totalAverage)
+            assertEquals(listOf("garde"), ready(model).recentTrips.map { it.id })
+        }
+
+    /** Retirer le dernier trajet d'un sens ramène l'écran à son état vide. */
+    @Test
+    fun `supprimer le dernier trajet d'un sens vide ses statistiques`() =
+        runTest(dispatcher) {
+            val archive = FakeArchiveRepository(trip("seul", durationMinutes = 30))
+            val model = viewModel(archive)
+            advanceUntilIdle()
+
+            model.deleteTrip("seul")
+            advanceUntilIdle()
+
+            assertEquals(0, ready(model).statistics.tripCount)
+            assertNull(ready(model).statistics.totalAverage)
+        }
+
+    /**
      * Purge **partielle** : les moyennes doivent suivre le retrait. La propriété découle
      * de la réactivité du flux, ce qui se vérifie plutôt que se suppose.
      */

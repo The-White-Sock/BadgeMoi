@@ -53,6 +53,12 @@
     <string name="history_clear">Effacer %1$s</string>
     <string name="history_clear_confirm">Confirmer ?</string>
     <string name="history_empty">Aucun trajet archivé.\nLes moyennes apparaîtront après votre premier trajet enregistré.</string>
+    <!-- Suppression d'un trajet isolé : la fenêtre nomme ce qu'elle va détruire, une
+         liste de dates se ressemblant trop pour qu'un appui suffise à identifier. -->
+    <string name="history_delete_title">Supprimer ce trajet ?</string>
+    <string name="history_delete_message">%1$s du %2$s, %3$s. Il sera retiré de l\'archive et des moyennes.</string>
+    <string name="history_delete_confirm">Supprimer</string>
+    <string name="history_delete_dismiss">Annuler</string>
     <plurals name="history_trip_count">
         <item quantity="one">%1$d trajet</item>
         <item quantity="other">%1$d trajets</item>

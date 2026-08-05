@@ -34,6 +34,8 @@ import fr.whitytoes.badgemoi.ui.formatDuration
 fun HistoryContent(
     state: HistoryUiState.Ready,
     modifier: Modifier = Modifier,
+    onTripClick: ((String) -> Unit)? = null,
+    selectedTripId: String? = null,
 ) {
     val statistics = state.statistics
 
@@ -55,7 +57,11 @@ fun HistoryContent(
         // que des durées mesurées.
         SegmentList(rows = statistics.segmentRows(sampleLabels))
         SectionTitle(titleRes = R.string.history_recent_trips)
-        RecentTripList(rows = state.recentTrips)
+        RecentTripList(
+            rows = state.recentTrips,
+            onTripClick = onTripClick,
+            selectedId = selectedTripId,
+        )
     }
 }
 
