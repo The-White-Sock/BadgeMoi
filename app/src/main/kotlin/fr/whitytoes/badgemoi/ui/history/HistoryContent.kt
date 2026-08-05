@@ -6,11 +6,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,8 +51,7 @@ private const val RECENT_TRIPS_WEIGHT = 2f
 fun HistoryContent(
     state: HistoryUiState.Ready,
     modifier: Modifier = Modifier,
-    onTripClick: ((String) -> Unit)? = null,
-    selectedTripId: String? = null,
+    actions: HistoryActions = HistoryActions(),
 ) {
     val statistics = state.statistics
 
@@ -70,12 +71,12 @@ fun HistoryContent(
             // aussi bien que des durées mesurées.
             SegmentList(rows = statistics.segmentRows(sampleLabels))
         }
-        SectionTitle(titleRes = R.string.history_recent_trips)
+        RecentTripsBar(selectedIds = state.selectedIds, actions = actions)
         ScrollingBlock(weight = RECENT_TRIPS_WEIGHT) {
             RecentTripList(
                 rows = state.recentTrips,
-                onTripClick = onTripClick,
-                selectedId = selectedTripId,
+                onTripClick = actions.onTripClick,
+                selectedIds = state.selectedIds,
             )
         }
     }
@@ -131,13 +132,82 @@ private fun TotalBlock(statistics: DirectionStatistics) {
 @Composable
 private fun SectionTitle(
     @StringRes titleRes: Int,
+    modifier: Modifier = Modifier,
 ) {
     Text(
         text = stringResource(titleRes),
         style = MaterialTheme.typography.titleMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        modifier = modifier.padding(horizontal = 16.dp, vertical = 8.dp),
     )
+}
+
+/**
+ * Titre des trajets récents, et les actions de suppression.
+ *
+ * Elles sont ici et non dans le bandeau haut parce que c'est **sur cette liste** qu'elles
+ * agissent. Hors sélection, un seul bouton l'ouvre ; dedans, il se dédouble en « Annuler »
+ * et « Supprimer », et le titre cède la place au décompte — l'écran doit dire ce qui est
+ * coché, y compris ce qui ne tient pas dans les dix lignes affichées.
+ */
+@Composable
+private fun RecentTripsBar(
+    selectedIds: Set<String>?,
+    actions: HistoryActions,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(end = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (selectedIds == null) {
+            SectionTitle(titleRes = R.string.history_recent_trips, modifier = Modifier.weight(1f))
+            TextButton(
+                onClick = actions.onStartSelection,
+                modifier = Modifier.heightIn(min = TouchTargetHeight),
+            ) {
+                Text(
+                    text = stringResource(R.string.history_select),
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+        } else {
+            Text(
+                text = stringResource(R.string.history_selected_count, selectedIds.size),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f).padding(horizontal = 16.dp),
+            )
+            TextButton(
+                onClick = actions.onSelectAll,
+                modifier = Modifier.heightIn(min = TouchTargetHeight),
+            ) {
+                Text(stringResource(R.string.history_select_all))
+            }
+            TextButton(
+                onClick = actions.onCancelSelection,
+                modifier = Modifier.heightIn(min = TouchTargetHeight),
+            ) {
+                Text(stringResource(R.string.history_select_cancel))
+            }
+            TextButton(
+                onClick = actions.onDeleteSelected,
+                // Rien de coché, rien à détruire : le bouton ne doit pas répondre.
+                enabled = selectedIds.isNotEmpty(),
+                modifier = Modifier.heightIn(min = TouchTargetHeight),
+            ) {
+                Text(
+                    text = stringResource(R.string.history_select),
+                    color =
+                        if (selectedIds.isEmpty()) {
+                            MaterialTheme.colorScheme.outline
+                        } else {
+                            MaterialTheme.colorScheme.error
+                        },
+                )
+            }
+        }
+    }
 }
 
 /**

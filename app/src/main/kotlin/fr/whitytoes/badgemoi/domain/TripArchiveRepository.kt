@@ -8,14 +8,12 @@ interface TripArchiveRepository {
 
     suspend fun add(trip: Trip)
 
-    suspend fun delete(id: String)
-
     /**
-     * Vide l'archive d'un **sens**, et de lui seul.
+     * Retire les trajets désignés, et eux seuls.
      *
-     * L'écran Historique est par sens de bout en bout — sélecteur, moyennes, trajets
-     * récents. Une purge qui déborderait sur l'autre sens détruirait des trajets que rien
-     * n'avait montrés à l'utilisateur.
+     * **Unique** primitive de suppression : l'écran sélectionne des trajets, qu'il s'agisse
+     * d'un seul ou de tout un sens via « Tout sélectionner ». Une purge par sens ferait un
+     * second chemin vers le même résultat, sans appelant qui lui soit propre.
      */
-    suspend fun clear(direction: Direction)
+    suspend fun delete(ids: Collection<String>)
 }

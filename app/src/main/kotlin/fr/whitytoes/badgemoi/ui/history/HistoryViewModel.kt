@@ -18,8 +18,8 @@ import java.time.Clock
 import javax.inject.Inject
 
 /**
- * Écran Historique (cahier des charges §3.4) : moyennes par sens, trajets récents et
- * purge de l'archive.
+ * Écran Historique (cahier des charges §3.4) : moyennes par sens, trajets récents,
+ * export et suppression par sélection.
  *
  * Tout le calcul vient du domaine (lot 1) : `TripStatistics.forDirection` produit les
  * moyennes, ce ViewModel se contente de les recombiner avec le sens sélectionné.
@@ -38,28 +38,27 @@ class HistoryViewModel
         private val selectedDirection = MutableStateFlow(Direction.ALLER)
 
         /**
-         * Verrou de purge, exposé dans l'état.
+         * Trajets cochés, `null` hors du mode sélection.
          *
-         * Même garde-fou que l'archivage du lot 4 : sans lui, deux appuis rapprochés
-         * lanceraient deux écritures. Ici la seconde ne détruirait rien de plus — l'archive
-         * est déjà vide — mais le bouton doit tout de même cesser de répondre pendant
-         * l'écriture, faute de quoi l'appui suivant semble ignoré.
+         * Vit ici et non dans l'écran parce que « Tout sélectionner » porte sur **tout le
+         * sens**, y compris les trajets que la liste des dix derniers ne montre pas :
+         * l'écran ne connaît pas cet ensemble.
          */
-        private val purging = MutableStateFlow(false)
+        private val selectedIds = MutableStateFlow<Set<String>?>(null)
 
         val uiState: StateFlow<HistoryUiState> =
             combine(
                 archiveRepository.observeAll(),
                 selectedDirection,
-                purging,
-            ) { trips, direction, isPurging ->
+                selectedIds,
+            ) { trips, direction, selection ->
                 val statistics = TripStatistics.forDirection(trips, direction)
                 HistoryUiState.Ready(
                     statistics = statistics,
                     // La moyenne vient des statistiques qu'on vient de calculer : la
                     // recalculer pour les lignes ferait deux vérités d'une seule.
                     recentTrips = trips.recentTripRows(direction, statistics.totalAverage),
-                    purging = isPurging,
+                    selectedIds = selection,
                 )
             }.stateIn(
                 scope = viewModelScope,
@@ -67,9 +66,61 @@ class HistoryViewModel
                 initialValue = HistoryUiState.Loading,
             )
 
-        /** Bascule le sens affiché. Aucune relecture du dépôt : voir la note de classe. */
+        /**
+         * Bascule le sens affiché. Aucune relecture du dépôt : voir la note de classe.
+         *
+         * La sélection retombe : la garder ferait détruire, au prochain « Supprimer », des
+         * trajets cochés sur un sens qu'on ne regarde plus.
+         */
         fun selectDirection(direction: Direction) {
             selectedDirection.value = direction
+            selectedIds.value = null
+        }
+
+        /** Entre en mode sélection, sans rien cocher. */
+        fun startSelection() {
+            selectedIds.value = emptySet()
+        }
+
+        /** En sort, sans rien détruire. Tout ce qui était coché est oublié. */
+        fun cancelSelection() {
+            selectedIds.value = null
+        }
+
+        fun toggleTripSelection(id: String) {
+            selectedIds.value = selectedIds.value?.let { if (id in it) it - id else it + id }
+        }
+
+        /**
+         * Coche **tous** les trajets du sens, au-delà des dix affichés.
+         *
+         * C'est ce qui remplace la purge par sens : la sélection en est le seul chemin,
+         * et « Supprimer » n'a donc qu'une mécanique à connaître.
+         */
+        fun selectAllTrips() {
+            viewModelScope.launch {
+                val direction = selectedDirection.value
+                selectedIds.value =
+                    archiveRepository
+                        .observeAll()
+                        .first()
+                        .filter { it.direction == direction }
+                        .map { it.id }
+                        .toSet()
+            }
+        }
+
+        /**
+         * Retire les trajets cochés, et sort du mode sélection.
+         *
+         * La sélection est vidée **avant** l'écriture : un second appui n'a alors plus rien
+         * à supprimer, ce qui rend inutile le verrou que demandait la purge.
+         */
+        fun deleteSelectedTrips() {
+            val ids = selectedIds.value.orEmpty()
+            if (ids.isEmpty()) return
+            selectedIds.value = null
+            viewModelScope.launch { archiveRepository.delete(ids) }
         }
 
         /**
@@ -90,40 +141,4 @@ class HistoryViewModel
          * vide avant même la première lecture.
          */
         suspend fun csvContent(): String = TripCsv.serialize(archiveRepository.observeAll().first(), clock.zone)
-
-        /**
-         * Retire un trajet de l'archive.
-         *
-         * Pas de verrou : contrairement à la purge, deux suppressions du même
-         * identifiant sont indiscernables d'une seule, et la fenêtre de confirmation
-         * disparaît avec le trajet.
-         *
-         * `TripArchiveRepository.delete` existe depuis le lot 1 et n'avait jamais eu
-         * d'appelant : #79 l'avait laissé de côté faute de besoin exprimé.
-         */
-        fun deleteTrip(id: String) {
-            viewModelScope.launch { archiveRepository.delete(id) }
-        }
-
-        /**
-         * Vide l'archive du **sens affiché**, et de lui seul.
-         *
-         * L'écran est par sens de bout en bout : purger les deux détruirait des trajets
-         * que rien n'avait montrés à l'utilisateur.
-         *
-         * La confirmation appartient à l'écran — le bouton du POC s'arme au premier appui
-         * et se désarme seul au bout de trois secondes. Ce verrou-ci est d'une autre
-         * nature : il protège l'écriture, pas la décision.
-         */
-        fun clearArchive() {
-            if (!purging.compareAndSet(expect = false, update = true)) return
-            val direction = selectedDirection.value
-            viewModelScope.launch {
-                try {
-                    archiveRepository.clear(direction)
-                } finally {
-                    purging.value = false
-                }
-            }
-        }
     }

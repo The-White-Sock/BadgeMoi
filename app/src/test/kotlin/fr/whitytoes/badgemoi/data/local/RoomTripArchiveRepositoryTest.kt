@@ -42,38 +42,23 @@ class RoomTripArchiveRepositoryTest {
             repository.add(premier)
             repository.add(second)
 
-            repository.delete(premier.id)
+            repository.delete(setOf(premier.id))
 
             assertEquals(listOf(second), repository.observeAll().first())
         }
 
-    /**
-     * La purge est **par sens** : l'écran Historique l'est de bout en bout, et emporter
-     * l'autre sens détruirait des trajets que rien n'avait montrés à l'utilisateur.
-     */
+    /** La suppression porte sur un **lot** : c'est ce que « Tout sélectionner » produit. */
     @Test
-    fun `purger un sens laisse l'autre intact`() =
+    fun `supprimer un lot retire exactement ces trajets`() =
         runTest {
-            val aller = Trip.start(id = "aller", direction = Direction.ALLER, departureAt = testBase)
-            val retour = Trip.start(id = "retour", direction = Direction.RETOUR, departureAt = testBase)
-            repository.add(aller)
-            repository.add(retour)
-
-            repository.clear(Direction.ALLER)
-
-            assertEquals(listOf(retour), repository.observeAll().first())
-        }
-
-    /** La purge emporte **tous** les trajets du sens, pas seulement le premier trouvé. */
-    @Test
-    fun `purger un sens vide tous ses trajets`() =
-        runTest {
+            val garde = Trip.start(id = "garde", direction = Direction.RETOUR, departureAt = testBase)
             repository.add(Trip.start(id = "a1", direction = Direction.ALLER, departureAt = testBase))
             repository.add(Trip.start(id = "a2", direction = Direction.ALLER, departureAt = testBase))
+            repository.add(garde)
 
-            repository.clear(Direction.ALLER)
+            repository.delete(setOf("a1", "a2"))
 
-            assertTrue(repository.observeAll().first().isEmpty())
+            assertEquals(listOf(garde), repository.observeAll().first())
         }
 }
 
@@ -87,11 +72,7 @@ private class FakeTripDao : TripDao {
         rows.value = rows.value.filterNot { it.id == trip.id } + trip
     }
 
-    override suspend fun delete(id: String) {
-        rows.value = rows.value.filterNot { it.id == id }
-    }
-
-    override suspend fun clear(direction: String) {
-        rows.value = rows.value.filterNot { it.direction == direction }
+    override suspend fun delete(ids: Collection<String>) {
+        rows.value = rows.value.filterNot { it.id in ids }
     }
 }

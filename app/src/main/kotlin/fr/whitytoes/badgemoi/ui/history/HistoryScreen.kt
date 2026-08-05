@@ -8,9 +8,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -41,6 +38,7 @@ private val ActionHeight = 56.dp
  */
 @Composable
 fun HistoryScreen(
+    onOpenTrip: (String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: HistoryViewModel = hiltViewModel(),
 ) {
@@ -64,8 +62,15 @@ fun HistoryScreen(
             HistoryActions(
                 onSelectDirection = viewModel::selectDirection,
                 onExport = export,
-                onClear = viewModel::clearArchive,
-                onDeleteTrip = viewModel::deleteTrip,
+                // Un seul geste sur la ligne, deux sens : cocher en mode sélection,
+                // ouvrir le trajet sinon. Le ViewModel sait dans quel mode on est.
+                onTripClick = { id ->
+                    if (ready.selecting) viewModel.toggleTripSelection(id) else onOpenTrip(id)
+                },
+                onStartSelection = viewModel::startSelection,
+                onCancelSelection = viewModel::cancelSelection,
+                onSelectAll = viewModel::selectAllTrips,
+                onDeleteSelected = viewModel::deleteSelectedTrips,
             ),
         modifier = modifier,
     )
@@ -80,18 +85,12 @@ internal fun HistoryScreen(
 ) {
     val statistics = state.statistics
 
-    // Trajet désigné en vue de sa suppression. `rememberSaveable` : une rotation ne doit
-    // ni rouvrir ni refermer une fenêtre qui va détruire quelque chose.
-    var deletingTripId by rememberSaveable { mutableStateOf<String?>(null) }
-
     ScreenScaffold(
         modifier = modifier,
         top = {
             HistoryHeader(
                 direction = statistics.direction,
-                purging = state.purging,
                 onSelectDirection = actions.onSelectDirection,
-                onClear = actions.onClear,
             )
         },
         // « Exporter » est seul en bas et pleine largeur : c'est l'action primaire de
@@ -102,27 +101,8 @@ internal fun HistoryScreen(
         if (statistics.tripCount == 0) {
             EmptyArchive(modifier = Modifier.align(Alignment.Center))
         } else {
-            HistoryContent(
-                state = state,
-                onTripClick = { id -> deletingTripId = id },
-                selectedTripId = deletingTripId,
-            )
+            HistoryContent(state = state, actions = actions)
         }
-    }
-
-    // Le trajet peut avoir disparu entre-temps — purge du sens, ou suppression déjà
-    // confirmée : on le retrouve dans l'état plutôt que d'en garder une copie.
-    val deleting = state.recentTrips.firstOrNull { it.id == deletingTripId }
-    if (deleting != null) {
-        TripDeletionDialog(
-            row = deleting,
-            direction = statistics.direction,
-            onConfirm = {
-                deletingTripId = null
-                actions.onDeleteTrip(deleting.id)
-            },
-            onDismiss = { deletingTripId = null },
-        )
     }
 }
 
@@ -143,7 +123,7 @@ private fun ExportButton(onExport: () -> Unit) {
     }
 }
 
-private val previewActions = HistoryActions(onSelectDirection = {}, onExport = {}, onClear = {})
+private val previewActions = HistoryActions()
 
 /**
  * Statistiques d'aperçu comportant un tronçon **moins mesuré que les autres** — trois

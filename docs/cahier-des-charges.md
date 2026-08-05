@@ -143,12 +143,14 @@ verrouillée en **portrait**.
 - Liste des trajets récents (10 derniers) : date et **heure de départ**, durée colorée selon
   l'écart à la moyenne (plus rapide/plus lent). L'heure distingue deux trajets d'un même
   jour, que la seule date confondait.
-- Export CSV (toute l'archive, les deux sens), purge de l'historique **du sens affiché**
-  (confirmation à double appui). L'écran étant par sens de bout en bout, une purge globale
-  détruirait des trajets que rien n'y avait montrés.
-- **Suppression d'un trajet isolé** : toucher une ligne de la liste des trajets récents
-  ouvre une fenêtre qui nomme le trajet — sens, date, durée — et le retire après
-  confirmation. Une liste de dates se ressemble, et l'appui a pu manquer sa ligne.
+- Export CSV : **toute** l'archive, les deux sens confondus, contrairement aux statistiques.
+- **Suppression par sélection.** Le bouton « Supprimer » siège au niveau du titre « Trajets
+  récents », qui est ce sur quoi il agit. Un appui bascule la liste en mode sélection :
+  chaque ligne se coche, le bouton se dédouble en « Annuler » et « Supprimer », et un
+  « Tout » coche l'ensemble des trajets du sens — y compris ceux au-delà des dix affichés.
+  C'est le seul chemin de suppression, du trajet isolé à la purge complète d'un sens.
+- Sortir du mode ou changer de sens vide la sélection : une sélection oubliée ne doit pas
+  détruire au prochain appui des trajets qu'on ne regarde plus.
 
 ### 3.5 Correction d'un jalon
 - Overlay de saisie d'heure (sélecteur d'heure natif Android, équivalent du `<input type="time">` actuel).

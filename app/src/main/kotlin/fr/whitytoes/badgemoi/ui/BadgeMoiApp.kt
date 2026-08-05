@@ -129,7 +129,12 @@ private fun BadgeMoiNavHost(
         composable<SummaryRoute> {
             SummaryScreen(onNavigateHome = { navController.replaceAll(TripRoute) })
         }
-        composable<HistoryRoute> { HistoryScreen() }
+        composable<HistoryRoute> {
+            // Ouvrir un trajet archivé demande que le récapitulatif sache travailler sur
+            // l'archive et non sur le seul trajet en cours : c'est la seconde moitié de
+            // #108, et le geste reste sans effet d'ici là.
+            HistoryScreen(onOpenTrip = {})
+        }
     }
 }
 
