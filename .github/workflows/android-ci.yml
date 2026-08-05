@@ -5,9 +5,15 @@ on:
     branches: [main]
   pull_request:
 
+# Un groupe par PR : repousser sur une PR annule le run devenu caduc.
+#
+# Sur `main`, en revanche, `github.ref` est le même pour tous les commits : annuler
+# ferait tuer la validation du commit précédent par le suivant. Deux merges rapprochés
+# — ce que l'auto-merge de Dependabot produit facilement — et un état de `main` ne
+# serait jamais validé, sans que rien n'apparaisse en rouge.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   build:

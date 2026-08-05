@@ -7,9 +7,12 @@ on:
   schedule:
     - cron: "0 5 * * 1" # tous les lundis, indépendamment des changements de code
 
+# Même règle que pour Android CI : on annule sur une PR, jamais sur `main`. Ici l'enjeu
+# est plus lourd — un run annulé sur `main` laisse l'état de référence du code scanning
+# accroché à un commit ancien, silencieusement.
 concurrency:
-  group: codeql-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
   contents: read
@@ -38,8 +41,10 @@ jobs:
           fi
           changed="$(git diff --name-only \
             "${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}")"
+          # `build.gradle.kts` et `settings.gradle.kts` à la racine comptent : y ajouter
+          # un plugin change ce que produit le compilateur, donc ce que CodeQL voit.
           if printf '%s\n' "$changed" \
-            | grep -qE '^app/|^gradle/|^gradle\.properties$|^gradlew|^\.github/workflows/codeql\.yml$'; then
+            | grep -qE '^app/|^gradle/|^gradle\.properties$|^gradlew|^build\.gradle\.kts$|^settings\.gradle\.kts$|^\.github/workflows/codeql\.yml$'; then
             echo "code=true" >> "$GITHUB_OUTPUT"
           else
             echo "code=false" >> "$GITHUB_OUTPUT"
