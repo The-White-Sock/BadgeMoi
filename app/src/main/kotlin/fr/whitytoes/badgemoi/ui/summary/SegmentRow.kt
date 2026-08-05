@@ -23,6 +23,11 @@ import kotlin.time.Duration
  * @property duration `null` quand le tronçon n'est **pas mesurable** — l'un de ses deux
  *   jalons n'a pas été posé. Ce n'est pas une durée nulle et cela ne doit jamais
  *   s'afficher comme telle.
+ * @property detail mention secondaire facultative. Sert à l'historique (§3.4), où une
+ *   moyenne doit dire **sur combien de mesures** elle porte : un jalon ignoré rend le
+ *   tronçon non mesurable, si bien qu'une moyenne calculée sur trois trajets parmi dix ne
+ *   se lit pas comme une moyenne sur dix. `null` au récapitulatif, où la durée est
+ *   mesurée et non moyennée.
  */
 data class SegmentRow(
     val index: Int,
@@ -31,6 +36,7 @@ data class SegmentRow(
     val toLabel: String,
     val toIndex: Int,
     val duration: Duration?,
+    val detail: String? = null,
 )
 
 /**

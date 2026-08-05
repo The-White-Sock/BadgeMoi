@@ -125,6 +125,15 @@ private fun SegmentListRow(
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.onSurfaceVariant,
             )
+            // Mention secondaire de l'historique : le nombre de mesures derrière une
+            // moyenne. Absente au récapitulatif, où la durée est mesurée, pas moyennée.
+            row.detail?.let { detail ->
+                Text(
+                    text = detail,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.onSurfaceVariant,
+                )
+            }
         }
         Spacer(modifier = Modifier.size(12.dp))
         SegmentValue(duration = row.duration)
