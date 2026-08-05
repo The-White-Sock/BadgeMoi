@@ -31,6 +31,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -44,14 +45,23 @@ import fr.whitytoes.badgemoi.ui.trip.isCorrectable
 import java.time.Instant
 import kotlin.time.Duration
 
-private val BadgeSize = 12.dp
-private val CurrentBadgeSize = 16.dp
-private val RowMinHeight = 56.dp
 private val RowShape = RoundedCornerShape(12.dp)
 private val CurrentAccentWidth = 5.dp
 
-/** Largeur de la cellule d'heure : `HH:mm` en monospace, plus une marge de sécurité. */
-private val TimeWidth = 52.dp
+/** Hauteur d'une ligne de jalon tranché ou à venir : le minimum d'une cible tactile. */
+private val RowMinHeight = 48.dp
+
+/** Hauteur de la ligne courante. Elle porte l'emphase, et un chronomètre qui court. */
+private val CurrentRowMinHeight = 76.dp
+
+/** Colonne de l'heure : `HH:mm` en monospace, plus une marge. */
+private val TimeWidth = 56.dp
+
+/** Colonne de la durée : jusqu'à `h:mm:ss`, plus « Ignoré ». */
+private val DurationWidth = 80.dp
+
+private val BadgeSize = 10.dp
+private val CurrentBadgeSize = 16.dp
 
 /** Fondu d'**extinction** du fond. L'allumage, lui, est instantané — voir [rowBackgroundColor]. */
 private const val PRESS_FADE_MILLIS = 120
@@ -61,26 +71,40 @@ private const val PRESS_FADE_MILLIS = 120
  *
  * Elle n'appartient qu'à l'**écran actif**, parce que c'en est une liste d'actions : on
  * valide un jalon à la fois. Le récapitulatif, qui est une lecture, ne montre que des
- * tronçons — voir [SegmentList] et l'écart 9 du §9.
+ * tronçons (§9, écart 9).
  *
- * Chaque ligne affiche le libellé du jalon, son **heure de passage** en retrait, et la
- * **durée écoulée depuis le jalon précédent** en avant. Le §3.2 réservait l'heure au
- * bandeau ; l'écart est assumé et consigné au §9, faute de quoi la ligne du départ n'a
- * rien à montrer.
+ * ## Ce qu'elle montre, et ce qu'elle tait
+ *
+ * Elle n'affiche **pas les cinq jalons** mais s'arrête au premier à venir (§9, écart 11).
+ * Trois traitements nettement séparés :
+ *
+ * | Jalons | Traitement |
+ * |---|---|
+ * | tranchés — posés ou ignorés | petits et discrets, au-dessus |
+ * | le jalon **courant** | emphase franche, ligne plus haute |
+ * | à venir | **seul le prochain**, grisé et inerte |
+ *
+ * Les jalons plus lointains ne disent rien qu'on ait besoin de lire en roulant, et la
+ * frise de progression du haut porte déjà la vue d'ensemble. Les taire ramène la ligne
+ * courante — la seule sur laquelle on agit — au contact de la barre d'action.
+ *
+ * ## La grille
+ *
+ * Chaque ligne est une **rangée de tableau** : libellé extensible, puis deux cellules de
+ * largeur fixe pour l'heure et la durée. Sans largeurs fixes, les valeurs se calaient sur
+ * la longueur du libellé et sautaient d'une ligne à l'autre.
  *
  * @param onMilestoneClick ouvre la correction d'un jalon. Seuls les jalons **déjà
- *   tranchés** (posés ou ignorés) sont cliquables : corriger un jalon qu'on n'a pas
- *   encore atteint reviendrait à inventer un passage.
+ *   tranchés** sont cliquables : corriger un jalon qu'on n'a pas encore atteint
+ *   reviendrait à inventer un passage. Leur traitement discret est typographique — la
+ *   cible tactile, elle, garde ses 48 dp et ses 8 dp d'écart.
  * @param runningSince temps écoulé depuis le dernier jalon posé, affiché sur la ligne du
  *   jalon **courant**. Volontairement une lambda : la lecture de l'état est différée
  *   jusqu'à cette seule ligne, qui est donc la seule à se recomposer chaque seconde.
- * @param selectedIndex jalon dont l'overlay de correction est ouvert. Sa ligne reste
- *   allumée tant que la fenêtre est là : c'est ce qui rattache la fenêtre à la ligne
- *   qu'elle modifie, une fois le doigt relevé.
+ * @param selectedIndex jalon dont la feuille de correction est ouverte. Sa ligne reste
+ *   allumée tant que la feuille est là.
  *
- * Le **défilement appartient à l'appelant**, d'où une simple [Column] : c'est l'écran qui
- * décide de la zone défilante, la liste ne faisant qu'y prendre place. Cinq lignes de
- * hauteur fixe ne justifient de toute façon pas la paresse.
+ * Le **défilement appartient à l'appelant**, d'où une simple [Column].
  */
 @Composable
 fun MilestoneList(
@@ -91,7 +115,7 @@ fun MilestoneList(
     selectedIndex: Int? = null,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
-        rows.forEach { row ->
+        rows.upToNextMilestone().forEach { row ->
             key(row.index) {
                 MilestoneListRow(
                     row = row,
@@ -107,6 +131,18 @@ fun MilestoneList(
             }
         }
     }
+}
+
+/**
+ * Les jalons tranchés, le courant, et le prochain — rien au-delà.
+ *
+ * Les lignes précédant le jalon courant sont toutes tranchées par construction : couper
+ * un cran après lui suffit. Un trajet **terminé** n'a plus de jalon courant ; on montre
+ * alors tout, le temps que l'écran parte au récapitulatif.
+ */
+private fun List<MilestoneRow>.upToNextMilestone(): List<MilestoneRow> {
+    val current = indexOfFirst { it.status == MilestoneStatus.CURRENT }
+    return if (current < 0) this else take(current + 2)
 }
 
 @Composable
@@ -158,30 +194,36 @@ private fun MilestoneListRow(
                         drawRect(color = accent, size = Size(CurrentAccentWidth.toPx(), size.height))
                     }
                 }.then(clickable)
-                .heightIn(min = RowMinHeight)
+                .heightIn(min = if (current) CurrentRowMinHeight else RowMinHeight)
                 .padding(horizontal = 8.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         StatusBadge(status = row.status)
         Spacer(modifier = Modifier.size(12.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = row.label,
-                style = if (current) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyLarge,
-                color = labelColor(row.status),
-            )
-        }
-        MilestoneTime(at = row.at)
-        Spacer(modifier = Modifier.size(12.dp))
+        Text(
+            text = row.label,
+            style = labelStyle(row.status),
+            color = labelColor(row.status),
+            modifier = Modifier.weight(1f),
+        )
+        MilestoneTime(at = row.at, status = row.status)
         TrailingValue(row = row, runningSince = runningSince)
     }
 }
+
+/** Typographie du libellé : le courant domine, le prochain s'efface. */
+@Composable
+private fun labelStyle(status: MilestoneStatus): TextStyle =
+    when (status) {
+        MilestoneStatus.CURRENT -> MaterialTheme.typography.titleLarge
+        else -> MaterialTheme.typography.bodyMedium
+    }
 
 /**
  * Fond d'une ligne de jalon.
  *
  * Il ne porte que l'état **persistant** : l'ambre du jalon courant, et le teal de la ligne
- * dont l'overlay de correction est ouvert. Le retour d'appui, lui, est transitoire et
+ * dont la feuille de correction est ouverte. Le retour d'appui, lui, est transitoire et
  * revient à l'ondulation Material posée sur le `clickable`.
  *
  * L'allumage est instantané, l'extinction en fondu : un fondu d'entrée retarderait
@@ -221,13 +263,13 @@ private fun rowBackgroundColor(
 private fun StatusBadge(status: MilestoneStatus) {
     val colors = MaterialTheme.colorScheme
     // Répartition du POC : teal pour ce qui est fait (`.mrow.done`), ambre pour le jalon
-    // courant (`.mrow.current`). Je les avais inversées.
+    // courant (`.mrow.current`).
     val color =
         when (status) {
             MilestoneStatus.POSED -> colors.secondary
             MilestoneStatus.SKIPPED -> colors.outline
             MilestoneStatus.CURRENT -> colors.primary
-            MilestoneStatus.PENDING -> colors.surfaceVariant
+            MilestoneStatus.PENDING -> colors.outlineVariant
         }
 
     Box(
@@ -240,26 +282,27 @@ private fun StatusBadge(status: MilestoneStatus) {
 }
 
 /**
- * Heure de passage, à gauche de la durée.
+ * Heure de passage, première des deux colonnes chiffrées.
  *
- * Elle comble la première ligne — le jalon de départ n'a pas de tronçon avant lui, donc
- * pas de durée — et distingue les deux natures que la ligne porte : un jalon est un
- * instant, la durée qu'il affiche appartient au tronçon qui le précède.
+ * Elle comble la ligne du départ, qui n'a pas de tronçon avant elle donc pas de durée, et
+ * distingue les deux natures que la ligne porte : un jalon est un instant, la durée qu'il
+ * affiche appartient au tronçon qui le précède.
  *
- * Discrète sur les trois plans : un cran plus bas dans l'échelle Material que la durée
- * (`bodyMedium` contre `bodyLarge`), en graisse normale contre extra-grasse, et en couleur
- * atténuée. La durée doit rester ce qu'on lit en premier.
- *
- * La largeur est fixe et la cellule reste posée même sans heure, sans quoi les durées
- * cesseraient d'être alignées dès qu'un jalon n'est pas posé.
+ * Largeur fixe, et la cellule reste posée même sans heure : c'est ce qui aligne la colonne
+ * des durées d'une ligne à l'autre.
  */
 @Composable
-private fun MilestoneTime(at: Instant?) {
+private fun MilestoneTime(
+    at: Instant?,
+    status: MilestoneStatus,
+) {
+    val colors = MaterialTheme.colorScheme
+
     Text(
         text = at?.let { formatTime(it) }.orEmpty(),
         style = MaterialTheme.typography.bodyMedium.numeric(FontWeight.Medium),
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        textAlign = TextAlign.End,
+        color = if (status == MilestoneStatus.PENDING) colors.outline else colors.onSurfaceVariant,
+        textAlign = TextAlign.Center,
         modifier = Modifier.width(TimeWidth),
     )
 }
@@ -275,6 +318,8 @@ private fun TrailingValue(
     // pose, plutôt que dans le bandeau où il doublait la valeur « Écoulé ».
     val running = if (current) runningSince?.invoke() else null
 
+    val cell = Modifier.width(DurationWidth)
+
     when {
         running != null -> {
             val value = formatDuration(running)
@@ -283,11 +328,10 @@ private fun TrailingValue(
             val description = stringResource(R.string.trip_since_last_milestone, value)
             Text(
                 text = value,
-                // Un cran au-dessus des durées figées : c'est la valeur qui bouge, et la
-                // ligne du jalon courant est celle que l'on regarde en roulant.
                 style = MaterialTheme.typography.titleMedium.numeric(),
                 color = colors.onPrimaryContainer,
-                modifier = Modifier.semantics { contentDescription = description },
+                textAlign = TextAlign.Center,
+                modifier = cell.semantics { contentDescription = description },
             )
         }
 
@@ -295,30 +339,42 @@ private fun TrailingValue(
         row.status == MilestoneStatus.SKIPPED ->
             Text(
                 text = stringResource(R.string.milestone_skipped),
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodySmall,
                 color = colors.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = cell,
             )
 
         row.sincePrevious != null ->
             Text(
                 text = formatDuration(row.sincePrevious),
-                style = MaterialTheme.typography.bodyLarge.numeric(),
+                style = MaterialTheme.typography.bodyMedium.numeric(),
                 color = colors.onSurface,
+                textAlign = TextAlign.Center,
+                modifier = cell,
             )
 
         else ->
             Text(
                 text = stringResource(R.string.milestone_no_value),
-                style = MaterialTheme.typography.bodyLarge.numeric(),
-                color = if (current) colors.onPrimaryContainer else colors.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyMedium.numeric(),
+                color =
+                    when (row.status) {
+                        MilestoneStatus.CURRENT -> colors.onPrimaryContainer
+                        MilestoneStatus.PENDING -> colors.outline
+                        else -> colors.onSurfaceVariant
+                    },
+                textAlign = TextAlign.Center,
+                modifier = cell,
             )
     }
 }
 
+/** Encre du libellé : le prochain jalon est **inerte**, sa couleur doit le dire. */
 @Composable
 private fun labelColor(status: MilestoneStatus) =
     when (status) {
         MilestoneStatus.CURRENT -> MaterialTheme.colorScheme.onPrimaryContainer
-        MilestoneStatus.PENDING -> MaterialTheme.colorScheme.onSurfaceVariant
-        else -> MaterialTheme.colorScheme.onSurface
+        MilestoneStatus.PENDING -> MaterialTheme.colorScheme.outline
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
