@@ -57,6 +57,11 @@ Chaque écran suit le même patron, déjà validé pour l'usage au pouce :
 - **Zone fixe basse** : boutons d'action, toujours visibles, jamais noyés dans un scroll.
 - Écran d'accueil : boutons ancrés en bas de l'écran (zone naturellement atteignable au pouce), pas en haut sous l'en-tête.
 
+Le placement des éléments **interactifs** — zones d'atteinte du pouce, tailles de cibles,
+position des modales et des actions destructives — est traité à part, dans
+[`docs/ergonomie.md`](ergonomie.md), qui fait autorité sur le sujet. L'application est
+verrouillée en **portrait**.
+
 ### 1.7 Hors périmètre actuel (à ne pas ajouter sans validation)
 - Pas de compte utilisateur, pas de synchronisation cloud, pas de backend.
 - Pas de notifications programmées.

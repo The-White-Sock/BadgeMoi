@@ -10,6 +10,10 @@ lire :
 - **[`docs/cahier-des-charges.md`](docs/cahier-des-charges.md)** — périmètre
   fonctionnel, choix d'architecture, décisions déjà tranchées (§9). Ne pas rouvrir un
   point déjà tranché sans validation explicite.
+- **[`docs/ergonomie.md`](docs/ergonomie.md)** — usage au pouce : zones d'atteinte,
+  tailles de cibles, placement des modales et des actions destructives. Fait autorité sur
+  le **placement** de tout élément interactif ; le cahier dit quoi afficher, ce fichier dit
+  où le poser.
 - **[`docs/conventions.md`](docs/conventions.md)** — stack, structure des packages,
   nomenclature, conventions de commit/branches, commandes de qualité de code. Fait
   autorité sur ces sujets ; toute mise à jour de convention se fait dans ce fichier,

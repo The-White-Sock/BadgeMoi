@@ -43,13 +43,16 @@ import fr.whitytoes.badgemoi.ui.formatDuration
 import fr.whitytoes.badgemoi.ui.formatTime
 import fr.whitytoes.badgemoi.ui.theme.BadgeMoiTheme
 import fr.whitytoes.badgemoi.ui.trip.MilestoneCorrectionActions
-import fr.whitytoes.badgemoi.ui.trip.MilestoneCorrectionDialog
+import fr.whitytoes.badgemoi.ui.trip.MilestoneCorrectionSheet
 import fr.whitytoes.badgemoi.ui.trip.correctionSeedInstant
 import fr.whitytoes.badgemoi.ui.trip.measuredDuration
 import fr.whitytoes.badgemoi.ui.trip.milestoneRows
 import java.time.Instant
 
 private val ActionHeight = 56.dp
+
+/** Minimum Material pour une cible tactile (`docs/ergonomie.md` §4). */
+private val TouchTargetHeight = 48.dp
 
 /** Coin de la cellule « Départ » du bandeau, qui est cliquable. */
 private val HeaderCellShape = RoundedCornerShape(12.dp)
@@ -107,7 +110,7 @@ fun SummaryScreen(
 
         val index = correctingIndex
         if (index != null) {
-            MilestoneCorrectionDialog(
+            MilestoneCorrectionSheet(
                 label = trip.milestoneRows()[index].label,
                 seedAt = trip.correctionSeedInstant(index),
                 actions =
@@ -148,6 +151,11 @@ internal fun SummaryScreen(
 ) {
     val segments = remember(trip) { trip.segmentRows() }
 
+    // L'abandon détruit le trajet, et cet écran est atteint **automatiquement** en fin de
+    // parcours : la confirmation n'est pas une politesse, c'est un garde-fou. L'état vit
+    // ici parce que le bouton est dans le bandeau et la fenêtre par-dessus tout l'écran.
+    var confirmingAbandon by rememberSaveable { mutableStateOf(false) }
+
     ScreenScaffold(
         modifier = modifier,
         top = {
@@ -155,15 +163,10 @@ internal fun SummaryScreen(
                 trip = trip,
                 onDepartureClick = actions.onMilestoneClick?.let { { it(DEPARTURE_INDEX) } },
                 departureSelected = correctingIndex == DEPARTURE_INDEX,
+                onAbandon = { confirmingAbandon = true },
             )
         },
-        bottom = {
-            SummaryActionBar(
-                archiving = archiving,
-                onArchive = actions.onArchive,
-                onDiscard = actions.onDiscard,
-            )
-        },
+        bottom = { SummaryActionBar(archiving = archiving, onArchive = actions.onArchive) },
     ) {
         // Le défilement appartient à cet écran et non à la liste : à grande taille de
         // police, quatre tronçons dépassent la zone. C'est aussi pourquoi [SegmentList]
@@ -182,6 +185,16 @@ internal fun SummaryScreen(
             )
         }
     }
+
+    if (confirmingAbandon) {
+        AbandonConfirmationDialog(
+            onConfirm = {
+                confirmingAbandon = false
+                actions.onDiscard()
+            },
+            onDismiss = { confirmingAbandon = false },
+        )
+    }
 }
 
 /**
@@ -195,12 +208,17 @@ internal fun SummaryScreen(
  * La cellule **Départ** est cliquable : elle est le seul accès au jalon 0, les tronçons
  * n'ouvrant que leur jalon d'arrivée. Sans elle, une heure de départ fausse ne serait plus
  * rattrapable une fois l'écran actif retiré de la pile.
+ *
+ * « Abandonner » siège ici, dans la zone la moins commode de l'écran. C'est délibéré :
+ * une action irréversible ne doit pas tomber sous le pouce (`docs/ergonomie.md` §3). Elle
+ * y côtoyait « Enregistrer » à huit millimètres près, ce qui est l'anti-patron 5.
  */
 @Composable
 private fun SummaryHeader(
     trip: Trip,
     onDepartureClick: (() -> Unit)?,
     departureSelected: Boolean,
+    onAbandon: () -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
     val departure = trip.departureAt
@@ -230,7 +248,10 @@ private fun SummaryHeader(
                         } else {
                             Modifier
                         },
-                    ).padding(horizontal = 8.dp, vertical = 4.dp),
+                        // Cible tactile : la cellule est cliquable, elle doit tenir les
+                        // 48 dp comme n'importe quel bouton (`docs/ergonomie.md` §4).
+                    ).heightIn(min = TouchTargetHeight)
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
         )
         val arrival = trip.arrivalAt
         if (arrival != null) {
@@ -241,55 +262,41 @@ private fun SummaryHeader(
                 value = trip.measuredDuration()?.let(::formatDuration),
             )
         }
+        TextButton(onClick = onAbandon, modifier = Modifier.heightIn(min = TouchTargetHeight)) {
+            Text(
+                text = stringResource(R.string.abandon_action),
+                color = colors.error,
+            )
+        }
     }
 }
 
+/**
+ * Zone d'action basse : « Enregistrer », **seul** et pleine largeur.
+ *
+ * C'est la position robuste pour une action primaire : elle ne dépend pas de la main qui
+ * tient l'appareil (`docs/ergonomie.md` §2). « Abandonner » lui disputait la moitié de la
+ * barre ; il est remonté dans le bandeau.
+ */
 @Composable
 private fun SummaryActionBar(
     archiving: Boolean,
     onArchive: () -> Unit,
-    onDiscard: () -> Unit,
 ) {
-    // L'abandon détruit le trajet, et cet écran est atteint **automatiquement** en fin de
-    // parcours : la confirmation n'est pas une politesse, c'est un garde-fou. Le POC s'en
-    // passe ; l'accueil, lui, en demande déjà une pour la même action.
-    var confirming by rememberSaveable { mutableStateOf(false) }
-
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
+    Button(
+        onClick = onArchive,
+        // Le verrou du ViewModel empêche déjà la double insertion ; celui-ci le rend
+        // visible, pour que l'appui suivant ne semble pas ignoré.
+        enabled = !archiving,
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .heightIn(min = ActionHeight),
     ) {
-        TextButton(
-            onClick = { confirming = true },
-            modifier = Modifier.heightIn(min = ActionHeight),
-        ) {
-            Text(
-                text = stringResource(R.string.abandon_action),
-                color = MaterialTheme.colorScheme.error,
-            )
-        }
-        Button(
-            onClick = onArchive,
-            // Le verrou du ViewModel empêche déjà la double insertion ; celui-ci le rend
-            // visible, pour que l'appui suivant ne semble pas ignoré.
-            enabled = !archiving,
-            modifier = Modifier.weight(1f).heightIn(min = ActionHeight),
-        ) {
-            Text(
-                text = stringResource(R.string.summary_save),
-                style = MaterialTheme.typography.titleLarge,
-            )
-        }
-    }
-
-    if (confirming) {
-        AbandonConfirmationDialog(
-            onConfirm = {
-                confirming = false
-                onDiscard()
-            },
-            onDismiss = { confirming = false },
+        Text(
+            text = stringResource(R.string.summary_save),
+            style = MaterialTheme.typography.titleLarge,
         )
     }
 }

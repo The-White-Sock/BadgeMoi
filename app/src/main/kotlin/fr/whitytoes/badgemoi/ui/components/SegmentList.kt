@@ -31,7 +31,12 @@ import fr.whitytoes.badgemoi.ui.theme.numeric
 import java.time.Instant
 import kotlin.time.Duration
 
-private val RowMinHeight = 44.dp
+/**
+ * Minimum Material pour une cible tactile (`docs/ergonomie.md` §4). La ligne était à
+ * 44 dp du temps où la liste était en lecture seule ; elle ouvre désormais la correction
+ * d'un jalon, la contrainte s'applique donc.
+ */
+private val RowMinHeight = 48.dp
 
 /**
  * Liste des tronçons nommés d'un trajet avec leur durée (cahier des charges §3.3).
