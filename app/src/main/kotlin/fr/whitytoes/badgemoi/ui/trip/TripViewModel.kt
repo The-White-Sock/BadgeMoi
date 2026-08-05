@@ -42,9 +42,10 @@ class TripViewModel
     @Inject
     constructor(
         private val activeTripRepository: ActiveTripRepository,
-        private val corrections: MilestoneCorrections,
         private val clock: Clock,
     ) : ViewModel() {
+        private val corrections = MilestoneCorrections(ActiveTripStore(activeTripRepository), clock)
+
         val uiState: StateFlow<TripUiState> =
             activeTripRepository
                 .observe()

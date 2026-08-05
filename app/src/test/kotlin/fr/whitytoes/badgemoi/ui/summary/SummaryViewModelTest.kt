@@ -2,12 +2,12 @@
 
 package fr.whitytoes.badgemoi.ui.summary
 
+import androidx.lifecycle.SavedStateHandle
 import fr.whitytoes.badgemoi.domain.ActiveTripRepository
 import fr.whitytoes.badgemoi.domain.Direction
 import fr.whitytoes.badgemoi.domain.Routes
 import fr.whitytoes.badgemoi.domain.Trip
 import fr.whitytoes.badgemoi.domain.TripArchiveRepository
-import fr.whitytoes.badgemoi.ui.trip.MilestoneCorrections
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -59,7 +59,14 @@ class SummaryViewModelTest {
     private fun viewModel(
         active: FakeActiveTripRepository,
         archive: FakeArchiveRepository,
-    ) = SummaryViewModel(active, archive, MilestoneCorrections(active, CLOCK))
+    ) = SummaryViewModel(active, archive, CLOCK, SavedStateHandle())
+
+    /** Le même écran, mais ouvert sur un trajet **archivé** : la route porte son identifiant. */
+    private fun archivedViewModel(
+        active: FakeActiveTripRepository,
+        archive: FakeArchiveRepository,
+        tripId: String,
+    ) = SummaryViewModel(active, archive, CLOCK, SavedStateHandle(mapOf(ARCHIVED_TRIP_ID_KEY to tripId)))
 
     @Test
     fun `l'état initial est le chargement`() =
@@ -255,6 +262,73 @@ class SummaryViewModelTest {
             assertEquals("le trajet reste à compléter", 2, active.current?.currentStep)
         }
 
+    // --- Trajet archivé, rouvert depuis l'historique ---
+
+    @Test
+    fun `un trajet archivé est relu depuis l'archive, pas depuis le trajet en cours`() =
+        runTest(dispatcher) {
+            val archive = FakeArchiveRepository()
+            val archivedTrip = completedTrip().copy(id = "archived")
+            archive.add(archivedTrip)
+            val model = archivedViewModel(FakeActiveTripRepository(), archive, "archived")
+
+            advanceUntilIdle()
+
+            val state = model.uiState.value as SummaryUiState.Ready
+            assertEquals(archivedTrip, state.trip)
+            assertTrue("le mode remonte à l'écran", state.archived)
+        }
+
+    /**
+     * Le point de la seconde moitié de #108 : corriger un jalon après coup doit modifier
+     * **l'archive**, sans quoi la correction serait perdue et les moyennes fausses.
+     */
+    @Test
+    fun `corriger un jalon archivé écrit dans l'archive`() =
+        runTest(dispatcher) {
+            val archive = FakeArchiveRepository()
+            archive.add(completedTrip().copy(id = "archived"))
+            val active = FakeActiveTripRepository()
+            val model = archivedViewModel(active, archive, "archived")
+            advanceUntilIdle()
+
+            // 08h30 UTC, soit trente minutes après le départ — et avant l'horloge (09h00).
+            model.correctMilestone(index = 2, hour = 8, minute = 30)
+            advanceUntilIdle()
+
+            assertEquals(departure.plusSeconds(1_800), archive.trips.single().times[2])
+            assertEquals("le trajet en cours n'est pas touché", null, active.current)
+        }
+
+    @Test
+    fun `supprimer un trajet archivé le retire de l'archive`() =
+        runTest(dispatcher) {
+            val archive = FakeArchiveRepository()
+            archive.add(completedTrip().copy(id = "archived"))
+            val model = archivedViewModel(FakeActiveTripRepository(), archive, "archived")
+            advanceUntilIdle()
+
+            model.deleteArchivedTrip()
+            advanceUntilIdle()
+
+            assertEquals(emptyList<Trip>(), archive.trips)
+            assertEquals("l'écran n'a plus d'objet", SummaryUiState.NoTrip, model.uiState.value)
+        }
+
+    /** Garde-fou : un trajet en cours s'abandonne, il ne se supprime pas. */
+    @Test
+    fun `supprimer est sans effet sur un trajet en cours`() =
+        runTest(dispatcher) {
+            val active = FakeActiveTripRepository(completedTrip())
+            val model = viewModel(active, FakeArchiveRepository())
+            advanceUntilIdle()
+
+            model.deleteArchivedTrip()
+            advanceUntilIdle()
+
+            assertEquals(completedTrip(), active.current)
+        }
+
     /** Le trajet a pu être abandonné depuis l'accueil pendant la relecture. */
     @Test
     fun `enregistrer est sans effet quand le trajet a disparu`() =
@@ -305,7 +379,11 @@ class SummaryViewModelTest {
             barriere?.await()
             operations += "archive"
             addCount++
-            state.value = state.value + trip
+            // Remplacement sur conflit d'identifiant, comme `OnConflictStrategy.REPLACE`
+            // du DAO : c'est ce qui fait qu'enregistrer un trajet déjà archivé le met à
+            // jour au lieu de le dupliquer. Un double qui empilerait laisserait passer
+            // une correction perdue.
+            state.value = state.value.filterNot { it.id == trip.id } + trip
         }
 
         override suspend fun delete(ids: Collection<String>) {

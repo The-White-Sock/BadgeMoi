@@ -52,6 +52,21 @@ internal data object SummaryRoute
 internal data object HistoryRoute
 
 /**
+ * Destination « Trajet archivé » : un trajet de l'historique rouvert dans le récapitulatif.
+ *
+ * Appartient à l'onglet **Historique** — c'est de là qu'on y entre et c'est là qu'on
+ * revient — d'où une route distincte de [SummaryRoute] plutôt qu'un argument ajouté à
+ * celle-ci : le bandeau haut doit continuer d'afficher « Historique » comme onglet actif.
+ *
+ * Le nom de la propriété est la clé lue par le `SavedStateHandle` du ViewModel
+ * ([fr.whitytoes.badgemoi.ui.summary.ARCHIVED_TRIP_ID_KEY]).
+ */
+@Serializable
+internal data class ArchivedTripRoute(
+    val tripId: String,
+)
+
+/**
  * Coquille de l'application : le bandeau haut partagé (cahier §3.1) surmonte le graphe
  * de navigation. Chaque destination applique ensuite son propre patron fixe/scroll/fixe
  * via [fr.whitytoes.badgemoi.ui.components.ScreenScaffold] — la zone basse d'actions est
@@ -73,7 +88,9 @@ fun BadgeMoiApp(
     // L'onglet « Trajet » couvre l'accueil, le trajet actif et le récapitulatif : on
     // se repère sur l'Historique, seule destination de l'autre onglet.
     val isTripSelected =
-        backStackEntry?.destination?.hierarchy?.none { it.hasRoute(HistoryRoute::class) } != false
+        backStackEntry?.destination?.hierarchy?.none {
+            it.hasRoute(HistoryRoute::class) || it.hasRoute(ArchivedTripRoute::class)
+        } != false
 
     Column(
         modifier =
@@ -130,10 +147,12 @@ private fun BadgeMoiNavHost(
             SummaryScreen(onNavigateHome = { navController.replaceAll(TripRoute) })
         }
         composable<HistoryRoute> {
-            // Ouvrir un trajet archivé demande que le récapitulatif sache travailler sur
-            // l'archive et non sur le seul trajet en cours : c'est la seconde moitié de
-            // #108, et le geste reste sans effet d'ici là.
-            HistoryScreen(onOpenTrip = {})
+            // Navigation ordinaire, sans vider la pile : le retour depuis un trajet
+            // archivé doit ramener à l'historique, pas quitter l'application.
+            HistoryScreen(onOpenTrip = { id -> navController.navigate(ArchivedTripRoute(id)) })
+        }
+        composable<ArchivedTripRoute> {
+            SummaryScreen(onNavigateHome = { navController.popBackStack() })
         }
     }
 }

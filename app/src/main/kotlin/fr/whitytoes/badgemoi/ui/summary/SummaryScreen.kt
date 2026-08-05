@@ -96,13 +96,16 @@ fun SummaryScreen(
         val trip = ready.trip
 
         SummaryScreen(
-            trip = trip,
-            archiving = ready.archiving,
+            state = ready,
             actions =
                 SummaryActions(
                     onArchive = viewModel::archiveTrip,
                     onDiscard = viewModel::discardTrip,
                     onMilestoneClick = { index -> correctingIndex = index },
+                    onDelete = viewModel::deleteArchivedTrip,
+                    // Les corrections d'un trajet archivé sont déjà écrites : refermer,
+                    // c'est simplement revenir d'où l'on vient.
+                    onClose = onNavigateHome,
                 ),
             correctingIndex = correctingIndex,
             modifier = modifier,
@@ -143,12 +146,13 @@ fun SummaryScreen(
  */
 @Composable
 internal fun SummaryScreen(
-    trip: Trip,
-    archiving: Boolean,
+    state: SummaryUiState.Ready,
     actions: SummaryActions,
     correctingIndex: Int? = null,
     modifier: Modifier = Modifier,
 ) {
+    val trip = state.trip
+    val archived = state.archived
     val segments = remember(trip) { trip.segmentRows() }
 
     // L'abandon détruit le trajet, et cet écran est atteint **automatiquement** en fin de
@@ -164,9 +168,16 @@ internal fun SummaryScreen(
                 onDepartureClick = actions.onMilestoneClick?.let { { it(DEPARTURE_INDEX) } },
                 departureSelected = correctingIndex == DEPARTURE_INDEX,
                 onAbandon = { confirmingAbandon = true },
+                archived = archived,
             )
         },
-        bottom = { SummaryActionBar(archiving = archiving, onArchive = actions.onArchive) },
+        bottom = {
+            SummaryActionBar(
+                archiving = state.archiving,
+                archived = archived,
+                onArchive = if (archived) actions.onClose else actions.onArchive,
+            )
+        },
     ) {
         // Le défilement appartient à cet écran et non à la liste : à grande taille de
         // police, quatre tronçons dépassent la zone. C'est aussi pourquoi [SegmentList]
@@ -190,9 +201,12 @@ internal fun SummaryScreen(
         AbandonConfirmationDialog(
             onConfirm = {
                 confirmingAbandon = false
-                actions.onDiscard()
+                if (archived) actions.onDelete() else actions.onDiscard()
             },
             onDismiss = { confirmingAbandon = false },
+            titleRes = if (archived) R.string.summary_delete_title else R.string.abandon_dialog_title,
+            messageRes = if (archived) R.string.summary_delete_message else R.string.abandon_dialog_message,
+            confirmRes = if (archived) R.string.summary_delete else R.string.abandon_action,
         )
     }
 }
@@ -219,6 +233,7 @@ private fun SummaryHeader(
     onDepartureClick: (() -> Unit)?,
     departureSelected: Boolean,
     onAbandon: () -> Unit,
+    archived: Boolean,
 ) {
     val colors = MaterialTheme.colorScheme
     val departure = trip.departureAt
@@ -264,7 +279,9 @@ private fun SummaryHeader(
         }
         TextButton(onClick = onAbandon, modifier = Modifier.heightIn(min = TouchTargetHeight)) {
             Text(
-                text = stringResource(R.string.abandon_action),
+                // Un trajet archivé se **supprime** ; un trajet en cours s'abandonne, il
+                // n'a jamais été rangé nulle part.
+                text = stringResource(if (archived) R.string.summary_delete else R.string.abandon_action),
                 color = colors.error,
             )
         }
@@ -281,6 +298,7 @@ private fun SummaryHeader(
 @Composable
 private fun SummaryActionBar(
     archiving: Boolean,
+    archived: Boolean,
     onArchive: () -> Unit,
 ) {
     Button(
@@ -295,7 +313,9 @@ private fun SummaryActionBar(
                 .heightIn(min = ActionHeight),
     ) {
         Text(
-            text = stringResource(R.string.summary_save),
+            // Rien à enregistrer sur un trajet archivé : ses corrections sont écrites au
+            // fur et à mesure, le bouton ne fait que refermer.
+            text = stringResource(if (archived) R.string.summary_done else R.string.summary_save),
             style = MaterialTheme.typography.titleLarge,
         )
     }
@@ -318,8 +338,7 @@ private fun previewTrip(): Trip {
 private fun SummaryScreenNightPreview() {
     BadgeMoiTheme(darkTheme = true) {
         SummaryScreen(
-            trip = previewTrip(),
-            archiving = false,
+            state = SummaryUiState.Ready(trip = previewTrip()),
             actions = SummaryActions(onArchive = {}, onDiscard = {}),
         )
     }
@@ -330,8 +349,7 @@ private fun SummaryScreenNightPreview() {
 private fun SummaryScreenDayPreview() {
     BadgeMoiTheme(darkTheme = false) {
         SummaryScreen(
-            trip = previewTrip(),
-            archiving = false,
+            state = SummaryUiState.Ready(trip = previewTrip()),
             actions = SummaryActions(onArchive = {}, onDiscard = {}),
         )
     }

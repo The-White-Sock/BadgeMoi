@@ -143,6 +143,11 @@ verrouillée en **portrait**.
 - Liste des trajets récents (10 derniers) : date et **heure de départ**, durée colorée selon
   l'écart à la moyenne (plus rapide/plus lent). L'heure distingue deux trajets d'un même
   jour, que la seule date confondait.
+- **Ouverture d'un trajet archivé** : hors mode sélection, toucher un trajet récent rouvre
+  le récapitulatif (§3.3) sur ce trajet. Les corrections y sont écrites aussitôt dans
+  l'archive — même principe que pour un trajet en cours — et les moyennes suivent. L'action
+  destructive s'y nomme « Supprimer », le bouton bas « Terminé » : il n'y a rien à
+  enregistrer, tout l'est déjà.
 - Export CSV : **toute** l'archive, les deux sens confondus, contrairement aux statistiques.
 - **Suppression par sélection.** Le bouton « Supprimer » siège au niveau du titre « Trajets
   récents », qui est ce sur quoi il agit. Un appui bascule la liste en mode sélection :
