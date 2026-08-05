@@ -5,13 +5,16 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import fr.whitytoes.badgemoi.domain.Direction
 import fr.whitytoes.badgemoi.domain.TripArchiveRepository
+import fr.whitytoes.badgemoi.domain.TripCsv
 import fr.whitytoes.badgemoi.domain.TripStatistics
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.time.Clock
 import javax.inject.Inject
 
 /**
@@ -30,6 +33,7 @@ class HistoryViewModel
     @Inject
     constructor(
         private val archiveRepository: TripArchiveRepository,
+        private val clock: Clock,
     ) : ViewModel() {
         private val selectedDirection = MutableStateFlow(Direction.ALLER)
 
@@ -67,6 +71,25 @@ class HistoryViewModel
         fun selectDirection(direction: Direction) {
             selectedDirection.value = direction
         }
+
+        /**
+         * Nom proposé au sélecteur de fichier.
+         *
+         * Ne dépend que de l'horloge : il est calculé avant l'ouverture du sélecteur, donc
+         * sur le fil principal, sans toucher à l'archive.
+         */
+        fun csvFileName(): String = TripCsv.fileName(clock.instant(), clock.zone)
+
+        /**
+         * Contenu du fichier : **toute** l'archive, les deux sens confondus, contrairement
+         * aux statistiques qui sont par sens.
+         *
+         * Suspendue et lue depuis le dépôt plutôt que depuis un état mémorisé : conserver
+         * la dernière liste dans un `StateFlow` obligerait à lui donner une valeur
+         * initiale, ce qui ferait passer l'écran de [HistoryUiState.Loading] à une archive
+         * vide avant même la première lecture.
+         */
+        suspend fun csvContent(): String = TripCsv.serialize(archiveRepository.observeAll().first(), clock.zone)
 
         /**
          * Vide l'archive.

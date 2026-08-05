@@ -22,8 +22,13 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import java.time.Clock
 import java.time.Instant
+import java.time.ZoneOffset
 import kotlin.time.Duration.Companion.minutes
+
+/** Horloge figée : seul le nom du fichier d'export s'en sert. */
+private val CLOCK: Clock = Clock.fixed(Instant.parse("2026-07-26T09:00:00Z"), ZoneOffset.UTC)
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class HistoryViewModelTest {
@@ -55,12 +60,14 @@ class HistoryViewModelTest {
         }
     }
 
+    private fun viewModel(archive: TripArchiveRepository) = HistoryViewModel(archive, CLOCK)
+
     private fun ready(model: HistoryViewModel) = model.uiState.value as HistoryUiState.Ready
 
     @Test
     fun `l'état initial est le chargement`() =
         runTest(dispatcher) {
-            val model = HistoryViewModel(FakeArchiveRepository())
+            val model = viewModel(FakeArchiveRepository())
 
             assertEquals(HistoryUiState.Loading, model.uiState.value)
         }
@@ -73,7 +80,7 @@ class HistoryViewModelTest {
     @Test
     fun `une archive vide donne des moyennes nulles et zéro trajet`() =
         runTest(dispatcher) {
-            val model = HistoryViewModel(FakeArchiveRepository())
+            val model = viewModel(FakeArchiveRepository())
 
             advanceUntilIdle()
 
@@ -87,7 +94,7 @@ class HistoryViewModelTest {
     fun `les moyennes portent sur le sens sélectionné`() =
         runTest(dispatcher) {
             val model =
-                HistoryViewModel(
+                viewModel(
                     FakeArchiveRepository(
                         trip("a", durationMinutes = 30),
                         trip("b", durationMinutes = 50, direction = Direction.RETOUR),
@@ -111,7 +118,7 @@ class HistoryViewModelTest {
                     trip("a", durationMinutes = 30),
                     trip("b", durationMinutes = 50, direction = Direction.RETOUR),
                 )
-            val model = HistoryViewModel(archive)
+            val model = viewModel(archive)
             advanceUntilIdle()
             val collectionsBefore = archive.collectionCount
 
@@ -127,7 +134,7 @@ class HistoryViewModelTest {
     fun `purger vide l'archive et remet les statistiques à zéro`() =
         runTest(dispatcher) {
             val archive = FakeArchiveRepository(trip("a", durationMinutes = 30))
-            val model = HistoryViewModel(archive)
+            val model = viewModel(archive)
             advanceUntilIdle()
 
             model.clearArchive()
@@ -150,7 +157,7 @@ class HistoryViewModelTest {
                     trip("court", durationMinutes = 20),
                     trip("long", durationMinutes = 40, daysAgo = 1),
                 )
-            val model = HistoryViewModel(archive)
+            val model = viewModel(archive)
             advanceUntilIdle()
             assertEquals(30.minutes, ready(model).statistics.totalAverage)
 
@@ -165,7 +172,7 @@ class HistoryViewModelTest {
     fun `un double appui ne purge qu'une fois`() =
         runTest(dispatcher) {
             val archive = FakeArchiveRepository(trip("a", durationMinutes = 30))
-            val model = HistoryViewModel(archive)
+            val model = viewModel(archive)
             advanceUntilIdle()
 
             model.clearArchive()
@@ -185,7 +192,7 @@ class HistoryViewModelTest {
         runTest(dispatcher) {
             val barriere = CompletableDeferred<Unit>()
             val archive = FakeArchiveRepository(trip("a", durationMinutes = 30), barriere = barriere)
-            val model = HistoryViewModel(archive)
+            val model = viewModel(archive)
             advanceUntilIdle()
 
             model.clearArchive()
@@ -203,7 +210,7 @@ class HistoryViewModelTest {
     fun `les trajets récents suivent le sens sélectionné`() =
         runTest(dispatcher) {
             val model =
-                HistoryViewModel(
+                viewModel(
                     FakeArchiveRepository(
                         trip("a", durationMinutes = 30),
                         trip("b", durationMinutes = 50, direction = Direction.RETOUR),
@@ -217,6 +224,37 @@ class HistoryViewModelTest {
             advanceUntilIdle()
 
             assertEquals(listOf("b"), ready(model).recentTrips.map { it.id })
+        }
+
+    /**
+     * L'export porte sur **toute** l'archive, les deux sens confondus, contrairement aux
+     * statistiques. Le sens sélectionné ne doit donc rien y changer.
+     */
+    @Test
+    fun `l'export couvre les deux sens, quel que soit celui affiché`() =
+        runTest(dispatcher) {
+            val model =
+                viewModel(
+                    FakeArchiveRepository(
+                        trip("a", durationMinutes = 30),
+                        trip("b", durationMinutes = 50, direction = Direction.RETOUR),
+                    ),
+                )
+            advanceUntilIdle()
+            model.selectDirection(Direction.ALLER)
+
+            val csv = model.csvContent()
+
+            assertTrue("le sens affiché", csv.contains("\"Aller\""))
+            assertTrue("l'autre sens", csv.contains("\"Retour\""))
+        }
+
+    @Test
+    fun `le nom du fichier vient de l'horloge`() =
+        runTest(dispatcher) {
+            val model = viewModel(FakeArchiveRepository())
+
+            assertEquals("trajet-historique-2026-07-26.csv", model.csvFileName())
         }
 
     private class FakeArchiveRepository(
