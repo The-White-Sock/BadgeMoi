@@ -141,7 +141,11 @@ private fun MilestoneListRow(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 2.dp)
+                // 4 dp de part et d'autre, soit 8 dp entre deux lignes : l'écart minimal
+                // entre cibles tactiles distinctes (`docs/ergonomie.md` §4). Deux lignes
+                // voisines ouvrent la correction de deux jalons différents, et le doigt
+                // vise mal sur un board qui vibre.
+                .padding(horizontal = 8.dp, vertical = 4.dp)
                 // Découpe avant le fond : le coin arrondi vaut aussi pour l'aplat d'appui.
                 .clip(RowShape)
                 .background(background)

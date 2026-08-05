@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -19,10 +20,18 @@ import androidx.compose.ui.unit.dp
 import fr.whitytoes.badgemoi.R
 import fr.whitytoes.badgemoi.ui.theme.BadgeMoiTheme
 
+/** Minimum Material pour une cible tactile (`docs/ergonomie.md` §4). */
+private val TabMinHeight = 48.dp
+
 /**
  * Bandeau haut de l'application (cahier des charges §3.1) : onglets de navigation et
  * bascule de thème sur **une seule ligne**. L'espace pris ici l'est sur la zone utile
  * de l'écran, qui sert à saisir un trajet d'une main en roulant — d'où la compacité.
+ *
+ * La navigation reste **en haut** alors que la règle générale la veut en bas : la zone
+ * difficile n'est disqualifiée que pour ce qui est à la fois fréquent et tactile, et l'on
+ * bascule d'onglet quelques fois par semaine quand on valide un jalon plusieurs fois par
+ * trajet. Le raisonnement complet est en décision 2 de `docs/ergonomie.md`.
  *
  * Composant sans état : l'onglet actif et le thème courant sont fournis par l'appelant.
  * Les onglets sont dérivés de [TopLevelDestination], de sorte qu'en ajouter un plus tard
@@ -49,7 +58,7 @@ fun AppTopBar(
             )
         }
         Spacer(modifier = Modifier.weight(1f))
-        TextButton(onClick = onToggleTheme) {
+        TextButton(onClick = onToggleTheme, modifier = Modifier.heightIn(min = TabMinHeight)) {
             // Libellé textuel provisoire : l'icône soleil/lune fait partie du jeu
             // vectoriel définitif livré au lot 7 (cahier §1.5).
             Text(
@@ -69,7 +78,9 @@ private fun DestinationTab(
     selected: Boolean,
     onClick: () -> Unit,
 ) {
-    TextButton(onClick = onClick) {
+    // Un `TextButton` mesure 40 dp de haut par défaut, sous le minimum de 48 dp. Les
+    // onglets sont rares, pas facultatifs (`docs/ergonomie.md` §5, décision 2).
+    TextButton(onClick = onClick, modifier = Modifier.heightIn(min = TabMinHeight)) {
         Text(
             text = stringResource(labelRes),
             color =

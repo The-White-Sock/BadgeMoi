@@ -81,7 +81,7 @@ fun TripActiveScreen(
 
         val index = correctingIndex
         if (index != null) {
-            MilestoneCorrectionDialog(
+            MilestoneCorrectionSheet(
                 label = trip.milestoneRows()[index].label,
                 seedAt = trip.correctionSeedInstant(index),
                 actions =
@@ -107,7 +107,7 @@ fun TripActiveScreen(
             trip = trip,
             resuming = resuming,
             // Lecture différée, comme pour le bandeau : seule la ligne du compteur se
-            // recompose à la seconde, pas l'écran qui héberge la fenêtre.
+            // recompose à la seconde, pas l'écran qui héberge la feuille.
             elapsed = { timers.value.elapsed },
             onAbandon = viewModel::abandonTrip,
         )
@@ -115,13 +115,16 @@ fun TripActiveScreen(
 }
 
 /**
- * Décision de reprise d'un trajet retrouvé (§9, écart 10), fenêtre et confirmation
+ * Décision de reprise d'un trajet retrouvé (§9, écart 10), feuille et confirmation
  * comprises.
  *
  * Composant à part parce que la décision est un état à elle seule, distinct de la saisie
  * des jalons : elle se prend une fois, et l'écran continue sans elle. `rememberSaveable`
- * pour qu'une fenêtre écartée ne revienne pas après une rotation ou une recréation du
+ * pour qu'une feuille écartée ne revienne pas après une rotation ou une recréation du
  * processus.
+ *
+ * La confirmation d'abandon reste une **fenêtre centrée** là où la reprise est une feuille
+ * basse : elle doit interrompre, pas se glisser sous le pouce (`docs/ergonomie.md` §3).
  */
 @Composable
 private fun TripResumeOverlay(
@@ -147,7 +150,7 @@ private fun TripResumeOverlay(
             onDismiss = { confirming = false },
         )
     } else {
-        TripResumeDialog(
+        TripResumeSheet(
             trip = trip,
             elapsed = elapsed,
             onResume = { pending = false },
@@ -159,8 +162,9 @@ private fun TripResumeOverlay(
 /**
  * Version sans état, prévisualisable.
  *
- * [correctingIndex] n'est pas de la logique mais de l'affichage : la ligne dont l'overlay
- * est ouvert reste allumée, ce qui rattache la fenêtre au jalon qu'elle modifie.
+ * [correctingIndex] n'est pas de la logique mais de l'affichage : la ligne dont la feuille
+ * de correction est ouverte reste allumée, ce qui rattache la feuille au jalon qu'elle
+ * modifie.
  */
 @Composable
 internal fun TripActiveScreen(
@@ -188,8 +192,8 @@ internal fun TripActiveScreen(
     ) {
         MilestoneList(
             rows = rows,
-            // Le défilement est porté ici : la liste elle-même n'en a plus, pour pouvoir
-            // s'empiler sous celle des tronçons au récapitulatif.
+            // Le défilement est porté ici : la liste ne décide pas de sa propre zone
+            // défilante, c'est l'écran qui la place dans la sienne.
             modifier = Modifier.verticalScroll(rememberScrollState()),
             onMilestoneClick = actions.onMilestoneClick,
             // Lecture différée elle aussi : seule la ligne du jalon courant se recompose

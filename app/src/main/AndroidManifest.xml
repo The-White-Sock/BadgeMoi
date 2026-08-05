@@ -15,9 +15,20 @@
         android:theme="@style/Theme.BadgeMoi"
         android:supportsRtl="true">
 
+        <!--
+            Portrait exclusif (docs/ergonomie.md) : l'application se tient à une main en
+            roulant, et le paysage rendrait la barre d'action inatteignable au pouce.
+
+            Le verrou tient sur téléphone. Au-delà de 600 dp de largeur minimale, Android
+            l'ignore depuis l'API 36 pour les applications qui la ciblent, et l'échappatoire
+            par propriété de manifeste a disparu à l'API 37 — celle que nous visons. Une
+            tablette ou un pliable ouvert affichera donc l'application en paysage ; ce n'est
+            pas la cible (§7 du cahier), mais aucun écran ne doit s'y casser.
+        -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:screenOrientation="portrait"
             android:theme="@style/Theme.BadgeMoi">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
