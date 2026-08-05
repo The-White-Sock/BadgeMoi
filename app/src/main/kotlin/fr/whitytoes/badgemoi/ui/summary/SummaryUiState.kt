@@ -25,9 +25,13 @@ sealed interface SummaryUiState {
      * @property archiving vrai entre l'appui sur « Enregistrer » et la fin de l'écriture.
      *   Porté dans l'état plutôt que gardé dans le ViewModel pour que l'écran puisse
      *   désactiver le bouton : le verrou est alors visible, et non seulement effectif.
+     * @property archived vrai quand le trajet vient de l'**archive**, rouvert depuis
+     *   l'historique. L'écran est le même, ses issues non : un trajet archivé se supprime
+     *   et se referme, là où un trajet en cours s'archive ou s'abandonne.
      */
     data class Ready(
         val trip: Trip,
         val archiving: Boolean = false,
+        val archived: Boolean = false,
     ) : SummaryUiState
 }

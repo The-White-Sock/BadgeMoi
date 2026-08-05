@@ -41,6 +41,11 @@
     <string name="segment_not_measured">Non mesuré</string>
     <string name="summary_arrival">Arrivée</string>
     <string name="summary_save">Enregistrer</string>
+    <!-- Trajet archivé rouvert depuis l'historique : mêmes écrans, autres issues. -->
+    <string name="summary_done">Terminé</string>
+    <string name="summary_delete">Supprimer</string>
+    <string name="summary_delete_title">Supprimer ce trajet ?</string>
+    <string name="summary_delete_message">Il sera retiré de l\'archive et des moyennes.</string>
 
     <!-- Écran « Historique » -->
     <string name="history_total">Trajet complet</string>

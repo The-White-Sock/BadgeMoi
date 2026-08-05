@@ -47,8 +47,7 @@ class TripViewModelTest {
 
     private fun trip() = Trip.start(id = "t1", direction = Direction.ALLER, departureAt = departure)
 
-    private fun viewModel(repository: ActiveTripRepository) =
-        TripViewModel(repository, MilestoneCorrections(repository, clock), clock)
+    private fun viewModel(repository: ActiveTripRepository) = TripViewModel(repository, clock)
 
     @Test
     fun `l'état initial est le chargement`() =

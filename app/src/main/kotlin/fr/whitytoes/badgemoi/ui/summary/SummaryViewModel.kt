@@ -1,18 +1,32 @@
 package fr.whitytoes.badgemoi.ui.summary
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import fr.whitytoes.badgemoi.domain.ActiveTripRepository
 import fr.whitytoes.badgemoi.domain.TripArchiveRepository
+import fr.whitytoes.badgemoi.ui.trip.ActiveTripStore
+import fr.whitytoes.badgemoi.ui.trip.ArchivedTripStore
 import fr.whitytoes.badgemoi.ui.trip.MilestoneCorrections
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.time.Clock
 import javax.inject.Inject
+
+/**
+ * Nom de l'argument de route portant l'identifiant d'un trajet archivé.
+ *
+ * Lu depuis le [SavedStateHandle] plutôt qu'en désérialisant la route : le ViewModel n'a
+ * pas à connaître le graphe de navigation pour savoir sur quel trajet il travaille.
+ */
+internal const val ARCHIVED_TRIP_ID_KEY = "tripId"
 
 /**
  * Écran « Récapitulatif » (cahier des charges §3.3) : dernière relecture avant qu'un
@@ -26,6 +40,19 @@ import javax.inject.Inject
  * le modèle du POC, dont `sumDiscard` appelle `discardTrip` — le second bouton jette le
  * trajet, il ne ramène pas en arrière. La correction d'un jalon se fait **sur place**,
  * les lignes du récapitulatif étant cliquables comme celles de l'écran actif.
+ *
+ * ## Deux modes
+ *
+ * Le même écran sert à relire un trajet **en cours** et à rouvrir un trajet **archivé**
+ * depuis l'historique. La route porte l'identifiant dans le second cas, et c'est lui qui
+ * décide de tout : la source lue, l'endroit où les corrections s'écrivent, et la nature de
+ * l'action destructive — abandonner un trajet qu'on n'a pas encore rangé, ou en supprimer
+ * un de l'archive.
+ *
+ * Les corrections restent **écrites aussitôt** dans les deux cas. C'est le principe posé
+ * au lot 3 : chaque action est persistée sur-le-champ, l'application pouvant être tuée à
+ * tout moment. Un bouton qui validerait un lot de corrections introduirait un état non
+ * persisté que rien d'autre dans l'application ne connaît.
  */
 @HiltViewModel
 class SummaryViewModel
@@ -33,22 +60,55 @@ class SummaryViewModel
     constructor(
         private val activeTripRepository: ActiveTripRepository,
         private val archiveRepository: TripArchiveRepository,
-        private val corrections: MilestoneCorrections,
+        clock: Clock,
+        savedStateHandle: SavedStateHandle,
     ) : ViewModel() {
+        /** Identifiant du trajet archivé rouvert, `null` pour le trajet en cours. */
+        private val archivedTripId: String? = savedStateHandle[ARCHIVED_TRIP_ID_KEY]
+
+        private val corrections =
+            MilestoneCorrections(
+                store =
+                    archivedTripId
+                        ?.let { ArchivedTripStore(archiveRepository, it) }
+                        ?: ActiveTripStore(activeTripRepository),
+                clock = clock,
+            )
+
         private val archiving = MutableStateFlow(false)
 
         val uiState: StateFlow<SummaryUiState> =
-            combine(activeTripRepository.observe(), archiving) { trip, isArchiving ->
-                if (trip == null) {
-                    SummaryUiState.NoTrip
-                } else {
-                    SummaryUiState.Ready(trip = trip, archiving = isArchiving)
+            trips()
+                .stateIn(
+                    scope = viewModelScope,
+                    started = SharingStarted.Eagerly,
+                    initialValue = SummaryUiState.Loading,
+                )
+
+        /**
+         * Le trajet observé, selon le mode.
+         *
+         * Un trajet archivé disparu — supprimé à l'instant — rend [SummaryUiState.NoTrip]
+         * comme le ferait un trajet en cours effacé : l'écran n'a plus d'objet, et
+         * l'appelant sait où revenir.
+         */
+        private fun trips(): Flow<SummaryUiState> =
+            if (archivedTripId != null) {
+                archiveRepository.observeAll().map { archive ->
+                    archive
+                        .firstOrNull { it.id == archivedTripId }
+                        ?.let { SummaryUiState.Ready(trip = it, archived = true) }
+                        ?: SummaryUiState.NoTrip
                 }
-            }.stateIn(
-                scope = viewModelScope,
-                started = SharingStarted.Eagerly,
-                initialValue = SummaryUiState.Loading,
-            )
+            } else {
+                combine(activeTripRepository.observe(), archiving) { trip, isArchiving ->
+                    if (trip == null) {
+                        SummaryUiState.NoTrip
+                    } else {
+                        SummaryUiState.Ready(trip = trip, archiving = isArchiving)
+                    }
+                }
+            }
 
         /**
          * Archive le trajet relu, puis vide le trajet en cours.
@@ -95,6 +155,17 @@ class SummaryViewModel
          */
         fun discardTrip() {
             viewModelScope.launch { activeTripRepository.clear() }
+        }
+
+        /**
+         * Retire de l'archive le trajet rouvert.
+         *
+         * Sans effet sur un trajet en cours : celui-ci s'abandonne, il ne se supprime pas —
+         * il n'a jamais été rangé nulle part.
+         */
+        fun deleteArchivedTrip() {
+            val id = archivedTripId ?: return
+            viewModelScope.launch { archiveRepository.delete(setOf(id)) }
         }
 
         /**

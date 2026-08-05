@@ -6,6 +6,9 @@ package fr.whitytoes.badgemoi.ui.summary
  *
  * @property onArchive enregistre le trajet dans l'archive.
  * @property onDiscard l'abandonne sans l'archiver — l'appelant confirme au préalable.
+ * @property onDelete retire de l'archive un trajet **rouvert depuis l'historique**.
+ * @property onClose referme un trajet archivé : ses corrections sont déjà écrites, il n'y
+ *   a rien à valider.
  * @property onMilestoneClick ouvre la correction d'un jalon, sans quitter l'écran. L'écran
  *   la déclenche depuis un tronçon — qui désigne son jalon d'arrivée — ou depuis la cellule
  *   « Départ » du bandeau, seul accès au jalon 0.
@@ -14,4 +17,6 @@ data class SummaryActions(
     val onArchive: () -> Unit,
     val onDiscard: () -> Unit,
     val onMilestoneClick: ((Int) -> Unit)? = null,
+    val onDelete: () -> Unit = {},
+    val onClose: () -> Unit = {},
 )
