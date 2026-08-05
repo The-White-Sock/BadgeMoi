@@ -16,12 +16,14 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import fr.whitytoes.badgemoi.domain.Direction
 import fr.whitytoes.badgemoi.domain.Trip
+import fr.whitytoes.badgemoi.ui.components.AbandonConfirmationDialog
 import fr.whitytoes.badgemoi.ui.components.KeepScreenOn
 import fr.whitytoes.badgemoi.ui.components.MilestoneList
 import fr.whitytoes.badgemoi.ui.components.ScreenScaffold
 import fr.whitytoes.badgemoi.ui.components.TripProgressFrieze
 import fr.whitytoes.badgemoi.ui.theme.BadgeMoiTheme
 import java.time.Instant
+import kotlin.time.Duration
 
 /**
  * Écran « Trajet actif » (cahier des charges §3.2).
@@ -32,6 +34,7 @@ import java.time.Instant
  */
 @Composable
 fun TripActiveScreen(
+    resuming: Boolean,
     onNavigateHome: () -> Unit,
     onNavigateToSummary: () -> Unit,
     modifier: Modifier = Modifier,
@@ -99,6 +102,57 @@ fun TripActiveScreen(
                     ),
             )
         }
+
+        TripResumeOverlay(
+            trip = trip,
+            resuming = resuming,
+            // Lecture différée, comme pour le bandeau : seule la ligne du compteur se
+            // recompose à la seconde, pas l'écran qui héberge la fenêtre.
+            elapsed = { timers.value.elapsed },
+            onAbandon = viewModel::abandonTrip,
+        )
+    }
+}
+
+/**
+ * Décision de reprise d'un trajet retrouvé (§9, écart 10), fenêtre et confirmation
+ * comprises.
+ *
+ * Composant à part parce que la décision est un état à elle seule, distinct de la saisie
+ * des jalons : elle se prend une fois, et l'écran continue sans elle. `rememberSaveable`
+ * pour qu'une fenêtre écartée ne revienne pas après une rotation ou une recréation du
+ * processus.
+ */
+@Composable
+private fun TripResumeOverlay(
+    trip: Trip,
+    resuming: Boolean,
+    elapsed: () -> Duration?,
+    onAbandon: () -> Unit,
+) {
+    var pending by rememberSaveable { mutableStateOf(resuming) }
+    var confirming by rememberSaveable { mutableStateOf(false) }
+
+    // Rien à demander sur un trajet **terminé** : il part au récapitulatif dès la
+    // composition suivante, la fenêtre n'aurait fait que clignoter au passage.
+    if (!pending || trip.isComplete) return
+
+    if (confirming) {
+        AbandonConfirmationDialog(
+            onConfirm = {
+                confirming = false
+                pending = false
+                onAbandon()
+            },
+            onDismiss = { confirming = false },
+        )
+    } else {
+        TripResumeDialog(
+            trip = trip,
+            elapsed = elapsed,
+            onResume = { pending = false },
+            onAbandon = { confirming = true },
+        )
     }
 }
 

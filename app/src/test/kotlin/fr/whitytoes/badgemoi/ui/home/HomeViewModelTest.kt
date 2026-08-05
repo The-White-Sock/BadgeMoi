@@ -113,23 +113,6 @@ class HomeViewModelTest {
 
             assertNull(repository.observe().first())
         }
-
-    @Test
-    fun `abandonner efface le trajet en cours`() =
-        runTest(dispatcher) {
-            val repository =
-                FakeActiveTripRepository(
-                    Trip.start(id = "t1", direction = Direction.ALLER, departureAt = now),
-                )
-            val viewModel = HomeViewModel(repository, clock)
-            advanceUntilIdle()
-
-            viewModel.abandonTrip()
-            advanceUntilIdle()
-
-            assertNull(repository.observe().first())
-            assertEquals(HomeUiState.Idle, viewModel.uiState.value)
-        }
 }
 
 private class FakeActiveTripRepository(

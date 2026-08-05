@@ -129,6 +129,16 @@ class TripViewModel
         }
 
         /**
+         * Abandonne le trajet en cours : il est effacé sans rejoindre l'archive.
+         *
+         * L'action est offerte par la fenêtre de reprise, qui demande confirmation au
+         * préalable. Elle vivait à l'accueil ; elle a suivi la fenêtre (§9, écart 10).
+         */
+        fun abandonTrip() {
+            viewModelScope.launch { activeTripRepository.clear() }
+        }
+
+        /**
          * Applique [transform] au trajet en cours et persiste le résultat.
          *
          * Sans effet si aucun trajet n'est chargé, ou si [transform] renvoie `null` —

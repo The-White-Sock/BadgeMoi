@@ -194,6 +194,24 @@ class TripViewModelTest {
             assertEquals(22.minutes, viewModel.timers.value.elapsed)
         }
 
+    /**
+     * L'abandon a suivi la fenêtre de reprise, de l'accueil vers cet écran. Il efface le
+     * trajet sans l'archiver — la confirmation, elle, appartient à l'écran.
+     */
+    @Test
+    fun `abandonner efface le trajet en cours`() =
+        runTest(dispatcher) {
+            val repository = FakeActiveTripRepository(trip())
+            val viewModel = viewModel(repository)
+            advanceUntilIdle()
+
+            viewModel.abandonTrip()
+            advanceUntilIdle()
+
+            assertNull(repository.current)
+            assertEquals(TripUiState.NoTrip, viewModel.uiState.value)
+        }
+
     @Test
     fun `chaque action est persistée immédiatement`() =
         runTest(dispatcher) {
