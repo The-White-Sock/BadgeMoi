@@ -144,6 +144,9 @@ verrouillée en **portrait**.
 - Export CSV (toute l'archive, les deux sens), purge de l'historique **du sens affiché**
   (confirmation à double appui). L'écran étant par sens de bout en bout, une purge globale
   détruirait des trajets que rien n'y avait montrés.
+- **Suppression d'un trajet isolé** : toucher une ligne de la liste des trajets récents
+  ouvre une fenêtre qui nomme le trajet — sens, date, durée — et le retire après
+  confirmation. Une liste de dates se ressemble, et l'appui a pu manquer sa ligne.
 
 ### 3.5 Correction d'un jalon
 - Overlay de saisie d'heure (sélecteur d'heure natif Android, équivalent du `<input type="time">` actuel).

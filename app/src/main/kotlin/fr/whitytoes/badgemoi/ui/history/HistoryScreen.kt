@@ -8,6 +8,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -62,6 +65,7 @@ fun HistoryScreen(
                 onSelectDirection = viewModel::selectDirection,
                 onExport = export,
                 onClear = viewModel::clearArchive,
+                onDeleteTrip = viewModel::deleteTrip,
             ),
         modifier = modifier,
     )
@@ -75,6 +79,10 @@ internal fun HistoryScreen(
     modifier: Modifier = Modifier,
 ) {
     val statistics = state.statistics
+
+    // Trajet désigné en vue de sa suppression. `rememberSaveable` : une rotation ne doit
+    // ni rouvrir ni refermer une fenêtre qui va détruire quelque chose.
+    var deletingTripId by rememberSaveable { mutableStateOf<String?>(null) }
 
     ScreenScaffold(
         modifier = modifier,
@@ -94,8 +102,27 @@ internal fun HistoryScreen(
         if (statistics.tripCount == 0) {
             EmptyArchive(modifier = Modifier.align(Alignment.Center))
         } else {
-            HistoryContent(state = state)
+            HistoryContent(
+                state = state,
+                onTripClick = { id -> deletingTripId = id },
+                selectedTripId = deletingTripId,
+            )
         }
+    }
+
+    // Le trajet peut avoir disparu entre-temps — purge du sens, ou suppression déjà
+    // confirmée : on le retrouve dans l'état plutôt que d'en garder une copie.
+    val deleting = state.recentTrips.firstOrNull { it.id == deletingTripId }
+    if (deleting != null) {
+        TripDeletionDialog(
+            row = deleting,
+            direction = statistics.direction,
+            onConfirm = {
+                deletingTripId = null
+                actions.onDeleteTrip(deleting.id)
+            },
+            onDismiss = { deletingTripId = null },
+        )
     }
 }
 
