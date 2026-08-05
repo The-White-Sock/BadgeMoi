@@ -88,7 +88,10 @@ Chaque écran suit le même patron, déjà validé pour l'usage au pouce :
 
 ### 3.1 Écran d'accueil
 - Cas "pas de trajet en cours" : deux boutons pleine largeur (Aller / Retour), chacun affichant la frise d'icônes du parcours et un aperçu, ancrés en bas de l'écran.
-- Cas "trajet en cours" : bannière de statut (direction, heure de départ), bouton "Reprendre" pleine largeur, bouton "Abandonner" secondaire.
+- Cas "trajet en cours" : **l'accueil s'efface**. L'application ouvre directement l'écran
+  des jalons, et la reprise se décide dans une fenêtre posée par-dessus (§3.2). L'écran de
+  reprise d'origine — bannière de statut, "Reprendre", "Abandonner" — n'affichait qu'une
+  ligne d'information pour un écran entier ; l'écart est consigné au §9 (entrée 10).
 - Bascule de thème et onglets de navigation (Trajet / Historique) dans un bandeau haut compact, une seule ligne.
 
 ### 3.2 Écran "Trajet actif"
@@ -97,6 +100,11 @@ Chaque écran suit le même patron, déjà validé pour l'usage au pouce :
 - Mini-indicateur "temps depuis le dernier jalon", discret, mis à jour chaque seconde.
 - Liste des jalons : icône + libellé court + **heure de passage** en retrait + **temps écoulé depuis le jalon précédent** en avant. Correction possible par tap sur une ligne. L'heure figurait à l'origine au seul bandeau ; l'écart est consigné au §9 (entrée 9).
 - Barre d'action fixe en bas : bouton "Valider" (tap simple, retour haptique, flash de confirmation, verrou anti-double-tap de 400 ms) et bouton "Passer" (appui maintenu 650 ms).
+- **Fenêtre de reprise** quand on retrouve un trajet déjà entamé — jamais quand on vient de
+  le démarrer. Elle rappelle la direction, l'heure de départ, le temps écoulé qui avance et
+  le prochain jalon, et propose "Reprendre" ou "Abandonner". L'écarter revient à reprendre ;
+  l'abandon demande confirmation. C'est ici que vit l'abandon d'un trajet en cours, l'accueil
+  ne le proposant plus.
 
 ### 3.3 Écran "Récapitulatif"
 - Bandeau Départ/Arrivée. La cellule de droite bascule sur la **durée mesurée** quand le
@@ -257,10 +265,11 @@ Règle de contraste à respecter dans la traduction Compose : tout texte/icône 
 | 7 | Chrono « depuis le dernier jalon » | **Sur la ligne du jalon courant**, avec emphase — et non le mini-indicateur discret du §3.2 |
 | 8 | Second bouton du récapitulatif | **« Abandonner »** — comportement du POC rétabli, voir #87 |
 | 9 | Jalons et tronçons | **Deux vues, deux rôles** — jalons à l'écran actif (avec leur heure), tronçons seuls au récapitulatif, voir #90 |
+| 10 | Reprise d'un trajet | **Fenêtre sur l'écran des jalons** — plus d'écran d'accueil de reprise, voir #93 |
 
-### Écarts assumés au périmètre d'origine (6 à 9)
+### Écarts assumés au périmètre d'origine (6 à 10)
 
-Ces quatre points **contredisent la lettre** des sections citées. Ils sont le fruit d'un
+Ces cinq points **contredisent la lettre** des sections citées. Ils sont le fruit d'un
 test sur appareil et ont été validés en connaissance de cause ; ils sont consignés ici
 parce que le script `scripts/check-docs-coherence.sh` ne vérifie que des invariants
 mécaniques — versions, chemins, liens — et ne verrait pas une contradiction de prose.
@@ -308,6 +317,22 @@ ni à l'autre de ses deux voisins. Elle reste visible sur l'écran actif, et le 
 
 Le modèle de domaine n'a pas bougé : `Trip.times` reste un horodatage par jalon. C'est un
 changement de rendu.
+
+**10. Plus d'écran de reprise.** Le §3.1 décrivait, pour un trajet en cours, une bannière de
+statut surmontant « Reprendre » et « Abandonner ». Sur appareil, cela donnait deux lignes
+d'information puis un écran entier de vide : l'écran ne faisait que demander l'autorisation
+d'aller là où l'on veut aller, sans rien dire de l'état du trajet.
+
+L'accueil s'efface donc devant le trajet en cours, et la décision se prend dans une fenêtre
+posée sur l'écran des jalons. Le gain n'est pas que de la place : la fenêtre s'ouvre sur
+l'écran qui porte déjà la frise, les compteurs et les jalons pointés, si bien que
+l'information manquante est là sans être dupliquée. L'accueil redevient l'écran où l'on
+**démarre** un trajet, et l'abandon suit la fenêtre.
+
+Deux conséquences de navigation. L'accueil est retiré de la pile en redirigeant, sans quoi
+le retour y reviendrait pour être aussitôt redirigé — une boucle ; quitter l'écran des
+jalons quitte donc l'application. Et la route du trajet actif porte désormais un drapeau
+`resuming`, seul moyen de distinguer un trajet retrouvé d'un trajet qu'on vient de démarrer.
 
 ### Grain de l'ondulation d'appui
 

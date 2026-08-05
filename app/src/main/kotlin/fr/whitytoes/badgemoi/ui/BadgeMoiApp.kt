@@ -18,6 +18,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
 import fr.whitytoes.badgemoi.ui.components.AppTopBar
 import fr.whitytoes.badgemoi.ui.components.TopLevelDestination
 import fr.whitytoes.badgemoi.ui.history.HistoryScreen
@@ -30,9 +31,17 @@ import kotlinx.serialization.Serializable
 @Serializable
 internal data object TripRoute
 
-/** Destination « Trajet actif » : saisie des jalons (lot 3). Onglet « Trajet ». */
+/**
+ * Destination « Trajet actif » : saisie des jalons (lot 3). Onglet « Trajet ».
+ *
+ * @property resuming vrai quand on **retrouve** un trajet déjà entamé, faux quand on
+ *   vient de le démarrer. C'est ce qui décide de la fenêtre de reprise (§9, écart 10) :
+ *   celui qui vient d'appuyer sur « Aller » sait où il en est, on ne le lui demande pas.
+ */
 @Serializable
-internal data object ActiveTripRoute
+internal data class ActiveTripRoute(
+    val resuming: Boolean = false,
+)
 
 /** Destination « Récapitulatif » : relecture avant archivage (lot 4). Onglet « Trajet ». */
 @Serializable
@@ -102,10 +111,21 @@ private fun BadgeMoiNavHost(
         modifier = modifier,
     ) {
         composable<TripRoute> {
-            HomeScreen(onNavigateToActiveTrip = { navController.navigate(ActiveTripRoute) })
+            HomeScreen(
+                // `popUpTo` inclusif : l'accueil s'efface devant le trajet en cours.
+                // Le laisser sous la pile ferait boucler le retour, puisqu'il
+                // redirigerait aussitôt. Quitter l'écran des jalons quitte donc
+                // l'application — c'est bien elle, pendant un trajet.
+                onNavigateToActiveTrip = { resuming ->
+                    navController.navigate(ActiveTripRoute(resuming = resuming)) {
+                        popUpTo(TripRoute) { inclusive = true }
+                    }
+                },
+            )
         }
-        composable<ActiveTripRoute> {
+        composable<ActiveTripRoute> { entry ->
             TripActiveScreen(
+                resuming = entry.toRoute<ActiveTripRoute>().resuming,
                 // `popUpTo` plutôt qu'un simple navigate : sans cela, la pile
                 // accumulerait un écran de trajet mort à chaque aller-retour.
                 onNavigateHome = {
@@ -117,7 +137,7 @@ private fun BadgeMoiNavHost(
                 // là-bas une fois au récapitulatif, les jalons y étant cliquables.
                 onNavigateToSummary = {
                     navController.navigate(SummaryRoute) {
-                        popUpTo(ActiveTripRoute) { inclusive = true }
+                        popUpTo<ActiveTripRoute> { inclusive = true }
                     }
                 },
             )

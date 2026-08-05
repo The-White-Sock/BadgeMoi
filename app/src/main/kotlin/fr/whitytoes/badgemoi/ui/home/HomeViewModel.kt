@@ -16,9 +16,13 @@ import java.util.UUID
 import javax.inject.Inject
 
 /**
- * Écran d'accueil : démarrage d'un trajet, reprise ou abandon de celui en cours
- * (cahier des charges §3.1). S'appuie sur l'[ActiveTripRepository] du lot 1, seule
- * source de vérité — partagée avec le widget (§4.2).
+ * Écran d'accueil : démarrage d'un trajet (cahier des charges §3.1). S'appuie sur
+ * l'[ActiveTripRepository] du lot 1, seule source de vérité — partagée avec le
+ * widget (§4.2).
+ *
+ * L'état [HomeUiState.TripInProgress] ne sert plus à afficher quoi que ce soit : il
+ * déclenche la **redirection** vers l'écran des jalons, où la reprise et l'abandon se
+ * décident désormais (§9, écart 10).
  */
 @HiltViewModel
 class HomeViewModel
@@ -55,10 +59,5 @@ class HomeViewModel
                     ),
                 )
             }
-        }
-
-        /** Abandonne le trajet en cours. L'écran demande confirmation au préalable. */
-        fun abandonTrip() {
-            viewModelScope.launch { activeTripRepository.clear() }
         }
     }

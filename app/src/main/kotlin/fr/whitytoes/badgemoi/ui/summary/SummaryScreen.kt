@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -36,6 +35,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import fr.whitytoes.badgemoi.R
 import fr.whitytoes.badgemoi.domain.Direction
 import fr.whitytoes.badgemoi.domain.Trip
+import fr.whitytoes.badgemoi.ui.components.AbandonConfirmationDialog
 import fr.whitytoes.badgemoi.ui.components.LabelledValue
 import fr.whitytoes.badgemoi.ui.components.ScreenScaffold
 import fr.whitytoes.badgemoi.ui.components.SegmentList
@@ -284,28 +284,12 @@ private fun SummaryActionBar(
     }
 
     if (confirming) {
-        AlertDialog(
-            onDismissRequest = { confirming = false },
-            title = { Text(stringResource(R.string.abandon_dialog_title)) },
-            text = { Text(stringResource(R.string.abandon_dialog_message)) },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        confirming = false
-                        onDiscard()
-                    },
-                ) {
-                    Text(
-                        text = stringResource(R.string.abandon_action),
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                }
+        AbandonConfirmationDialog(
+            onConfirm = {
+                confirming = false
+                onDiscard()
             },
-            dismissButton = {
-                TextButton(onClick = { confirming = false }) {
-                    Text(stringResource(R.string.abandon_dialog_dismiss))
-                }
-            },
+            onDismiss = { confirming = false },
         )
     }
 }

@@ -17,8 +17,11 @@
     <!-- Écran d'accueil -->
     <string name="direction_aller">Aller</string>
     <string name="direction_retour">Retour</string>
-    <string name="home_departure_at">Départ à %1$s</string>
     <string name="home_resume">Reprendre</string>
+
+    <!-- Fenêtre de reprise, posée sur l'écran des jalons -->
+    <string name="resume_dialog_title">Trajet en cours</string>
+    <string name="resume_next_milestone">Prochain jalon : %1$s</string>
 
     <!-- Écran « Trajet actif » -->
     <string name="milestone_skipped">Ignoré</string>
