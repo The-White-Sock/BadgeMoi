@@ -10,6 +10,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -192,9 +193,14 @@ internal fun TripActiveScreen(
     ) {
         MilestoneList(
             rows = rows,
-            // Le défilement est porté ici : la liste ne décide pas de sa propre zone
-            // défilante, c'est l'écran qui la place dans la sienne.
-            modifier = Modifier.verticalScroll(rememberScrollState()),
+            // Ancrée en **bas** de la zone : c'est là qu'est le pouce, et la ligne
+            // courante est celle sur laquelle on agit (`docs/ergonomie.md` §2). Alignée
+            // dans un `Box`, la liste garde la hauteur de son contenu tant qu'il tient,
+            // et se met à défiler seulement quand il déborde — à grande taille de police.
+            modifier =
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .verticalScroll(rememberScrollState()),
             onMilestoneClick = actions.onMilestoneClick,
             // Lecture différée elle aussi : seule la ligne du jalon courant se recompose
             // à la seconde, pas la liste entière.
@@ -207,13 +213,22 @@ internal fun TripActiveScreen(
 /** Durée du premier tronçon des aperçus : 9 min 20 s, une valeur plausible de trajet. */
 private const val PREVIEW_FIRST_LEG_SECONDS = 560L
 
-private fun previewTrip(): Trip {
-    val departure = Instant.parse("2026-07-26T07:12:00Z")
-    return Trip
-        .start(id = "preview", direction = Direction.ALLER, departureAt = departure)
-        .poseMilestone(1, departure.plusSeconds(PREVIEW_FIRST_LEG_SECONDS))
+private val previewDeparture: Instant = Instant.parse("2026-07-26T07:12:00Z")
+
+private fun previewStart(): Trip =
+    Trip.start(id = "preview", direction = Direction.ALLER, departureAt = previewDeparture)
+
+/** Milieu de trajet, avec un jalon ignoré : deux tranchés, un courant, un à venir. */
+private fun previewTrip(): Trip =
+    previewStart()
+        .poseMilestone(1, previewDeparture.plusSeconds(PREVIEW_FIRST_LEG_SECONDS))
         .skipMilestone(2)
-}
+
+/** Dernier jalon : plus rien à venir sous la ligne courante. */
+@Suppress("MagicNumber") // Données d'aperçu : durées en clair.
+private fun previewLastMilestone(): Trip =
+    previewTrip()
+        .poseMilestone(3, previewDeparture.plusSeconds(1_920))
 
 @Preview(name = "Trajet actif — nuit", showBackground = true)
 @Composable
@@ -233,6 +248,31 @@ private fun TripActiveScreenDayPreview() {
     BadgeMoiTheme(darkTheme = false) {
         TripActiveScreen(
             trip = previewTrip(),
+            actions = TripActions(onValidate = {}, onSkip = {}, onMilestoneClick = {}),
+            timers = { TripTimers.EMPTY },
+        )
+    }
+}
+
+/** Début de trajet : un seul jalon tranché, le départ. */
+@Preview(name = "Trajet actif — départ", showBackground = true)
+@Composable
+private fun TripActiveScreenStartPreview() {
+    BadgeMoiTheme(darkTheme = true) {
+        TripActiveScreen(
+            trip = previewStart(),
+            actions = TripActions(onValidate = {}, onSkip = {}, onMilestoneClick = {}),
+            timers = { TripTimers.EMPTY },
+        )
+    }
+}
+
+@Preview(name = "Trajet actif — dernier jalon", showBackground = true)
+@Composable
+private fun TripActiveScreenLastPreview() {
+    BadgeMoiTheme(darkTheme = true) {
+        TripActiveScreen(
+            trip = previewLastMilestone(),
             actions = TripActions(onValidate = {}, onSkip = {}, onMilestoneClick = {}),
             timers = { TripTimers.EMPTY },
         )

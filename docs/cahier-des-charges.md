@@ -103,7 +103,14 @@ verrouillée en **portrait**.
 - Frise de progression façon plan de ligne (jalons reliés par un trait, jalon courant mis en évidence, jalons posés distingués visuellement).
 - Bandeau Départ / Écoulé : heure de départ figée, durée écoulée en direct tant que le dernier jalon n'est pas posé.
 - Mini-indicateur "temps depuis le dernier jalon", discret, mis à jour chaque seconde.
-- Liste des jalons : icône + libellé court + **heure de passage** en retrait + **temps écoulé depuis le jalon précédent** en avant. Correction possible par tap sur une ligne. L'heure figurait à l'origine au seul bandeau ; l'écart est consigné au §9 (entrée 9).
+- Liste des jalons, **ancrée en bas** de sa zone, au contact de la barre d'action : c'est là
+  qu'est le pouce. Chaque ligne est une rangée de tableau — libellé, puis deux colonnes de
+  largeur fixe, **heure de passage** et **temps écoulé depuis le jalon précédent**.
+  Correction possible par tap sur une ligne tranchée.
+- La liste **ne montre pas les cinq jalons** : les tranchés en petit, le courant en emphase,
+  et un seul jalon à venir, grisé. La frise porte la vue d'ensemble. Deux écarts au
+  périmètre d'origine sont consignés au §9 : l'heure absolue (entrée 9) et l'affichage
+  partiel (entrée 11).
 - Barre d'action fixe en bas : bouton "Passer" (appui maintenu 650 ms) à gauche, bouton "Valider" (tap simple, retour haptique, flash de confirmation, verrou anti-double-tap de 400 ms) à droite. Cet ordre a été retenu au test sur appareil.
 - **Fenêtre de reprise** quand on retrouve un trajet déjà entamé — jamais quand on vient de
   le démarrer. Elle rappelle la direction, l'heure de départ, le temps écoulé qui avance et
@@ -273,10 +280,11 @@ Règle de contraste à respecter dans la traduction Compose : tout texte/icône 
 | 8 | Second bouton du récapitulatif | **« Abandonner »** — comportement du POC rétabli, voir #87 |
 | 9 | Jalons et tronçons | **Deux vues, deux rôles** — jalons à l'écran actif (avec leur heure), tronçons seuls au récapitulatif, voir #90 |
 | 10 | Reprise d'un trajet | **Fenêtre sur l'écran des jalons** — plus d'écran d'accueil de reprise, voir #93 |
+| 11 | Liste des jalons | **Affichage partiel et ancré en bas** — tranchés, courant, un seul à venir, voir #101 |
 
-### Écarts assumés au périmètre d'origine (6 à 10)
+### Écarts assumés au périmètre d'origine (6 à 11)
 
-Ces cinq points **contredisent la lettre** des sections citées. Ils sont le fruit d'un
+Ces six points **contredisent la lettre** des sections citées. Ils sont le fruit d'un
 test sur appareil et ont été validés en connaissance de cause ; ils sont consignés ici
 parce que le script `scripts/check-docs-coherence.sh` ne vérifie que des invariants
 mécaniques — versions, chemins, liens — et ne verrait pas une contradiction de prose.
@@ -340,6 +348,20 @@ Deux conséquences de navigation. L'accueil est retiré de la pile en redirigean
 le retour y reviendrait pour être aussitôt redirigé — une boucle ; quitter l'écran des
 jalons quitte donc l'application. Et la route du trajet actif porte désormais un drapeau
 `resuming`, seul moyen de distinguer un trajet retrouvé d'un trajet qu'on vient de démarrer.
+
+**11. Liste des jalons partielle, et ramenée sous le pouce.** Le §3.2 décrit une liste des
+cinq jalons, occupant la zone défilante médiane. Le test sur appareil a montré deux
+défauts : on **tape** ces lignes pour corriger un jalon, en roulant, et elles étaient dans
+le haut de l'écran, hors de la zone d'atteinte du pouce ; et les cinq lignes se
+ressemblaient trop pour dire d'un coup d'œil où l'on en est.
+
+La liste est donc ancrée **en bas**, au contact de la barre d'action, et réduite à ce qui
+sert : les jalons tranchés en petit, le jalon courant en emphase, et **un seul** jalon à
+venir, grisé et inerte. Les suivants ne disent rien qu'on ait besoin de lire en roulant, et
+la frise de progression porte déjà la vue d'ensemble — c'est son rôle depuis le §3.2.
+
+Le traitement discret des jalons tranchés est **typographique** : leur cible tactile garde
+ses 48 dp et ses 8 dp d'écart, puisqu'ils restent le point d'entrée de la correction.
 
 ### Grain de l'ondulation d'appui
 
