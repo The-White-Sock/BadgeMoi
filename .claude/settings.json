@@ -19,7 +19,9 @@
       "Bash(./scripts/check-docs-coherence.sh:*)",
       "Bash(./scripts/test-hooks.sh:*)",
       "Bash(wc:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "mcp__github__pull_request_read",
+      "mcp__github__get_job_logs"
     ]
   },
   "hooks": {
