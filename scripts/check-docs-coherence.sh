@@ -84,6 +84,94 @@ for doc in "${DOCS[@]}"; do
   done < <(grep -oE '\]\([^)]+\)' "${doc}" 2>/dev/null | sed -E 's/^\]\(//; s/\)$//' | sort -u)
 done
 
+# --- 3. Cohérence interne du §9 (écarts au périmètre) ------------------------
+# Un écart se consigne en trois endroits qui doivent rester d'accord : une ligne
+# du tableau, une section de prose, et le compte annoncé. Les tenir à la main les
+# désynchronise tôt ou tard — c'est mécanique, donc c'est vérifiable.
+CAHIER="docs/cahier-des-charges.md"
+
+if [ -f "${CAHIER}" ]; then
+  # Numéros du tableau des décisions : lignes « | N | … | … | ».
+  tableau="$(grep -oE '^\| [0-9]+ \|' "${CAHIER}" | grep -oE '[0-9]+' | sort -n | uniq)"
+  # Numéros des sections de prose : « **N. Titre.** ».
+  prose="$(grep -oE '^\*\*[0-9]+\. ' "${CAHIER}" | grep -oE '[0-9]+' | sort -n | uniq)"
+
+  # Le premier écart rédigé en prose porte le numéro 6 : les décisions 1 à 5 sont
+  # des choix, pas des dérogations, et n'ont pas de section.
+  for n in ${tableau}; do
+    [ "${n}" -lt 6 ] && continue
+    printf '%s\n' ${prose} | grep -qx "${n}" || \
+      add "**Écart §9 sans justification** — la décision \`${n}\` figure au tableau de \`${CAHIER}\` mais n'a pas de section \`**${n}. …**\`. Un écart sans sa raison sera « corrigé » plus tard de bonne foi. Ajouter la section, ou utiliser \`/ecart\`."
+  done
+
+  for n in ${prose}; do
+    printf '%s\n' ${tableau} | grep -qx "${n}" || \
+      add "**Écart §9 hors tableau** — la section \`**${n}. …**\` de \`${CAHIER}\` n'a pas de ligne correspondante dans le tableau des décisions. Ajouter la ligne."
+  done
+
+  # Le compte annoncé juste avant les sections de prose.
+  annonce="$(grep -oE 'Ces (deux|trois|quatre|cinq|six|sept|huit|neuf|dix|onze|douze) points' "${CAHIER}" | head -1 | awk '{print $2}')"
+  reel="$(printf '%s\n' ${prose} | grep -c '[0-9]' || true)"
+  case "${reel}" in
+    2) attendu="deux" ;; 3) attendu="trois" ;; 4) attendu="quatre" ;; 5) attendu="cinq" ;;
+    6) attendu="six" ;; 7) attendu="sept" ;; 8) attendu="huit" ;; 9) attendu="neuf" ;;
+    10) attendu="dix" ;; 11) attendu="onze" ;; 12) attendu="douze" ;; *) attendu="" ;;
+  esac
+  if [ -n "${annonce}" ] && [ -n "${attendu}" ] && [ "${annonce}" != "${attendu}" ]; then
+    add "**Compte des écarts faux** — \`${CAHIER}\` annonce « Ces ${annonce} points » alors qu'il compte ${reel} sections d'écart (« ${attendu} »). Mettre la phrase à jour, ainsi que la plage du titre."
+  fi
+fi
+
+# --- 4. Configuration Claude Code --------------------------------------------
+# `CLAUDE.md` est chargé en entier à chaque session : au-delà de 200 lignes, il
+# coûte du contexte et l'adhérence baisse. Ce qui grossit doit migrer vers
+# `.claude/rules/` (chargé à la demande) ou `docs/` (lu au besoin).
+if [ -f "CLAUDE.md" ]; then
+  lignes="$(wc -l < CLAUDE.md)"
+  [ "${lignes}" -le 200 ] || \
+    add "**\`CLAUDE.md\` trop long** — ${lignes} lignes, pour une cible de 200. Déplacer ce qui n'est pas un invariant de toutes les sessions vers \`.claude/rules/\` (chargement par chemin) ou \`docs/\`."
+fi
+
+# Une règle dont le glob ne matche plus aucun fichier est morte **en silence** :
+# elle ne se déclenche jamais et rien ne le signale. C'est le mode de panne
+# propre à ce mécanisme, donc celui qu'il faut surveiller.
+#
+# `find -path` ne sait pas exprimer `**` (zéro **ou** plusieurs répertoires) : on
+# traduit donc le glob en expression rationnelle, qu'on éprouve sur les fichiers
+# suivis par git.
+glob_vers_regex() {
+  printf '%s' "$1" | sed -E \
+    -e 's/\./\\./g' \
+    -e 's#\*\*/#\x01#g' \
+    -e 's#\*\*#\x02#g' \
+    -e 's#\*#[^/]*#g' \
+    -e 's#\x01#(.*/)?#g' \
+    -e 's#\x02#.*#g'
+}
+
+suivis="$(git ls-files 2>/dev/null || true)"
+
+for regle in .claude/rules/*.md; do
+  [ -f "${regle}" ] || continue
+  # Les items de `paths:`, en s'arrêtant à la première ligne qui n'en est pas un
+  # — sans quoi le `---` de fermeture du frontmatter est lu comme un motif.
+  motifs="$(awk '
+    /^paths:/ { dans = 1; next }
+    dans && /^[[:space:]]*-[[:space:]]/ {
+      sub(/^[[:space:]]*-[[:space:]]*"?/, ""); sub(/"[[:space:]]*$/, ""); print; next
+    }
+    dans { exit }
+  ' "${regle}")"
+  [ -z "${motifs}" ] && continue
+
+  while read -r motif; do
+    [ -z "${motif}" ] && continue
+    if ! printf '%s\n' "${suivis}" | grep -qE "^$(glob_vers_regex "${motif}")$"; then
+      add "**Règle Claude Code inopérante** — le motif \`${motif}\` de \`${regle}\` ne correspond à aucun fichier suivi. La règle ne se déclenchera jamais, sans que rien ne l'indique. Corriger le motif ou retirer la règle."
+    fi
+  done <<< "${motifs}"
+done
+
 # --- Rapport -----------------------------------------------------------------
 if [ ${#ecarts[@]} -eq 0 ]; then
   echo "Documentation cohérente — aucun écart détecté."
