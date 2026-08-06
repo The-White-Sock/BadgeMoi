@@ -69,7 +69,7 @@ racine="$(git rev-parse --show-toplevel)"
 # Ce qui est en contexte **maintenant** : la fenêtre courante, bornée par le dernier
 # `session_start`. C'est le seul relevé qui réponde à « ai-je cette règle sous les yeux ».
 cut -f2 "$journal" \
-  | jq -rR 'fromjson? | "\(.load_reason)\t\(.file_path | split("/") | last)"' \
+  | jq -rR 'fromjson? | "\(.load_reason // "raison absente")\t\(((.file_path // "chemin absent") | split("/") | last))"' \
   | awk '/^session_start\t/ { n = 0 } { l[n++] = $0 } END { for (i = 0; i < n; i++) print l[i] }' \
   | sort -u
 
@@ -85,6 +85,14 @@ comm -13 \
 `jq -rR` avec `fromjson?` est délibéré : le hook garde une ligne brute quand l'entrée
 n'est pas du JSON, et sans ce filtre une seule ligne de ce genre ferait échouer tout le
 bloc. Elle est ignorée en silence.
+
+**Les `//` ne font pas double emploi avec lui, ils couvrent l'autre moitié du problème.**
+`fromjson?` protège du non-JSON ; les `//` protègent du JSON valide auquel il *manque* un
+champ attendu — le cas exact d'une dérive de schéma en amont, celui pour lequel le hook
+journalise l'événement entier. Sans eux, `split("/")` échoue sur un `file_path` absent et
+la ligne disparaît du relevé. Le manque est resté invisible parce que `jq` sort alors avec
+un code **0** : rien ne signale la perte, sinon un message sur la sortie d'erreur que
+personne ne regarde.
 
 **L'`awk` de la première interrogation n'est pas un raffinement, il répare une réponse
 fausse.** Cette interrogation filtrait avant sur le `session_id`, qui ne change pas à la
