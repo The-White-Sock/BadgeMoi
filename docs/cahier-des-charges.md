@@ -119,19 +119,20 @@ verrouillée en **portrait**.
   ne le proposant plus.
 
 ### 3.3 Écran "Récapitulatif"
-- Bandeau Départ/Arrivée. La cellule de droite bascule sur la **durée mesurée** quand le
-  dernier jalon a été ignoré et qu'il n'y a donc pas d'heure d'arrivée (`departArrivalFlap`
-  du POC).
-  La cellule Départ est **cliquable** : elle ouvre la correction du jalon de départ, seul
-  jalon qu'aucun tronçon ne désigne.
+- Bandeau **Départ / Arrivée / Trajet complet**, trois cellules fixes. Les deux heures sont
+  **cliquables** et ouvrent la correction de leur jalon ; la durée est **calculée** et se
+  distingue par son poids et sa couleur, pour que l'on voie laquelle des trois répond au
+  doigt. La bascule `departArrivalFlap` du POC est supprimée (§9, écart 14).
 - Liste des tronçons nommés (Ride/Attente/Train/Ride) avec durée. **Seule liste de l'écran** :
   un tronçon est une durée, et c'est une durée qu'on vient relire. La liste des jalons reste
   à l'écran actif, où elle est une liste d'actions (§9, entrée 9).
 - Les lignes de tronçon sont **cliquables** : chacune ouvre la correction de son jalon
   d'**arrivée**, celui qui ferme le tronçon et explique sa durée. Les quatre tronçons
-  couvrent les jalons 1 à 4, le bandeau le jalon 0 : les cinq restent corrigeables sur
-  place, sans quitter l'écran.
-- Boutons **"Abandonner"** / **"Enregistrer"** fixes en bas. « Abandonner » jette le trajet
+  couvrent les jalons 1 à 4, le bandeau les jalons 0 et 4 : les cinq restent corrigeables
+  sur place, sans quitter l'écran. Le jalon d'arrivée est donc atteignable par deux
+  chemins, ce qui est assumé — on cherche l'heure d'arrivée là où elle est écrite.
+- **"Enregistrer"** fixe en bas, seul et pleine largeur ; **"Abandonner"** sur sa propre
+  ligne en haut du bandeau, à l'opposé du pouce (`docs/ergonomie.md` §3). « Abandonner » jette le trajet
   sans l'archiver — c'est le `sumDiscard` → `discardTrip` du POC, et non un retour en
   arrière. L'action étant irréversible sur un écran atteint automatiquement, elle demande
   confirmation, comme l'abandon depuis l'accueil.
@@ -296,10 +297,11 @@ Règle de contraste à respecter dans la traduction Compose : tout texte/icône 
 | 11 | Liste des jalons | **Affichage partiel et ancré en bas** — tranchés, courant, un seul à venir, voir #101 |
 | 12 | Défilement de l'Historique | **Trois blocs indépendants** au lieu d'une zone défilante unique, voir #107 |
 | 13 | Encodage de l'export CSV | **Fichier entièrement ASCII**, sans BOM UTF-8 — les accents sont repliés (« Départ » → « Depart ») |
+| 14 | Bandeau du récapitulatif | **Trois cellules fixes** au lieu de la bascule arrivée/durée du POC |
 
-### Écarts assumés au périmètre d'origine (6 à 13)
+### Écarts assumés au périmètre d'origine (6 à 14)
 
-Ces huit points **contredisent la lettre** des sections citées. Ils sont le fruit d'un
+Ces neuf points **contredisent la lettre** des sections citées. Ils sont le fruit d'un
 test sur appareil et ont été validés en connaissance de cause ; ils sont consignés ici
 parce que le script `scripts/check-docs-coherence.sh` ne vérifie que des invariants
 mécaniques — versions, chemins, liens — et ne verrait pas une contradiction de prose.
@@ -410,6 +412,25 @@ l'identique en UTF-8, en Latin-1 et en Windows-1252 : la question de l'encodage 
 plus, chez aucun lecteur. La perte — « Depart » sans accent — ne porte que sur le fichier,
 l'écran gardant son libellé ; et l'export a de toute façon déjà son propre vocabulaire,
 son en-tête étant en minuscules techniques.
+
+**14. Le bandeau du récapitulatif ne bascule plus.** Le POC faisait basculer la cellule de
+droite — heure d'arrivée d'ordinaire, durée mesurée quand le dernier jalon avait été ignoré
+(`departArrivalFlap`). Le bandeau porte désormais trois cellules fixes : départ, arrivée,
+trajet complet.
+
+Cette bascule palliait une absence de recours. Une arrivée ignorée ne s'affichait nulle
+part et ne se réparait pas depuis cet écran ; montrer la durée mesurée à sa place sauvait au
+moins l'information. Or l'arrivée est maintenant affichée **et** corrigible d'un appui, au
+même titre que le départ. Un tiret dans sa cellule devient une information exacte, et
+actionnable : il dit qu'il manque une heure, et il désigne l'endroit où la saisir.
+
+La durée peut alors rester ce qu'elle prétend être — du départ à l'arrivée, donc absente
+tant que l'arrivée manque. La bascule ferait dire à un même libellé deux grandeurs
+différentes selon l'état du trajet, ce qu'une cellule fixe interdit.
+
+La contrepartie est que la durée jusqu'au dernier pointage n'est plus affichée pour un
+trajet sans arrivée. Elle reste lisible tronçon par tronçon, et le remède est d'aller
+corriger l'arrivée — ce que le bandeau propose désormais.
 
 ### Grain de l'ondulation d'appui
 
