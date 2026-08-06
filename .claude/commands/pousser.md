@@ -10,19 +10,13 @@ Argument éventuel : `$ARGUMENTS` — les numéros d'issues fermées par ce trav
 
 ## 1. Qualité
 
-```bash
-./gradlew ktlintCheck detekt testDebugUnitTest assembleDebug
-```
+Lancer `/qualite` — les quatre tâches Gradle, la cohérence des docs si elles ont bougé,
+et la lecture des échecs courants.
 
-Tout doit être vert avant de continuer. En cas d'échec de style seul, `ktlintFormat`
-puis relancer. La CI reste l'arbitre final, mais un aller-retour évité est une heure
-gagnée.
+Tout doit être vert avant de continuer. La CI reste l'arbitre final, mais un aller-retour
+évité est une heure gagnée.
 
-Si des fichiers de documentation ont changé, lancer aussi :
-
-```bash
-./scripts/check-docs-coherence.sh
-```
+Si le diff touche l'UI ou s'écarte peut-être du cahier, `/revue` avant de continuer.
 
 ## 2. État de la branche
 
