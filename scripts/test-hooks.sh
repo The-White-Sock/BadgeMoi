@@ -164,18 +164,20 @@ rm -f "${memo}"
 [ -n "${sauvegarde}" ] && printf '%s' "${sauvegarde}" > "${memo}"
 
 echo "instructions-chargees.sh"
-# Cas volontairement AGNOSTIQUES AU SCHÉMA : la doc ne publie pas la forme d'entrée
-# de cet événement. On fige ce dont on est sûr — le hook se tait sur stdout, il
-# écrit une ligne par événement, et rien de ce qu'il reçoit ne le fait échouer —
-# sans jamais affirmer qu'un champ s'appelle untel. C'est ce qu'il aurait fallu
-# faire pour `antiseche.sh`.
+# La forme d'entrée est désormais connue — relevée au journal, pas lue dans une doc.
+# Ces cas figent donc deux choses distinctes, et il ne faut pas confondre leur rôle :
+# que les trois champs observés traversent le hook intacts, ET que rien de ce qu'il
+# reçoit ne le fasse échouer, y compris une forme qu'on n'a jamais vue. Le second
+# groupe garde toute sa raison d'être : les noms de champs sont observés, pas
+# spécifiés, donc c'est le repli brut qui reste la garantie.
 journal="${gitdir}/badgemoi-instructions.log"
 journal_sauve=""
 [ -e "${journal}" ] && journal_sauve="$(cat "${journal}")"
 rm -f "${journal}"
 
+# Forme réelle, telle qu'observée en séance.
 cas "ne écrit rien sur stdout" instructions-chargees \
-  '{"hook_event_name":"InstructionsLoaded","reason":"session_start"}' \
+  '{"session_id":"S","hook_event_name":"InstructionsLoaded","file_path":"/r/CLAUDE.md","memory_type":"Project","load_reason":"session_start"}' \
   VIDE
 cas "encaisse un schéma inattendu" instructions-chargees \
   '{"un_champ_jamais_vu":["a","b"]}' \
@@ -201,6 +203,20 @@ else
   echo "  ÉCHEC  le journal conserve le JSON reçu tel quel"
 fi
 
+# Les trois champs que `/point` interroge doivent traverser intacts. Si l'un d'eux
+# est renommé en amont, c'est ici que ça se voit — pas six mois plus tard devant un
+# journal qu'on ne sait plus lire.
+manquants=""
+for champ in file_path memory_type load_reason; do
+  grep -q "\"${champ}\"" "${journal}" 2>/dev/null || manquants="${manquants} ${champ}"
+done
+if [ -z "${manquants}" ]; then
+  reussis=$((reussis + 1))
+else
+  echecs=$((echecs + 1))
+  echo "  ÉCHEC  le journal porte les champs interrogés par /point (manque :${manquants})"
+fi
+
 # Le plafond : une séance longue ne doit pas laisser un journal illisible.
 for _ in $(seq 1 520); do
   printf '%s' '{"n":1}' | "${hooks}/instructions-chargees.sh" >/dev/null 2>&1
@@ -214,6 +230,55 @@ fi
 
 rm -f "${journal}"
 [ -n "${journal_sauve}" ] && printf '%s\n' "${journal_sauve}" > "${journal}"
+
+echo "interrogations de /point"
+# Le journal n'est utile que si la commande sait le lire. On éprouve donc les trois
+# pipelines de `.claude/commands/point.md` sur un journal fabriqué, contenant
+# **exprès** une ligne de repli brut au milieu des lignes JSON : c'est le cas que
+# `fromjson?` protège, et celui qui casserait un `jq` naïf.
+temoin="$(mktemp)"
+{
+  printf '%s\t%s\n' '2026-01-01T00:00:00Z' \
+    '{"session_id":"S1","file_path":"/r/CLAUDE.md","memory_type":"Project","load_reason":"session_start"}'
+  printf '%s\t%s\n' '2026-01-01T00:00:01Z' 'ligne brute, pas du JSON'
+  printf '%s\t%s\n' '2026-01-01T00:00:02Z' \
+    '{"session_id":"S2","file_path":"/r/.claude/rules/ui-compose.md","memory_type":"Project","load_reason":"path_glob_match"}'
+} > "${temoin}"
+
+session="$(tail -1 "${temoin}" | cut -f2 | jq -r '.session_id // empty')"
+seance="$(cut -f2 "${temoin}" | jq -rR --arg s "${session}" \
+  'fromjson? | select(.session_id == $s) | "\(.load_reason)\t\(.file_path | split("/") | last)"' \
+  | sort | uniq -c)"
+if printf '%s' "${seance}" | grep -q 'path_glob_match.*ui-compose\.md' \
+  && [ "$(printf '%s\n' "${seance}" | wc -l)" -eq 1 ]; then
+  reussis=$((reussis + 1))
+else
+  echecs=$((echecs + 1))
+  echo "  ÉCHEC  isole les chargements de la séance courante (obtenu : ${seance})"
+fi
+
+cumul="$(cut -f2 "${temoin}" | jq -rR 'fromjson? | .load_reason // "inconnue"' | sort | uniq -c)"
+if [ "$(printf '%s\n' "${cumul}" | wc -l)" -eq 2 ]; then
+  reussis=$((reussis + 1))
+else
+  echecs=$((echecs + 1))
+  echo "  ÉCHEC  compte par raison en ignorant la ligne brute (obtenu : ${cumul})"
+fi
+
+jamais="$(comm -13 \
+  <(cut -f2 "${temoin}" | jq -rR 'fromjson? | .file_path // empty' | sed 's|.*/||' | sort -u) \
+  <(ls .claude/rules/*.md | sed 's|.*/||' | sort))"
+# Deux côtés, sinon un pipeline muet passerait au vert : la règle présente au
+# journal ne doit pas sortir, et une règle absente doit sortir.
+if ! printf '%s' "${jamais}" | grep -q 'ui-compose\.md' \
+  && printf '%s' "${jamais}" | grep -q 'tests\.md'; then
+  reussis=$((reussis + 1))
+else
+  echecs=$((echecs + 1))
+  echo "  ÉCHEC  distingue les règles jamais chargées de celles présentes au journal (obtenu : ${jamais})"
+fi
+
+rm -f "${temoin}"
 
 echo "jalon-qualite.sh"
 jalon="${gitdir}/badgemoi-qualite"

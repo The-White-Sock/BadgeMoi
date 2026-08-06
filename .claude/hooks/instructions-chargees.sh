@@ -16,15 +16,33 @@
 #     une instruction faible en plus dégrade aussi les fortes. Le cumul se mesure,
 #     il ne s'estime pas.
 #
-# AGNOSTIQUE AU SCHÉMA, DÉLIBÉRÉMENT. La documentation de cet événement ne publie
-# pas son schéma d'entrée : ni le champ portant les fichiers chargés, ni celui
-# portant la raison. On ne devine pas un nom de champ — c'est précisément comme ça
-# que `antiseche.sh` a lu `.user_input` pendant que le harnais envoyait `.prompt`.
-# On journalise donc le JSON **brut**, et c'est le journal qui nous apprendra la
-# forme réelle. Toute lecture de champ nommé viendra après, sur preuve, et sera
-# notée ici.
+# SCHÉMA RELEVÉ AU JOURNAL, PAS LU DANS UNE SPEC. La documentation de cet événement
+# ne publie toujours pas sa forme d'entrée. Les trois champs utiles ci-dessous ont
+# été observés en séance, ce qui est une preuve mais pas une garantie :
 #
-# Entrée : JSON sur stdin, de forme inconnue.
+#   file_path    le fichier chargé — **un seul par événement**, jamais une liste ;
+#   memory_type  `Project` pour tout ce que porte ce dépôt ;
+#   load_reason  `session_start` pour `CLAUDE.md`, `path_glob_match` pour une règle
+#                de `.claude/rules/` déclenchée par un chemin ouvert.
+#
+# Deux relevés au passage, tous deux contre-intuitifs :
+#   - le glob se déclenche sur le **chemin visé**, pas sur l'existence du fichier.
+#     Lire un chemin inexistant de la zone charge quand même la règle — c'est ce qui
+#     rend le remède post-`/compact` (rouvrir un fichier de la zone avant d'y écrire)
+#     gratuit ;
+#   - le chargement est **dédupliqué par séance**. Rouvrir un second fichier de la
+#     même zone n'émet pas de nouvel événement. Le journal compte donc des règles
+#     distinctes, pas des injections : une entrée par règle et par séance.
+#
+# LE REPLI BRUT RESTE, et ce n'est pas de la prudence de façade : ces noms viennent
+# d'une observation, donc ils peuvent changer sans préavis ni avertissement. On
+# journalise le JSON **entier** plutôt que trois champs extraits ; ce fichier ne lit
+# aucun champ nommé, c'est `/point` qui interroge. Le jour où la forme change, le
+# journal continue de dire la vérité et seule la commande est à reprendre. C'est
+# l'inverse du bug qui a fait lire `.user_input` à `antiseche.sh` pendant toute sa
+# vie, pendant que le harnais envoyait `.prompt`.
+#
+# Entrée : JSON sur stdin, forme ci-dessus, sans garantie.
 # Sortie : rien — la doc donne la sortie de cet événement comme ignorée.
 # Retour : toujours 0.
 set -uo pipefail
