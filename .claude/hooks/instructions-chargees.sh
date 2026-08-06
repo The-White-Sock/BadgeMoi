@@ -6,12 +6,15 @@
 # fichiers ouverts, donc leur silence est indistinguable d'une absence d'occurrence
 # — exactement le mode de défaillance qui a laissé `antiseche.sh` muette depuis sa
 # création. Le journal a depuis tranché la question qui l'avait fait naître : les
-# cinq se chargent bien, sur `path_glob_match`. Il reste utile pour le cumul.
+# cinq se chargent bien, sur `path_glob_match`. Il reste utile pour situer la
+# fenêtre de contexte courante, que rien d'autre ne donne à voir.
 #
 # Ce que le journal permet de voir :
 #   - qu'une règle se charge (ou pas) quand on ouvre un fichier de sa zone ;
 #   - sous quelle raison (`session_start`, `nested_traversal`, `path_glob_match`,
-#     `include`, `compact`) ;
+#     `include`). Une compaction réelle a été observée journalisant `session_start`
+#     sur `CLAUDE.md` : **il n'y a pas de raison `compact`** à attendre ici, et un
+#     `session_start` en cours de séance est la borne d'une fenêtre de contexte ;
 #   - **combien** de règles se cumulent en même temps. Le budget d'instructions
 #     qu'un modèle suit de façon fiable est fini, et la dégradation est uniforme :
 #     une instruction faible en plus dégrade aussi les fortes. Le cumul se mesure,
@@ -31,9 +34,13 @@
 #     Lire un chemin inexistant de la zone charge quand même la règle — c'est ce qui
 #     rend le remède post-`/compact` (rouvrir un fichier de la zone avant d'y écrire)
 #     gratuit ;
-#   - le chargement est **dédupliqué par séance**. Rouvrir un second fichier de la
-#     même zone n'émet pas de nouvel événement. Le journal compte donc des règles
-#     distinctes, pas des injections : une entrée par règle et par séance ;
+#   - le chargement est dédupliqué par **fenêtre de contexte**, et non par séance.
+#     Rouvrir un second fichier de la même zone n'émet rien de plus, mais une
+#     compaction remet ce compteur à zéro : la même règle se recharge alors sous le
+#     même `session_id`. C'est ce qui rend le remède post-compaction opérant — sans
+#     cette remise à zéro, rouvrir un fichier de la zone n'aurait rien rechargé.
+#     Conséquence pour la lecture : compter sur toute la séance additionne des
+#     fenêtres révolues, il faut se borner à la dernière ;
 #   - le journal est **écrit dans `.git/`, donc il meurt avec le conteneur**. En
 #     session web le dépôt est recloné à neuf et le fichier repart vide : le cumul
 #     « toutes séances » ne couvre que les séances de ce conteneur. C'est voulu —

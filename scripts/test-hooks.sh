@@ -236,25 +236,37 @@ echo "interrogations de /point"
 # pipelines de `.claude/commands/point.md` sur un journal fabriqué, contenant
 # **exprès** une ligne de repli brut au milieu des lignes JSON : c'est le cas que
 # `fromjson?` protège, et celui qui casserait un `jq` naïf.
+#
+# Le témoin reproduit une **compaction** : une règle chargée, puis un `session_start`
+# qui reborne la fenêtre, puis une autre règle. Le `session_id` est volontairement le
+# même partout — c'est le fait qui rendait l'ancien filtre par `session_id` incapable
+# de séparer les deux fenêtres, et qui lui faisait annoncer comme chargée une règle
+# évincée depuis longtemps.
 temoin="$(mktemp)"
 {
   printf '%s\t%s\n' '2026-01-01T00:00:00Z' \
     '{"session_id":"S1","file_path":"/r/CLAUDE.md","memory_type":"Project","load_reason":"session_start"}'
-  printf '%s\t%s\n' '2026-01-01T00:00:01Z' 'ligne brute, pas du JSON'
-  printf '%s\t%s\n' '2026-01-01T00:00:02Z' \
-    '{"session_id":"S2","file_path":"/r/.claude/rules/ui-compose.md","memory_type":"Project","load_reason":"path_glob_match"}'
+  printf '%s\t%s\n' '2026-01-01T00:00:01Z' \
+    '{"session_id":"S1","file_path":"/r/.claude/rules/docs-decisions.md","memory_type":"Project","load_reason":"path_glob_match"}'
+  printf '%s\t%s\n' '2026-01-01T00:00:02Z' 'ligne brute, pas du JSON'
+  printf '%s\t%s\n' '2026-01-01T00:00:03Z' \
+    '{"session_id":"S1","file_path":"/r/CLAUDE.md","memory_type":"Project","load_reason":"session_start"}'
+  printf '%s\t%s\n' '2026-01-01T00:00:04Z' \
+    '{"session_id":"S1","file_path":"/r/.claude/rules/ui-compose.md","memory_type":"Project","load_reason":"path_glob_match"}'
 } > "${temoin}"
 
-session="$(tail -1 "${temoin}" | cut -f2 | jq -r '.session_id // empty')"
-seance="$(cut -f2 "${temoin}" | jq -rR --arg s "${session}" \
-  'fromjson? | select(.session_id == $s) | "\(.load_reason)\t\(.file_path | split("/") | last)"' \
-  | sort | uniq -c)"
-if printf '%s' "${seance}" | grep -q 'path_glob_match.*ui-compose\.md' \
-  && [ "$(printf '%s\n' "${seance}" | wc -l)" -eq 1 ]; then
+fenetre="$(cut -f2 "${temoin}" \
+  | jq -rR 'fromjson? | "\(.load_reason)\t\(.file_path | split("/") | last)"' \
+  | awk '/^session_start\t/ { n = 0 } { l[n++] = $0 } END { for (i = 0; i < n; i++) print l[i] }' \
+  | sort -u)"
+# Deux côtés, sinon un pipeline muet passerait au vert : la règle d'après la compaction
+# doit sortir, celle d'avant ne doit pas.
+if printf '%s\n' "${fenetre}" | grep -q 'path_glob_match.*ui-compose\.md' \
+  && ! printf '%s\n' "${fenetre}" | grep -q 'docs-decisions\.md'; then
   reussis=$((reussis + 1))
 else
   echecs=$((echecs + 1))
-  echo "  ÉCHEC  isole les chargements de la séance courante (obtenu : ${seance})"
+  echo "  ÉCHEC  borne le relevé à la fenêtre de contexte courante (obtenu : ${fenetre})"
 fi
 
 cumul="$(cut -f2 "${temoin}" | jq -rR 'fromjson? | .load_reason // "inconnue"' | sort | uniq -c)"

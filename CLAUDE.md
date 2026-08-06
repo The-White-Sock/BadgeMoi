@@ -130,8 +130,24 @@ règle, ce qui rend le remède post-compaction gratuit.
 Portée du journal : il est écrit dans `.git/`, donc recloné à vide à chaque nouveau
 conteneur web. Le cumul « toutes séances » n'a que la durée de vie de la machine, et
 la liste des « règles jamais chargées » sort pleine au démarrage sans que rien ne
-soit cassé. Seul le cumul de la séance courante est complet par construction — c'est
-aussi le seul qui mesure ce qu'on veut mesurer. Détail et garde-fous dans `/point`.
+soit cassé. Détail et garde-fous dans `/point`.
+
+Point clos aussi, sur une compaction réelle cette fois : `/compact` ré-injecte bien
+`CLAUDE.md` et **aucune** règle à `paths:`, ce qui n'était jusque-là qu'une lecture de
+la documentation. Deux relevés inattendus au passage. D'abord **il n'existe pas de
+raison `compact`** : la compaction journalise `session_start`, si bien qu'un
+`session_start` en cours de séance est la borne d'une fenêtre de contexte — c'est ce
+qui permet enfin de mesurer ce qui est *réellement* chargé. Ensuite la déduplication
+porte sur la fenêtre, pas sur la séance : une compaction la remet à zéro, et c'est ce
+qui rend le remède (rouvrir un fichier de la zone) opérant là où on en a besoin. Sans
+cette remise à zéro il aurait été inopérant, et personne ne l'aurait su.
+
+Ce qui a été corrigé en conséquence : la première interrogation de `/point` filtrait
+sur le `session_id`, qui ne change pas à la compaction. Elle annonçait donc chargées
+des règles évincées depuis plusieurs fenêtres — l'erreur exactement dans le sens qui
+trompe. Quatrième occurrence du même motif après le bug `.user_input` : un pipeline
+qui affirme plus que ses données ne portent. Le réflexe à garder est moins « vérifier
+le glob » que « vérifier ce que la mesure prétend mesurer ».
 -->
 
 <!-- Prototype en cours : une balise `<important if="...">` (hlyr.dev), une seule,
