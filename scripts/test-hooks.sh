@@ -170,10 +170,25 @@ echo "instructions-chargees.sh"
 # reçoit ne le fasse échouer, y compris une forme qu'on n'a jamais vue. Le second
 # groupe garde toute sa raison d'être : les noms de champs sont observés, pas
 # spécifiés, donc c'est le repli brut qui reste la garantie.
-journal="${gitdir}/badgemoi-instructions.log"
-journal_sauve=""
-[ -e "${journal}" ] && journal_sauve="$(cat "${journal}")"
-rm -f "${journal}"
+#
+# Le hook écrit dans le dépôt courant, donc dans le **journal vivant** de la séance —
+# celui que `/point` interroge ensuite. L'y laisser travailler avait deux défauts,
+# tous deux constatés et non théoriques :
+#   - un événement arrivant pendant la batterie ajoutait une ligne et faisait échouer
+#     l'assertion des trois lignes ci-dessous. C'est un rouge intermittent, le pire
+#     genre : il ne se reproduit pas au passage suivant et on le met sur le compte du
+#     hasard ;
+#   - la restauration de l'instantané en fin de section **détruisait en silence** tout
+#     ce qui s'était journalisé pendant la course. Lancer les tests corrompait donc la
+#     mesure que la commande `/point` allait lire juste après.
+#
+# On détourne le hook vers un dépôt jetable. `GIT_DIR` doit pointer sur un **vrai**
+# dépôt : sur un répertoire nu, `git rev-parse` échoue, le hook sort sans rien écrire,
+# et toute cette section passerait au vert sans avoir rien testé.
+bac="$(mktemp -d)"
+git init --bare -q "${bac}/journal.git"
+export GIT_DIR="${bac}/journal.git"
+journal="${GIT_DIR}/badgemoi-instructions.log"
 
 # Forme réelle, telle qu'observée en séance.
 cas "ne écrit rien sur stdout" instructions-chargees \
@@ -228,8 +243,8 @@ else
   echo "  ÉCHEC  tronque le journal au-delà de 500 lignes"
 fi
 
-rm -f "${journal}"
-[ -n "${journal_sauve}" ] && printf '%s\n' "${journal_sauve}" > "${journal}"
+unset GIT_DIR
+rm -rf "${bac}"
 
 echo "interrogations de /point"
 # Le journal n'est utile que si la commande sait le lire. On éprouve donc les trois
