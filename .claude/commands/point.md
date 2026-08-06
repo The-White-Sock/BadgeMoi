@@ -46,22 +46,40 @@ Le remède est mécanique : rouvrir un fichier de la zone concernée avant d'y �
 
 ## Ce qui s'est réellement chargé
 
+Le hook `InstructionsLoaded` écrit une ligne par chargement : un horodatage, une
+tabulation, puis l'événement JSON. Chaque événement porte **un seul** `file_path`, un
+`memory_type` et un `load_reason`.
+
 ```bash
-cut -f2 .git/badgemoi-instructions.log | jq -s 'length' 2>/dev/null
-tail -20 .git/badgemoi-instructions.log
+journal=.git/badgemoi-instructions.log
+
+# Pourquoi — une ligne par raison de chargement.
+cut -f2 "$journal" | jq -r '.load_reason // "raison absente"' | sort | uniq -c | sort -rn
+
+# Quoi — chaque fichier d'instructions chargé, et combien de fois.
+cut -f2 "$journal" | jq -r '.file_path // "chemin absent"' | sort | uniq -c | sort -rn
+
+# Ce qui manque — les règles à `paths:` qui ne se sont jamais chargées.
+comm -23 <(ls .claude/rules/*.md | xargs -n1 basename | sort) \
+         <(cut -f2 "$journal" | jq -r '.file_path // empty' | xargs -r -n1 basename | sort -u)
 ```
 
-Le hook `InstructionsLoaded` journalise chaque chargement d'instructions. En tirer deux
-constats pour la passation :
+En tirer trois constats pour la passation :
 
-- **Quelles règles** se sont chargées, et sous quelle raison — une entrée de raison
-  `compact` confirme un rechargement post-compaction, son absence le dément.
+- **Ce qui manque.** La troisième commande est la plus utile : une règle qui n'apparaît
+  jamais alors qu'on a passé la séance dans sa zone ne se charge pas, et tout ce qu'elle
+  contient est lettre morte. À ne pas confondre avec une règle simplement hors sujet —
+  vérifier d'abord qu'un fichier de sa zone a bien été ouvert.
+- **Sous quelle raison.** `path_glob_match` prouve qu'une règle s'est déclenchée sur le
+  chemin d'un fichier ouvert ; `session_start` ne concerne que ce qui se charge d'office.
+  Une entrée `compact` confirme un rechargement post-compaction, son absence le dément.
 - **Combien** se sont cumulées. Le nombre d'instructions qu'un modèle suit de façon fiable
   est fini et la dégradation est uniforme : au-delà d'un certain cumul, ce ne sont pas les
   dernières règles qui passent à la trappe, ce sont toutes.
 
 Journal vide alors que des fichiers ont été ouverts → le dire dans la passation. C'est un
-défaut de harnais, pas un détail.
+défaut de harnais, pas un détail. Idem pour un `raison absente` ou un `chemin absent` en
+nombre : le schéma aurait bougé en amont, et c'est le journal brut qui le dira.
 
 ## Forme
 

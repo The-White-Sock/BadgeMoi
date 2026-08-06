@@ -164,18 +164,21 @@ rm -f "${memo}"
 [ -n "${sauvegarde}" ] && printf '%s' "${sauvegarde}" > "${memo}"
 
 echo "instructions-chargees.sh"
-# Cas volontairement AGNOSTIQUES AU SCHÉMA : la doc ne publie pas la forme d'entrée
-# de cet événement. On fige ce dont on est sûr — le hook se tait sur stdout, il
-# écrit une ligne par événement, et rien de ce qu'il reçoit ne le fait échouer —
-# sans jamais affirmer qu'un champ s'appelle untel. C'est ce qu'il aurait fallu
-# faire pour `antiseche.sh`.
+# Le schéma est connu (`file_path`, `memory_type`, `load_reason`) : les deux premiers
+# cas l'exercent tel qu'observé, et une assertion vérifie que `/point` sait relire ce
+# que le hook écrit — c'est ce couplage-là qui casse en silence. Les cas suivants
+# restent agnostiques : le repli brut doit continuer d'encaisser une forme inattendue,
+# c'est lui qui a permis d'apprendre le schéma en premier lieu.
 journal="${gitdir}/badgemoi-instructions.log"
 journal_sauve=""
 [ -e "${journal}" ] && journal_sauve="$(cat "${journal}")"
 rm -f "${journal}"
 
 cas "ne écrit rien sur stdout" instructions-chargees \
-  '{"hook_event_name":"InstructionsLoaded","reason":"session_start"}' \
+  '{"hook_event_name":"InstructionsLoaded","file_path":"/x/CLAUDE.md","memory_type":"Project","load_reason":"session_start"}' \
+  VIDE
+cas "encaisse une règle à paths:" instructions-chargees \
+  '{"hook_event_name":"InstructionsLoaded","file_path":"/x/.claude/rules/ui-compose.md","memory_type":"Project","load_reason":"path_glob_match"}' \
   VIDE
 cas "encaisse un schéma inattendu" instructions-chargees \
   '{"un_champ_jamais_vu":["a","b"]}' \
@@ -187,11 +190,11 @@ cas "encaisse une entrée vide" instructions-chargees \
   '' \
   VIDE
 
-if [ "$(wc -l < "${journal}" 2>/dev/null || echo 0)" -eq 3 ]; then
+if [ "$(wc -l < "${journal}" 2>/dev/null || echo 0)" -eq 4 ]; then
   reussis=$((reussis + 1))
 else
   echecs=$((echecs + 1))
-  echo "  ÉCHEC  journalise une ligne par événement non vide (3 attendues, $(wc -l < "${journal}" 2>/dev/null || echo 0) obtenues)"
+  echo "  ÉCHEC  journalise une ligne par événement non vide (4 attendues, $(wc -l < "${journal}" 2>/dev/null || echo 0) obtenues)"
 fi
 
 if grep -q 'un_champ_jamais_vu' "${journal}" 2>/dev/null; then
@@ -199,6 +202,19 @@ if grep -q 'un_champ_jamais_vu' "${journal}" 2>/dev/null; then
 else
   echecs=$((echecs + 1))
   echo "  ÉCHEC  le journal conserve le JSON reçu tel quel"
+fi
+
+# Le contrat que `/point` consomme : ses deux `jq` doivent retrouver les champs dans
+# le journal. Sans ça, le hook écrit correctement et la commande lit dans le vide —
+# exactement le décalage qui a rendu `antiseche.sh` muette.
+raisons="$(cut -f2 "${journal}" | jq -r '.load_reason // empty' 2>/dev/null | sort -u | tr '\n' ' ')"
+chemins="$(cut -f2 "${journal}" | jq -r '.file_path // empty' 2>/dev/null | wc -l)"
+if [ "${raisons}" = "path_glob_match session_start " ] && [ "${chemins}" -eq 2 ]; then
+  reussis=$((reussis + 1))
+else
+  echecs=$((echecs + 1))
+  printf '  ÉCHEC  /point sait relire le journal (raisons : %s| chemins : %s)\n' \
+    "${raisons}" "${chemins}"
 fi
 
 # Le plafond : une séance longue ne doit pas laisser un journal illisible.

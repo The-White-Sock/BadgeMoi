@@ -16,15 +16,24 @@
 #     une instruction faible en plus dégrade aussi les fortes. Le cumul se mesure,
 #     il ne s'estime pas.
 #
-# AGNOSTIQUE AU SCHÉMA, DÉLIBÉRÉMENT. La documentation de cet événement ne publie
-# pas son schéma d'entrée : ni le champ portant les fichiers chargés, ni celui
-# portant la raison. On ne devine pas un nom de champ — c'est précisément comme ça
-# que `antiseche.sh` a lu `.user_input` pendant que le harnais envoyait `.prompt`.
-# On journalise donc le JSON **brut**, et c'est le journal qui nous apprendra la
-# forme réelle. Toute lecture de champ nommé viendra après, sur preuve, et sera
-# notée ici.
+# SCHÉMA CONNU, REPLI CONSERVÉ. Le journal a livré la forme réelle de l'événement.
+# Trois champs sont utiles :
+#   - `file_path`   : le fichier d'instructions chargé. **Un seul par événement** —
+#                     ce n'est pas une liste, c'est un événement par fichier.
+#   - `memory_type` : sa nature. `Project` pour le `CLAUDE.md` racine et les règles
+#                     de ce dépôt.
+#   - `load_reason` : pourquoi il s'est chargé, parmi `session_start`,
+#                     `nested_traversal`, `path_glob_match`, `include`, `compact`.
 #
-# Entrée : JSON sur stdin, de forme inconnue.
+# Le hook journalise malgré tout le JSON **brut**, pas ces trois champs extraits.
+# Ce n'est pas de la prudence de principe : c'est ce repli qui a rendu ce hook utile
+# dès sa première séance, alors que le schéma était encore inconnu — et c'est lui
+# qui a permis de l'apprendre. Un champ ajouté en amont apparaîtra tout seul dans le
+# journal ; un hook qui n'écrit que ce qu'il connaît est aveugle à ce qu'il ne
+# connaît pas encore. La lecture des champs se fait à l'autre bout, dans `/point`,
+# où une forme inattendue coûte une ligne vide et non une donnée perdue.
+#
+# Entrée : JSON sur stdin (schéma ci-dessus ; repli brut si la forme surprend).
 # Sortie : rien — la doc donne la sortie de cet événement comme ignorée.
 # Retour : toujours 0.
 set -uo pipefail
