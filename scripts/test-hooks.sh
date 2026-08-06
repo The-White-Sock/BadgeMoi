@@ -278,6 +278,23 @@ else
   echo "  ÉCHEC  distingue les règles jamais chargées de celles présentes au journal (obtenu : ${jamais})"
 fi
 
+# Sur un journal vide, la même interrogation sort **toutes** les règles. Ce n'est pas
+# un défaut de glob mais une absence de données : le journal vit dans `.git/` et repart
+# à zéro à chaque nouveau conteneur web. Ce cas fige la limite du pipeline plutôt qu'il
+# ne la corrige — c'est `/point` qui porte le garde-fou, et ce test le rend faux si la
+# formulation change.
+: > "${temoin}"
+attendu="$(ls .claude/rules/*.md | wc -l)"
+jamais_vide="$(comm -13 \
+  <(cut -f2 "${temoin}" | jq -rR 'fromjson? | .file_path // empty' | sed 's|.*/||' | sort -u) \
+  <(ls .claude/rules/*.md | sed 's|.*/||' | sort) | grep -c .)"
+if [ "${jamais_vide}" -eq "${attendu}" ]; then
+  reussis=$((reussis + 1))
+else
+  echecs=$((echecs + 1))
+  echo "  ÉCHEC  journal vide : liste les ${attendu} règles (obtenu : ${jamais_vide})"
+fi
+
 rm -f "${temoin}"
 
 echo "jalon-qualite.sh"

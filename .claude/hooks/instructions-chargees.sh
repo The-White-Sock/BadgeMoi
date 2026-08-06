@@ -2,10 +2,11 @@
 # Hook InstructionsLoaded : journalise quels fichiers d'instructions se chargent,
 # quand et pourquoi.
 #
-# POURQUOI : rien ne confirme aujourd'hui que les cinq règles de `.claude/rules/`
-# se chargent réellement. Elles se déclenchent sur le chemin des fichiers ouverts,
-# donc leur silence est indistinguable d'une absence d'occurrence — exactement le
-# mode de défaillance qui a laissé `antiseche.sh` muette depuis sa création.
+# POURQUOI : les cinq règles de `.claude/rules/` se déclenchent sur le chemin des
+# fichiers ouverts, donc leur silence est indistinguable d'une absence d'occurrence
+# — exactement le mode de défaillance qui a laissé `antiseche.sh` muette depuis sa
+# création. Le journal a depuis tranché la question qui l'avait fait naître : les
+# cinq se chargent bien, sur `path_glob_match`. Il reste utile pour le cumul.
 #
 # Ce que le journal permet de voir :
 #   - qu'une règle se charge (ou pas) quand on ouvre un fichier de sa zone ;
@@ -25,14 +26,21 @@
 #   load_reason  `session_start` pour `CLAUDE.md`, `path_glob_match` pour une règle
 #                de `.claude/rules/` déclenchée par un chemin ouvert.
 #
-# Deux relevés au passage, tous deux contre-intuitifs :
+# Trois relevés au passage, tous contre-intuitifs :
 #   - le glob se déclenche sur le **chemin visé**, pas sur l'existence du fichier.
 #     Lire un chemin inexistant de la zone charge quand même la règle — c'est ce qui
 #     rend le remède post-`/compact` (rouvrir un fichier de la zone avant d'y écrire)
 #     gratuit ;
 #   - le chargement est **dédupliqué par séance**. Rouvrir un second fichier de la
 #     même zone n'émet pas de nouvel événement. Le journal compte donc des règles
-#     distinctes, pas des injections : une entrée par règle et par séance.
+#     distinctes, pas des injections : une entrée par règle et par séance ;
+#   - le journal est **écrit dans `.git/`, donc il meurt avec le conteneur**. En
+#     session web le dépôt est recloné à neuf et le fichier repart vide : le cumul
+#     « toutes séances » ne couvre que les séances de ce conteneur. C'est voulu —
+#     un journal versionné polluerait chaque diff — mais ça se dit, sinon un cumul
+#     en baisse se lit comme une régression du harnais. Le seul chiffre complet par
+#     construction est celui de la séance courante, et c'est celui qui mesure le
+#     budget d'instructions.
 #
 # LE REPLI BRUT RESTE, et ce n'est pas de la prudence de façade : ces noms viennent
 # d'une observation, donc ils peuvent changer sans préavis ni avertissement. On
