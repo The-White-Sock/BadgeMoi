@@ -97,6 +97,12 @@ Ne créez un package que lorsqu'il contient réellement du code — pas de dossi
 Ces quatre commandes tournent en CI sur chaque push/PR (`.github/workflows/android-ci.yml`).
 Un build/lint local avant de pousser évite les allers-retours CI.
 
+Côté Claude Code, elles sont enchaînées par la commande `/pousser`, qui poursuit ensuite
+avec le commit, la PR et l'auto-merge. Des rappels contextuels sont chargés
+automatiquement depuis `.claude/rules/` selon les fichiers ouverts, et un hook
+consultatif signale après édition les couleurs littérales, les textes en dur et les
+imports Android dans `domain/`. Voir `CLAUDE.md`.
+
 ## Sécurité et automatisation CI
 
 - **CodeQL** (`.github/workflows/codeql.yml`) : analyse statique de sécurité (Java/Kotlin),

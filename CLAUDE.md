@@ -33,27 +33,26 @@ Le SDK Android est installé automatiquement dans les sessions Claude Code on th
 Les lancer avant de pousser évite un aller-retour de CI. Celle-ci reste l'arbitre final
 (environnement propre, accès réseau complet).
 
-⚠️ **Préfixer les commandes Gradle par `LANG=C.UTF-8`.** Le conteneur démarre avec `LANG`
-vide, donc `sun.jnu.encoding = ANSI_X3.4-1968` : le compilateur Kotlin échoue alors à
-écrire le fichier `.class` d'une lambda déclarée dans un test au nom français accentué —
-un test de dépôt écrit avec `= runTest { … }` produit un nom de fichier portant les
-accents du nom de la méthode. Les runners GitHub étant en UTF-8, ce point ne concerne
-que les exécutions locales en session.
-
-```bash
-LANG=C.UTF-8 ./gradlew testDebugUnitTest
-```
-
-Le démon Kotlin hérite de la locale du premier lancement : si une commande a déjà été
-lancée sans `LANG`, l'erreur persiste malgré le préfixe. Le remède est de repartir d'un
-démon neuf.
-
-```bash
-./gradlew --stop && pkill -f KotlinCompileDaemon
-```
+La locale `C.UTF-8` est posée par le hook et par `.claude/settings.json` : **aucun préfixe
+manuel n'est nécessaire**. Sans elle, le compilateur Kotlin échoue à écrire le `.class`
+d'une lambda déclarée dans un test au nom français accentué. Le remède si l'erreur
+survient malgré tout est dans `.claude/rules/tests.md`.
 
 Note : `--offline` ne fonctionne pas tant que le cache Gradle est vide (les plugins
 Android/Kotlin doivent être résolus depuis le réseau au premier build).
+
+## Outillage de session
+
+- **`.claude/rules/*.md`** — rappels chargés **automatiquement** selon les fichiers
+  ouverts : composants Compose, pureté du domaine, tests, CI/build, documentation. Ce
+  sont des digests avec pointeurs ; `docs/` reste la source.
+- **`/pousser`** — le rituel de livraison complet : qualité, état de branche, commit
+  gitmoji, push, PR avec `Closes #N` **en anglais**, auto-merge armé, suivi planifié.
+- **`/ecart`** — consigner au §9 une décision qui contredit le cahier, dans ses quatre
+  emplacements liés.
+- Un hook signale après édition les couleurs littérales, les textes en dur et les
+  imports Android dans `domain/`. Il est **consultatif** : ktlint, detekt et la CI
+  restent l'arbitre.
 
 ## Auto-merge des PR
 
