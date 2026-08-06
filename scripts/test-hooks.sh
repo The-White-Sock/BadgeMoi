@@ -268,28 +268,41 @@ temoin="$(mktemp)"
     '{"session_id":"S1","file_path":"/r/CLAUDE.md","memory_type":"Project","load_reason":"session_start"}'
   printf '%s\t%s\n' '2026-01-01T00:00:04Z' \
     '{"session_id":"S1","file_path":"/r/.claude/rules/ui-compose.md","memory_type":"Project","load_reason":"path_glob_match"}'
+  # Du JSON **valide** auquel manquent les champs attendus : c'est la dérive de schéma,
+  # et `fromjson?` n'en protège pas — lui ne filtre que le non-JSON. Placée après le
+  # `session_start` pour tomber dans la fenêtre courante et non dans une fenêtre révolue.
+  printf '%s\t%s\n' '2026-01-01T00:00:05Z' '{"marqueur":"schema_inattendu"}'
 } > "${temoin}"
 
 fenetre="$(cut -f2 "${temoin}" \
-  | jq -rR 'fromjson? | "\(.load_reason)\t\(.file_path | split("/") | last)"' \
+  | jq -rR 'fromjson? | "\(.load_reason // "raison absente")\t\(((.file_path // "chemin absent") | split("/") | last))"' \
   | awk '/^session_start\t/ { n = 0 } { l[n++] = $0 } END { for (i = 0; i < n; i++) print l[i] }' \
   | sort -u)"
-# Deux côtés, sinon un pipeline muet passerait au vert : la règle d'après la compaction
-# doit sortir, celle d'avant ne doit pas.
+# Trois côtés, sinon un pipeline muet passerait au vert : la règle d'après la compaction
+# doit sortir, celle d'avant ne doit pas, et l'entrée au schéma inattendu doit sortir avec
+# ses replis plutôt que de disparaître. Sans les `//`, `split` échoue sur le champ absent,
+# la ligne s'évapore et `jq` sort quand même avec un code 0.
 if printf '%s\n' "${fenetre}" | grep -q 'path_glob_match.*ui-compose\.md' \
-  && ! printf '%s\n' "${fenetre}" | grep -q 'docs-decisions\.md'; then
+  && ! printf '%s\n' "${fenetre}" | grep -q 'docs-decisions\.md' \
+  && printf '%s\n' "${fenetre}" | grep -q 'raison absente.*chemin absent'; then
   reussis=$((reussis + 1))
 else
   echecs=$((echecs + 1))
   echo "  ÉCHEC  borne le relevé à la fenêtre de contexte courante (obtenu : ${fenetre})"
 fi
 
+# Trois raisons attendues, et le compte porte tout le sens : `session_start` et
+# `path_glob_match` pour les entrées conformes, `inconnue` pour celle au schéma
+# inattendu — qui doit **compter** au lieu de s'évaporer. La ligne brute, elle, ne
+# compte pas : c'est `fromjson?` qui l'écarte. Les deux replis se lisent donc ici, et
+# un compte de 2 signifierait qu'on a reperdu l'un des deux.
 cumul="$(cut -f2 "${temoin}" | jq -rR 'fromjson? | .load_reason // "inconnue"' | sort | uniq -c)"
-if [ "$(printf '%s\n' "${cumul}" | wc -l)" -eq 2 ]; then
+if [ "$(printf '%s\n' "${cumul}" | wc -l)" -eq 3 ] \
+  && printf '%s\n' "${cumul}" | grep -q 'inconnue'; then
   reussis=$((reussis + 1))
 else
   echecs=$((echecs + 1))
-  echo "  ÉCHEC  compte par raison en ignorant la ligne brute (obtenu : ${cumul})"
+  echo "  ÉCHEC  compte par raison, ligne brute écartée et schéma inattendu compté (obtenu : ${cumul})"
 fi
 
 jamais="$(comm -13 \
