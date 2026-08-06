@@ -58,7 +58,7 @@ cut -f2 "$journal" | jq -rR --arg s "$session" \
   'fromjson? | select(.session_id == $s) | "\(.load_reason)\t\(.file_path | split("/") | last)"' \
   | sort | uniq -c
 
-# Le cumul, toutes séances confondues
+# Le cumul, toutes les séances que ce conteneur a vues
 cut -f2 "$journal" | jq -rR 'fromjson? | .load_reason // "inconnue"' | sort | uniq -c
 
 # Les règles qu'aucune séance n'a jamais chargées
@@ -71,11 +71,22 @@ comm -13 \
 n'est pas du JSON, et sans ce filtre une seule ligne de ce genre ferait échouer tout le
 bloc. Elle est ignorée en silence.
 
+**Le journal vit dans `.git/`, donc il meurt avec le conteneur.** En session web le dépôt
+est recloné à neuf : le fichier repart vide, et « toutes séances confondues » ne couvre
+en réalité que les séances de ce conteneur-là. Un cumul plus bas que celui annoncé par la
+passation précédente ne dit donc rien du harnais — il dit qu'on a changé de machine. La
+mesure qui compte, elle, est intacte : le cumul **de la séance courante** est ce qui
+approche le budget d'instructions, et il est complet par construction.
+
 Ce qu'on en tire pour la passation :
 
 - **Une règle jamais chargée alors que sa zone a été touchée** est un défaut de glob, pas
   une fatalité. `./scripts/check-docs-coherence.sh` détecte déjà le motif qui ne
-  correspond à aucun fichier suivi ; le lancer avant de conclure.
+  correspond à aucun fichier suivi ; le lancer avant de conclure. La condition « alors que
+  sa zone a été touchée » porte tout le sens : sur un conteneur neuf, la troisième
+  interrogation liste les cinq règles parce que le journal est vide, pas parce que les
+  globs sont cassés. Ne rien conclure d'une liste pleine sans avoir ouvert un fichier de
+  la zone d'abord.
 - **Une raison `compact` absente** après une compaction confirme la non-réinjection des
   règles à `paths:` — c'est la vérification de la section précédente, faite sur pièce.
 - **Le cumul** est l'indicateur à surveiller. Le nombre d'instructions qu'un modèle suit

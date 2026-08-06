@@ -122,10 +122,16 @@ Provenance des choix ci-dessus :
 Point clos : le schéma de `InstructionsLoaded` a été relevé au journal (`file_path`,
 `memory_type`, `load_reason`) et noté dans l'en-tête du hook, qui continue de
 journaliser le JSON brut — ces noms sont observés, pas spécifiés. Le mécanisme des
-règles à `paths:` est vérifié : quatre des cinq ont émis un `path_glob_match` en une
+règles à `paths:` est vérifié : les cinq ont émis un `path_glob_match` en une
 poignée de lectures. Et le glob se déclenche sur le **chemin visé**, pas sur
 l'existence du fichier — lire un chemin inexistant de la zone suffit à charger la
 règle, ce qui rend le remède post-compaction gratuit.
+
+Portée du journal : il est écrit dans `.git/`, donc recloné à vide à chaque nouveau
+conteneur web. Le cumul « toutes séances » n'a que la durée de vie de la machine, et
+la liste des « règles jamais chargées » sort pleine au démarrage sans que rien ne
+soit cassé. Seul le cumul de la séance courante est complet par construction — c'est
+aussi le seul qui mesure ce qu'on veut mesurer. Détail et garde-fous dans `/point`.
 -->
 
 <!-- Prototype en cours : une balise `<important if="...">` (hlyr.dev), une seule,
@@ -134,6 +140,13 @@ règle, ce qui rend le remède post-compaction gratuit.
      parce qu'il est déjà conditionnel dans son titre, qu'il pèse ~15 lignes et qu'il
      est hors sujet pour presque toute édition de CI. Condition rédigée en français,
      seul le nom de balise reste anglais — comme `paths:` l'est déjà.
+
+     Observé depuis : sur une séance neuve, lire `gradle/libs.versions.toml` charge
+     bien `ci-build.md`, et la section injectée porte la balise **verbatim** — le
+     harnais ne la retire pas et ne l'interprète pas. Elle arrive au modèle comme du
+     texte, ce qui borne le débat : il n'y a aucun mécanisme derrière, seulement une
+     phrase de plus à lire. Le doute « jamais observée chargée » est levé ; le doute
+     sur son utilité, lui, reste entier et le restera.
 
      Ce qui est mesurable : le **coût**. Le journal dit combien de fois `ci-build.md`
      se charge, donc combien de fois ces lignes sont injectées sans être pertinentes.
