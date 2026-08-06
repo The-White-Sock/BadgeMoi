@@ -45,9 +45,10 @@
 #     session web le dépôt est recloné à neuf et le fichier repart vide : le cumul
 #     « toutes séances » ne couvre que les séances de ce conteneur. C'est voulu —
 #     un journal versionné polluerait chaque diff — mais ça se dit, sinon un cumul
-#     en baisse se lit comme une régression du harnais. Le seul chiffre complet par
-#     construction est celui de la séance courante, et c'est celui qui mesure le
-#     budget d'instructions.
+#     en baisse se lit comme une régression du harnais. Aucun cumul ne mesure le
+#     budget d'instructions, cela dit — ni celui du conteneur ni celui de la séance,
+#     puisque tous deux additionnent des fenêtres révolues. Seule la fenêtre courante
+#     le fait.
 #
 # LE REPLI BRUT RESTE, et ce n'est pas de la prudence de façade : ces noms viennent
 # d'une observation, donc ils peuvent changer sans préavis ni avertissement. On

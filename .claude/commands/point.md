@@ -95,9 +95,12 @@ fenêtre le chargement est dédupliqué, un compte n'y apporte rien et un compte
 **Le journal vit dans `.git/`, donc il meurt avec le conteneur.** En session web le dépôt
 est recloné à neuf : le fichier repart vide, et « toutes séances confondues » ne couvre
 en réalité que les séances de ce conteneur-là. Un cumul plus bas que celui annoncé par la
-passation précédente ne dit donc rien du harnais — il dit qu'on a changé de machine. La
-mesure qui compte, elle, est intacte : le cumul **de la séance courante** est ce qui
-approche le budget d'instructions, et il est complet par construction.
+passation précédente ne dit donc rien du harnais — il dit qu'on a changé de machine.
+
+Ce n'est pas la seule raison de ne rien conclure d'un cumul : il **additionne des
+fenêtres révolues**. La mesure qui approche le budget d'instructions n'est ni le cumul
+du conteneur ni celui de la séance, c'est la **première** interrogation — la seule qui
+compte des règles réellement présentes.
 
 Ce qu'on en tire pour la passation :
 
