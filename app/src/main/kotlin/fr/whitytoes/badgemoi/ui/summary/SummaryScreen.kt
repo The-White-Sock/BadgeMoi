@@ -56,7 +56,7 @@ private val ActionHeight = 56.dp
 /** Minimum Material pour une cible tactile (`docs/ergonomie.md` §4). */
 private val TouchTargetHeight = 48.dp
 
-/** Coin de la cellule « Départ » du bandeau, qui est cliquable. */
+/** Coin des cellules cliquables du bandeau — « Départ » et « Arrivée ». */
 private val HeaderCellShape = RoundedCornerShape(12.dp)
 
 /** Le jalon de départ : le seul que les tronçons ne peuvent pas ouvrir. */
@@ -72,8 +72,9 @@ private val ARRIVAL_INDEX = Routes.MILESTONE_COUNT - 1
  * La correction d'un jalon se fait **sur place**, comme dans le POC : on ne quitte jamais
  * cet écran pour corriger, l'écran actif étant de toute façon retiré de la pile en
  * arrivant ici. Elle passe par les **tronçons** — chacun ouvre le jalon qui le ferme — et
- * par la cellule « Départ » du bandeau pour le jalon 0. Les cinq jalons sont ainsi
- * atteignables, sans qu'un clic soit jamais ambigu.
+ * par les cellules « Départ » et « Arrivée » du bandeau, qui ouvrent les jalons 0 et 4.
+ * Les cinq jalons sont ainsi atteignables ; l'arrivée l'est par deux chemins, son tronçon
+ * et sa cellule, ce qui est sans ambiguïté puisque les deux ouvrent le même jalon.
  *
  * @param onNavigateHome appelé une fois le trajet archivé ou abandonné — ou s'il a disparu
  *   entre-temps, abandonné depuis l'accueil.
@@ -285,6 +286,12 @@ private fun SummaryHeader(
                 labelRes = R.string.trip_total,
                 value = trip.totalDuration?.let(::formatDuration),
                 computed = true,
+                // Même retrait interne que les deux cellules cliquables, bien que
+                // celle-ci n'ait pas de zone d'appui : la ligne est alignée par le bas,
+                // et sans ce retrait le chiffre calculé descendrait de 4 dp sous les
+                // deux autres — l'alignement des lignes de base que le poids et la
+                // couleur sont justement censés préserver.
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
             )
         }
     }

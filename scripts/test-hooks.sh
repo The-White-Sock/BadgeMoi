@@ -334,6 +334,53 @@ fi
 rm -f "${jalon}"
 [ "${jalon_sauve}" -eq 1 ] && touch "${jalon}"
 
+echo "garde-fous.sh"
+# Ce hook lit le fichier **sur le disque**, pas le contenu du payload : ses cas ont
+# donc besoin de vrais fichiers. Ils sont créés hors du dépôt et retirés à la fin,
+# pour tenir la promesse d'absence d'effet de bord faite en tête de ce script.
+bac="$(mktemp -d)"
+mkdir -p "${bac}/ui/theme" "${bac}/ui/summary" "${bac}/domain"
+
+printf 'val Rouge = Color(0xFFAA0000)\n' > "${bac}/ui/summary/Ecran.kt"
+cas "couleur littérale hors du thème" garde-fous \
+  "{\"tool_input\":{\"file_path\":\"${bac}/ui/summary/Ecran.kt\"}}" 'Couleur litt'
+
+printf 'val Rouge = Color(0xFFAA0000)\n' > "${bac}/ui/theme/Couleurs.kt"
+cas "la même couleur dans ui/theme/ est légitime" garde-fous \
+  "{\"tool_input\":{\"file_path\":\"${bac}/ui/theme/Couleurs.kt\"}}" VIDE
+
+printf 'import androidx.room.Entity\n' > "${bac}/domain/Trajet.kt"
+cas "import Android dans domain/" garde-fous \
+  "{\"tool_input\":{\"file_path\":\"${bac}/domain/Trajet.kt\"}}" 'domain'
+
+printf 'Text("Depart du trajet")\n' > "${bac}/ui/summary/Dur.kt"
+cas "texte en dur dans un composable" garde-fous \
+  "{\"tool_input\":{\"file_path\":\"${bac}/ui/summary/Dur.kt\"}}" 'en dur'
+
+printf 'Text(stringResource(R.string.summary_titre))\n' > "${bac}/ui/summary/Propre.kt"
+cas "stringResource ne déclenche rien" garde-fous \
+  "{\"tool_input\":{\"file_path\":\"${bac}/ui/summary/Propre.kt\"}}" VIDE
+
+printf '@Preview\nText("Libelle de demonstration")\n' > "${bac}/ui/summary/Apercu.kt"
+cas "l'analyse s'arrête au premier @Preview" garde-fous \
+  "{\"tool_input\":{\"file_path\":\"${bac}/ui/summary/Apercu.kt\"}}" VIDE
+
+# Le cas de régression : sous `pipefail`, enchaîner les deux `grep` faisait sortir
+# le premier en 141 (SIGPIPE) dès que `grep -q` s'arrêtait au premier suspect. Le
+# test ne mord que si le tube a de quoi être coupé — d'où le volume.
+for _ in $(seq 1 4000); do printf 'Text("Libelle ecrit en dur")\n'; done \
+  > "${bac}/ui/summary/Volumineux.kt"
+cas "alerte encore sur un fichier volumineux (SIGPIPE)" garde-fous \
+  "{\"tool_input\":{\"file_path\":\"${bac}/ui/summary/Volumineux.kt\"}}" 'en dur'
+
+cas "se tait sur un fichier qui n'est pas du Kotlin" garde-fous \
+  "{\"tool_input\":{\"file_path\":\"${bac}/ui/summary/notes.md\"}}" VIDE
+
+cas "se tait sur un chemin inexistant" garde-fous \
+  "{\"tool_input\":{\"file_path\":\"${bac}/ui/summary/Absent.kt\"}}" VIDE
+
+rm -rf "${bac}"
+
 echo
 if [ "${echecs}" -eq 0 ]; then
   echo "${reussis} cas, tous verts."
