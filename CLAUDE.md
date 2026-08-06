@@ -119,16 +119,32 @@ Provenance des choix ci-dessus :
   mauvaise citation : l'article recommande < 300 lignes et mentionne 60 comme un
   simple constat sur son propre dépôt. Ne pas reprendre ce chiffre.
 
-Point ouvert : le schéma d'entrée de `InstructionsLoaded` n'est pas documenté.
-`instructions-chargees.sh` journalise donc le JSON brut. Quand le journal aura
-révélé les vrais noms de champs, les noter dans l'en-tête du hook — et seulement
-alors envisager d'en lire un.
+Point clos : le schéma de `InstructionsLoaded` a été relevé au journal (`file_path`,
+`memory_type`, `load_reason`) et noté dans l'en-tête du hook, qui continue de
+journaliser le JSON brut — ces noms sont observés, pas spécifiés. Le mécanisme des
+règles à `paths:` est vérifié : quatre des cinq ont émis un `path_glob_match` en une
+poignée de lectures. Et le glob se déclenche sur le **chemin visé**, pas sur
+l'existence du fichier — lire un chemin inexistant de la zone suffit à charger la
+règle, ce qui rend le remède post-compaction gratuit.
 -->
 
-<!-- Écarté sciemment : les balises `<important if="...">` (hlyr.dev). Preuve
-     purement anecdotique, l'auteur reconnaît n'avoir « no rigorous explanation »,
-     et une condition en anglais jurerait avec la prose française du dépôt. À
-     reconsidérer une fois que le journal ci-dessus aura posé le diagnostic. -->
+<!-- Prototype en cours : une balise `<important if="...">` (hlyr.dev), une seule,
+     sur la section « Si un module Gradle apparaît » de `.claude/rules/ci-build.md`.
+     Piste rouverte sur décision explicite après le diagnostic ci-dessus. Bloc choisi
+     parce qu'il est déjà conditionnel dans son titre, qu'il pèse ~15 lignes et qu'il
+     est hors sujet pour presque toute édition de CI. Condition rédigée en français,
+     seul le nom de balise reste anglais — comme `paths:` l'est déjà.
+
+     Ce qui est mesurable : le **coût**. Le journal dit combien de fois `ci-build.md`
+     se charge, donc combien de fois ces lignes sont injectées sans être pertinentes.
+     Ce qui ne l'est pas : le **bénéfice**. Aucun signal ne dit si le modèle a
+     appliqué la condition, et l'auteur de la convention reconnaît lui-même n'avoir
+     « no rigorous explanation for why this helps ». Ne pas relire ce prototype comme
+     un acquis, ni l'étendre aux quatre autres règles sur sa seule existence.
+
+     Critère de révision : la balise est un échec le jour où un module Gradle
+     apparaît (#123) et où l'une des trois régressions silencieuses passe quand
+     même. -->
 
 
 ## Auto-merge des PR

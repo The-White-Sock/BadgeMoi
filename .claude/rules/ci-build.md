@@ -36,6 +36,8 @@ issue d'audit.
 
 ## Si un module Gradle apparaît
 
+<important if="le diff ajoute un module Gradle ou un répertoire racine">
+
 Trois régressions **silencieuses** attendent au tournant, aucune ne produit
 d'erreur (voir #123) :
 
@@ -45,3 +47,12 @@ d'erreur (voir #123) :
    Un module qui ne les applique pas n'est pas analysé.
 3. Le filtre de chemins de `codeql.yml` liste `^app/|^gradle/|…`. Un nouveau
    répertoire racine n'y correspond pas, et l'analyse est sautée.
+
+</important>
+
+<!-- La balise ci-dessus est un **prototype**, seul du dépôt, et ne fait pas
+     jurisprudence. Elle ne retire rien : si elle est ignorée, la section se lit
+     comme avant. Ce qu'elle cadre était déjà conditionnel dans son titre — c'est ce
+     qui en fait le bloc le moins risqué à éprouver. Critère de révision et ce qui
+     est mesurable : bloc de maintenance de `CLAUDE.md`. -->
+

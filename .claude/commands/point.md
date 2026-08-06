@@ -46,22 +46,47 @@ Le remède est mécanique : rouvrir un fichier de la zone concernée avant d'y �
 
 ## Ce qui s'est réellement chargé
 
+Le hook `InstructionsLoaded` journalise chaque chargement, avec son `file_path`, son
+`memory_type` et son `load_reason`. Trois interrogations, à recopier telles quelles :
+
 ```bash
-cut -f2 .git/badgemoi-instructions.log | jq -s 'length' 2>/dev/null
-tail -20 .git/badgemoi-instructions.log
+journal=.git/badgemoi-instructions.log
+session=$(tail -1 "$journal" | cut -f2 | jq -r '.session_id // empty')
+
+# Ce qui s'est chargé dans cette séance, et sous quelle raison
+cut -f2 "$journal" | jq -rR --arg s "$session" \
+  'fromjson? | select(.session_id == $s) | "\(.load_reason)\t\(.file_path | split("/") | last)"' \
+  | sort | uniq -c
+
+# Le cumul, toutes séances confondues
+cut -f2 "$journal" | jq -rR 'fromjson? | .load_reason // "inconnue"' | sort | uniq -c
+
+# Les règles qu'aucune séance n'a jamais chargées
+comm -13 \
+  <(cut -f2 "$journal" | jq -rR 'fromjson? | .file_path // empty' | sed 's|.*/||' | sort -u) \
+  <(ls .claude/rules/*.md | sed 's|.*/||' | sort)
 ```
 
-Le hook `InstructionsLoaded` journalise chaque chargement d'instructions. En tirer deux
-constats pour la passation :
+`jq -rR` avec `fromjson?` est délibéré : le hook garde une ligne brute quand l'entrée
+n'est pas du JSON, et sans ce filtre une seule ligne de ce genre ferait échouer tout le
+bloc. Elle est ignorée en silence.
 
-- **Quelles règles** se sont chargées, et sous quelle raison — une entrée de raison
-  `compact` confirme un rechargement post-compaction, son absence le dément.
-- **Combien** se sont cumulées. Le nombre d'instructions qu'un modèle suit de façon fiable
-  est fini et la dégradation est uniforme : au-delà d'un certain cumul, ce ne sont pas les
-  dernières règles qui passent à la trappe, ce sont toutes.
+Ce qu'on en tire pour la passation :
 
-Journal vide alors que des fichiers ont été ouverts → le dire dans la passation. C'est un
-défaut de harnais, pas un détail.
+- **Une règle jamais chargée alors que sa zone a été touchée** est un défaut de glob, pas
+  une fatalité. `./scripts/check-docs-coherence.sh` détecte déjà le motif qui ne
+  correspond à aucun fichier suivi ; le lancer avant de conclure.
+- **Une raison `compact` absente** après une compaction confirme la non-réinjection des
+  règles à `paths:` — c'est la vérification de la section précédente, faite sur pièce.
+- **Le cumul** est l'indicateur à surveiller. Le nombre d'instructions qu'un modèle suit
+  de façon fiable est fini et la dégradation est uniforme : au-delà d'un certain cumul, ce
+  ne sont pas les dernières règles qui passent à la trappe, ce sont toutes. Le chargement
+  étant dédupliqué par séance, ce compte est bien celui des règles **distinctes** en
+  contexte — pas un compte d'injections répétées.
+
+Le mécanisme lui-même est acquis : les règles se chargent bien sur `path_glob_match`, et
+le glob se déclenche sur le **chemin visé**, pas sur l'existence du fichier. Un journal
+vide alors que des fichiers ont été ouverts est donc anormal, et se dit dans la passation.
 
 ## Forme
 
