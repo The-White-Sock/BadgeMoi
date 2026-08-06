@@ -33,6 +33,36 @@ qu'on oublie d'écrire et qu'on repaye intégralement.
 
 **7. État git.** Branche, ce qui est commité, ce qui est poussé, l'état de la PR.
 
+## Ce qui survit à une compaction
+
+À vérifier **avant** de conclure, parce que c'est invisible autrement :
+
+- Le `CLAUDE.md` racine est relu depuis le disque et ré-injecté après un `/compact`.
+- **Les règles à `paths:` ne le sont pas.** Elles attendent qu'un fichier correspondant
+  soit relu. Après une compaction, on peut donc écrire du Compose sans que
+  `ui-compose.md` soit chargé, ou toucher au domaine sans `domain-purity.md`.
+
+Le remède est mécanique : rouvrir un fichier de la zone concernée avant d'y écrire.
+
+## Ce qui s'est réellement chargé
+
+```bash
+cut -f2 .git/badgemoi-instructions.log | jq -s 'length' 2>/dev/null
+tail -20 .git/badgemoi-instructions.log
+```
+
+Le hook `InstructionsLoaded` journalise chaque chargement d'instructions. En tirer deux
+constats pour la passation :
+
+- **Quelles règles** se sont chargées, et sous quelle raison — une entrée de raison
+  `compact` confirme un rechargement post-compaction, son absence le dément.
+- **Combien** se sont cumulées. Le nombre d'instructions qu'un modèle suit de façon fiable
+  est fini et la dégradation est uniforme : au-delà d'un certain cumul, ce ne sont pas les
+  dernières règles qui passent à la trappe, ce sont toutes.
+
+Journal vide alors que des fichiers ont été ouverts → le dire dans la passation. C'est un
+défaut de harnais, pas un détail.
+
 ## Forme
 
 Rendre la note **dans la réponse**, en markdown, prête à être collée dans le prompt
