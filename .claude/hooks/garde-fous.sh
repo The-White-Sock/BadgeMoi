@@ -59,9 +59,17 @@ case "${fichier}" in
         # données factices, et les aperçus vivent en fin de fichier dans ce dépôt.
         # Sans cette coupe, `ScreenScaffold` était signalé pour le texte de sa
         # propre démonstration.
-        if awk '/@Preview/ { exit } { print }' "${fichier}" \
-          | grep -E '(Text\(|text = )"[^"]*[A-Za-z]{4}' \
-          | grep -qvE 'stringResource|contentDescription|// '; then
+        #
+        # Le tri en deux temps est délibéré, et le seul point délicat est de ne pas
+        # remettre `grep -q` au bout d'un **tube** : il s'arrête au premier suspect,
+        # ce qui envoie un SIGPIPE en amont ; sous `pipefail` le tube vaut alors 141
+        # et l'alerte se perd — d'autant plus sûrement que le fichier est gros, donc
+        # exactement quand elle sert. Le second filtre passe par un here-string, qui
+        # n'est pas un tube et n'a donc pas ce comportement.
+        suspects="$(awk '/@Preview/ { exit } { print }' "${fichier}" \
+          | grep -E '(Text\(|text = )"[^"]*[A-Za-z]{4}' || true)"
+        if [ -n "${suspects}" ] &&
+          grep -qvE 'stringResource|contentDescription|// ' <<< "${suspects}"; then
           alertes+=("Texte possiblement en dur dans un composable. Tout libellé visible passe par une ressource de chaîne \`<ecran>_<usage>\`.")
         fi
         ;;
