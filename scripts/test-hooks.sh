@@ -324,6 +324,34 @@ fi
 
 rm -f "${temoin}"
 
+# Le hook écrit dans `git rev-parse --git-dir`, `/point` relit au même endroit. Dans un
+# worktree lié les deux divergent : `.git` y est un fichier pointeur, pas un répertoire,
+# et un chemin écrit en dur échoue sur « Not a directory ». La troisième interrogation
+# annonçait alors les cinq règles comme jamais chargées — le faux négatif habituel, dans
+# l'environnement où tournent justement les sous-agents isolés. On éprouve donc le
+# couplage là où il casse, pas seulement là où il marche.
+bac_wt="$(mktemp -d)/wt"
+if git worktree add -q --detach "${bac_wt}" HEAD 2>/dev/null; then
+  lu_wt="$(cd "${bac_wt}" \
+    && printf '%s' '{"file_path":"/r/.claude/rules/tests.md","load_reason":"path_glob_match"}' \
+       | .claude/hooks/instructions-chargees.sh \
+    && cut -f2 "$(git rev-parse --git-dir)/badgemoi-instructions.log" 2>/dev/null \
+       | jq -rR 'fromjson? | .file_path // empty' | sed 's|.*/||')"
+  regles_wt="$(cd "${bac_wt}" && ls "$(git rev-parse --show-toplevel)"/.claude/rules/*.md 2>/dev/null | wc -l)"
+  if [ "${lu_wt}" = "tests.md" ] && [ "${regles_wt}" -eq "$(ls .claude/rules/*.md | wc -l)" ]; then
+    reussis=$((reussis + 1))
+  else
+    echecs=$((echecs + 1))
+    echo "  ÉCHEC  worktree lié : relit le journal du hook (lu : '${lu_wt}', règles : ${regles_wt})"
+  fi
+  git worktree remove --force "${bac_wt}" >/dev/null 2>&1
+  git worktree prune >/dev/null 2>&1
+else
+  echecs=$((echecs + 1))
+  echo "  ÉCHEC  worktree lié : impossible d'en créer un pour l'épreuve"
+fi
+rm -rf "$(dirname "${bac_wt}")"
+
 echo "jalon-qualite.sh"
 jalon="${gitdir}/badgemoi-qualite"
 jalon_sauve=0

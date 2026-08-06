@@ -61,7 +61,10 @@ Le hook `InstructionsLoaded` journalise chaque chargement, avec son `file_path`,
 `memory_type` et son `load_reason`. Trois interrogations, à recopier telles quelles :
 
 ```bash
-journal=.git/badgemoi-instructions.log
+# Le hook écrit dans `git rev-parse --git-dir` : on le résout pareil, sinon les deux
+# divergent dans un worktree lié, où `.git` est un fichier pointeur et non un répertoire.
+journal="$(git rev-parse --git-dir)/badgemoi-instructions.log"
+racine="$(git rev-parse --show-toplevel)"
 
 # Ce qui est en contexte **maintenant** : la fenêtre courante, bornée par le dernier
 # `session_start`. C'est le seul relevé qui réponde à « ai-je cette règle sous les yeux ».
@@ -76,7 +79,7 @@ cut -f2 "$journal" | jq -rR 'fromjson? | .load_reason // "inconnue"' | sort | un
 # Les règles qu'aucune séance n'a jamais chargées
 comm -13 \
   <(cut -f2 "$journal" | jq -rR 'fromjson? | .file_path // empty' | sed 's|.*/||' | sort -u) \
-  <(ls .claude/rules/*.md | sed 's|.*/||' | sort)
+  <(ls "$racine"/.claude/rules/*.md | sed 's|.*/||' | sort)
 ```
 
 `jq -rR` avec `fromjson?` est délibéré : le hook garde une ligne brute quand l'entrée
