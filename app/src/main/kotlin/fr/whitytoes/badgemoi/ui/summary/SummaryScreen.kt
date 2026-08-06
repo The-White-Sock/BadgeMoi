@@ -1,5 +1,6 @@
 package fr.whitytoes.badgemoi.ui.summary
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -34,6 +35,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import fr.whitytoes.badgemoi.R
 import fr.whitytoes.badgemoi.domain.Direction
+import fr.whitytoes.badgemoi.domain.Routes
 import fr.whitytoes.badgemoi.domain.Trip
 import fr.whitytoes.badgemoi.ui.components.AbandonConfirmationDialog
 import fr.whitytoes.badgemoi.ui.components.LabelledValue
@@ -45,7 +47,7 @@ import fr.whitytoes.badgemoi.ui.theme.BadgeMoiTheme
 import fr.whitytoes.badgemoi.ui.trip.MilestoneCorrectionActions
 import fr.whitytoes.badgemoi.ui.trip.MilestoneCorrectionSheet
 import fr.whitytoes.badgemoi.ui.trip.correctionSeedInstant
-import fr.whitytoes.badgemoi.ui.trip.measuredDuration
+import fr.whitytoes.badgemoi.ui.trip.isCorrectable
 import fr.whitytoes.badgemoi.ui.trip.milestoneRows
 import java.time.Instant
 
@@ -59,6 +61,9 @@ private val HeaderCellShape = RoundedCornerShape(12.dp)
 
 /** Le jalon de départ : le seul que les tronçons ne peuvent pas ouvrir. */
 private const val DEPARTURE_INDEX = 0
+
+/** Le jalon d'arrivée, ouvert depuis le bandeau comme depuis le dernier tronçon. */
+private val ARRIVAL_INDEX = Routes.MILESTONE_COUNT - 1
 
 /**
  * Écran « Récapitulatif » (cahier des charges §3.3) : dernière relecture avant qu'un
@@ -165,8 +170,8 @@ internal fun SummaryScreen(
         top = {
             SummaryHeader(
                 trip = trip,
-                onDepartureClick = actions.onMilestoneClick?.let { { it(DEPARTURE_INDEX) } },
-                departureSelected = correctingIndex == DEPARTURE_INDEX,
+                onMilestoneClick = actions.onMilestoneClick,
+                correctingIndex = correctingIndex,
                 onAbandon = { confirmingAbandon = true },
                 archived = archived,
             )
@@ -212,80 +217,118 @@ internal fun SummaryScreen(
 }
 
 /**
- * Bandeau Départ / Arrivée (§3.3).
+ * Bandeau Départ / Arrivée / Trajet complet (§3.3).
  *
- * La cellule de droite **bascule** : l'heure d'arrivée quand le dernier jalon est
- * horodaté, la durée mesurée sinon. C'est le `departArrivalFlap` du POC — un trajet dont
- * l'arrivée a été ignorée n'a pas d'heure d'arrivée, mais reste mesurable jusqu'à son
- * dernier pointage, et afficher deux tirets perdrait cette information.
+ * Les trois cellules disent la même chose sous deux régimes différents, et c'est ce que
+ * le bandeau doit rendre évident : **départ et arrivée se corrigent**, la durée se
+ * **déduit** des deux. La distinction passe par le poids et la couleur du chiffre
+ * ([LabelledValue] `computed`), pas par la taille — l'alignement des lignes de base ne
+ * doit pas en souffrir.
  *
- * La cellule **Départ** est cliquable : elle est le seul accès au jalon 0, les tronçons
- * n'ouvrant que leur jalon d'arrivée. Sans elle, une heure de départ fausse ne serait plus
- * rattrapable une fois l'écran actif retiré de la pile.
+ * L'arrivée est cliquable au même titre que le départ. C'est un doublon du dernier
+ * tronçon, qui ouvre déjà ce jalon, et c'est assumé : on cherche l'heure d'arrivée là où
+ * elle est écrite, pas dans la ligne qui la mesure.
  *
- * « Abandonner » siège ici, dans la zone la moins commode de l'écran. C'est délibéré :
- * une action irréversible ne doit pas tomber sous le pouce (`docs/ergonomie.md` §3). Elle
- * y côtoyait « Enregistrer » à huit millimètres près, ce qui est l'anti-patron 5.
+ * Ce que la troisième cellule remplace, c'est le `departArrivalFlap` du POC, où la cellule
+ * de droite basculait sur la durée mesurée quand l'arrivée manquait. Cette bascule
+ * palliait l'absence de recours : on ne pouvait ni voir ni réparer une arrivée ignorée.
+ * L'arrivée étant désormais affichée **et** corrigible, un tiret y est une information
+ * exacte et actionnable, et la durée peut rester ce qu'elle prétend être — départ à
+ * arrivée, donc `null` tant que l'arrivée manque (§9, écart 14).
+ *
+ * « Abandonner » occupe sa propre ligne, tout en haut, à l'opposé du pouce. C'est la même
+ * décision qu'avant — une action irréversible ne doit pas tomber sous la main
+ * (`docs/ergonomie.md` §3) — appliquée à un bandeau qui porte maintenant trois valeurs :
+ * les quatre éléments ne tenaient plus sur une ligne sans se serrer.
  */
 @Composable
 private fun SummaryHeader(
     trip: Trip,
-    onDepartureClick: (() -> Unit)?,
-    departureSelected: Boolean,
+    onMilestoneClick: ((Int) -> Unit)?,
+    correctingIndex: Int?,
     onAbandon: () -> Unit,
     archived: Boolean,
 ) {
-    val colors = MaterialTheme.colorScheme
-    val departure = trip.departureAt
+    val rows = remember(trip) { trip.milestoneRows() }
 
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.Bottom,
-    ) {
-        LabelledValue(
-            labelRes = R.string.trip_departure,
-            value = departure?.let { formatTime(it) },
-            modifier =
-                Modifier
-                    .clip(HeaderCellShape)
-                    .background(
-                        if (departureSelected) colors.secondaryContainer else Color.Transparent,
-                    ).then(
-                        // Un départ absent n'a rien à corriger : la cellule reste inerte
-                        // plutôt que d'ouvrir une fenêtre sur un horodatage inexistant.
-                        if (onDepartureClick != null && departure != null) {
-                            Modifier.clickable(
-                                interactionSource = null,
-                                indication = ripple(color = colors.secondary),
-                                onClick = onDepartureClick,
-                            )
-                        } else {
-                            Modifier
-                        },
-                        // Cible tactile : la cellule est cliquable, elle doit tenir les
-                        // 48 dp comme n'importe quel bouton (`docs/ergonomie.md` §4).
-                    ).heightIn(min = TouchTargetHeight)
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-        )
-        val arrival = trip.arrivalAt
-        if (arrival != null) {
-            LabelledValue(labelRes = R.string.summary_arrival, value = formatTime(arrival))
-        } else {
-            LabelledValue(
-                labelRes = R.string.trip_elapsed,
-                value = trip.measuredDuration()?.let(::formatDuration),
-            )
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            TextButton(onClick = onAbandon, modifier = Modifier.heightIn(min = TouchTargetHeight)) {
+                Text(
+                    // Un trajet archivé se **supprime** ; un trajet en cours s'abandonne, il
+                    // n'a jamais été rangé nulle part.
+                    text = stringResource(if (archived) R.string.summary_delete else R.string.abandon_action),
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
         }
-        TextButton(onClick = onAbandon, modifier = Modifier.heightIn(min = TouchTargetHeight)) {
-            Text(
-                // Un trajet archivé se **supprime** ; un trajet en cours s'abandonne, il
-                // n'a jamais été rangé nulle part.
-                text = stringResource(if (archived) R.string.summary_delete else R.string.abandon_action),
-                color = colors.error,
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Bottom,
+        ) {
+            CorrectableValue(
+                labelRes = R.string.trip_departure,
+                value = trip.departureAt?.let { formatTime(it) },
+                correctable = rows[DEPARTURE_INDEX].status.isCorrectable,
+                selected = correctingIndex == DEPARTURE_INDEX,
+                onClick = onMilestoneClick?.let { { it(DEPARTURE_INDEX) } },
+            )
+            CorrectableValue(
+                labelRes = R.string.summary_arrival,
+                value = trip.arrivalAt?.let { formatTime(it) },
+                correctable = rows[ARRIVAL_INDEX].status.isCorrectable,
+                selected = correctingIndex == ARRIVAL_INDEX,
+                onClick = onMilestoneClick?.let { { it(ARRIVAL_INDEX) } },
+            )
+            LabelledValue(
+                labelRes = R.string.trip_total,
+                value = trip.totalDuration?.let(::formatDuration),
+                computed = true,
             )
         }
     }
+}
+
+/**
+ * Cellule chiffrée du bandeau qui **ouvre la correction** de son jalon.
+ *
+ * [correctable] reprend la règle du §9 écart 6 : seul un jalon tranché — posé ou ignoré —
+ * s'ouvre. Une cellule inerte vaut mieux qu'une fenêtre de correction posée sur un
+ * horodatage qui n'existe pas.
+ */
+@Composable
+private fun CorrectableValue(
+    @StringRes labelRes: Int,
+    value: String?,
+    correctable: Boolean,
+    selected: Boolean,
+    onClick: (() -> Unit)?,
+) {
+    val colors = MaterialTheme.colorScheme
+
+    LabelledValue(
+        labelRes = labelRes,
+        value = value,
+        modifier =
+            Modifier
+                .clip(HeaderCellShape)
+                .background(if (selected) colors.secondaryContainer else Color.Transparent)
+                .then(
+                    if (onClick != null && correctable) {
+                        Modifier.clickable(
+                            interactionSource = null,
+                            indication = ripple(color = colors.secondary),
+                            onClick = onClick,
+                        )
+                    } else {
+                        Modifier
+                    },
+                    // Cible tactile : la cellule est cliquable, elle doit tenir les 48 dp
+                    // comme n'importe quel bouton (`docs/ergonomie.md` §4).
+                ).heightIn(min = TouchTargetHeight)
+                .padding(horizontal = 8.dp, vertical = 4.dp),
+    )
 }
 
 /**
@@ -340,6 +383,22 @@ private fun SummaryScreenNightPreview() {
         SummaryScreen(
             state = SummaryUiState.Ready(trip = previewTrip()),
             actions = SummaryActions(onArchive = {}, onDiscard = {}),
+        )
+    }
+}
+
+/**
+ * Le cas que la bascule du POC servait à masquer : arrivée ignorée, donc pas d'heure
+ * d'arrivée et pas de durée totale. Deux tirets, et une cellule sur laquelle appuyer pour
+ * y remédier (§9, écart 14).
+ */
+@Preview(name = "Récapitulatif — sans arrivée", showBackground = true)
+@Composable
+private fun SummaryScreenNoArrivalPreview() {
+    BadgeMoiTheme(darkTheme = true) {
+        SummaryScreen(
+            state = SummaryUiState.Ready(trip = previewTrip().skipMilestone(ARRIVAL_INDEX)),
+            actions = SummaryActions(onArchive = {}, onDiscard = {}, onMilestoneClick = {}),
         )
     }
 }

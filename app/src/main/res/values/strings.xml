@@ -30,6 +30,12 @@
     <string name="trip_skip">Passer</string>
     <string name="trip_departure">Départ</string>
     <string name="trip_elapsed">Écoulé</string>
+    <!--
+        Durée départ → arrivée. Partagée avec le récapitulatif et l'historique : une seule
+        grandeur, un seul mot. « Écoulé » ci-dessus désigne autre chose — un compteur qui
+        court, sur un trajet qui n'est pas fini.
+    -->
+    <string name="trip_total">Trajet complet</string>
     <string name="trip_since_last_milestone">%1$s depuis le dernier jalon</string>
     <string name="correction_save">Enregistrer</string>
     <string name="correction_skip">Ignorer ce jalon</string>
@@ -48,7 +54,6 @@
     <string name="summary_delete_message">Il sera retiré de l\'archive et des moyennes.</string>
 
     <!-- Écran « Historique » -->
-    <string name="history_total">Trajet complet</string>
     <string name="history_average">Moyenne</string>
     <string name="history_segment_averages">Moyennes par tronçon</string>
     <string name="history_recent_trips">Trajets récents</string>

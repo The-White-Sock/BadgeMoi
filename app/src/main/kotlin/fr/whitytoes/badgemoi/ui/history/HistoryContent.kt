@@ -113,7 +113,7 @@ private fun TotalBlock(statistics: DirectionStatistics) {
         verticalAlignment = Alignment.Bottom,
     ) {
         LabelledValue(
-            labelRes = R.string.history_total,
+            labelRes = R.string.trip_total,
             value = statistics.totalAverage?.let(::formatDuration),
         )
         Text(
