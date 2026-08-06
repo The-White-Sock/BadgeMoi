@@ -46,6 +46,9 @@ Android/Kotlin doivent être résolus depuis le réseau au premier build).
 - **`.claude/rules/*.md`** — rappels chargés **automatiquement** selon les fichiers
   ouverts : composants Compose, pureté du domaine, tests, CI/build, documentation. Ce
   sont des digests avec pointeurs ; `docs/` reste la source.
+  **Ils ne survivent pas à un `/compact`** : ce fichier-ci est ré-injecté, eux attendent
+  qu'un fichier de leur zone soit relu. Après une compaction, rouvrir un fichier concerné
+  avant d'y écrire — `/point` détaille la vérification.
 
 ### Commandes
 
@@ -81,16 +84,52 @@ Tous **consultatifs** sauf un, signalé comme tel :
   trois pointeurs vers les sources qui font autorité sur les sujets détectés.
 - En fin de tour, un bilan rappelle ce qui reste : qualité non relancée, travail non
   commité, commits non poussés. Une ligne, et rien tant que l'état ne change pas.
-- **`avant-livraison.sh` bloque**, lui — c'est la seule entorse au principe
-  consultatif, limitée à trois erreurs déjà commises et mal réparables : commit sans
-  gitmoji (aucune version ne sort), push direct sur `main`, fermeture d'issue rédigée en
-  français (elle ne ferme rien). Il ne refuse que ce qu'il a su lire : un message passé
-  par `-F` ou heredoc passe sans contrôle.
+- Au chargement d'un fichier d'instructions, un hook journalise l'événement dans
+  `.git/badgemoi-instructions.log` — c'est ce qui permet de savoir si une règle s'est
+  vraiment chargée, et combien s'accumulent. Il n'écrit rien en session ; `/point` le lit.
+- **`avant-livraison.sh` arrête**, lui — c'est la seule entorse au principe
+  consultatif, limitée à trois erreurs déjà commises et mal réparables. Il **refuse** le
+  push direct sur `main` et la fermeture d'issue rédigée en français (elle ne ferme rien) :
+  aucun des deux n'est jamais correct ici. Il **rend la main** sur un commit sans gitmoji,
+  parce qu'un commit de travail voué au rebase est légitime et qu'il ne sait pas l'en
+  distinguer. Et il n'arrête que ce qu'il a su lire : un message passé par `-F` ou heredoc
+  passe sans contrôle.
 
 `./scripts/test-hooks.sh` fige le contrat d'entrée/sortie de chaque hook. Le lancer après
 toute modification de `.claude/hooks/` : un hook muet est indistinguable d'un hook qui
 n'avait rien à dire, et c'est exactement comme ça que l'antisèche est restée morte
 plusieurs semaines.
+
+<!--
+NOTE DE MAINTENANCE — pour qui fait évoluer le harnais, pas pour la session.
+Les commentaires HTML de bloc sont retirés avant injection en contexte : ce bloc
+ne coûte rien au budget d'instructions. Y mettre la provenance, pas des consignes.
+
+Provenance des choix ci-dessus :
+- « instructions plutôt que configuration », cible des 200 lignes, non-réinjection
+  des règles à `paths:` après compaction, retrait des commentaires HTML :
+  code.claude.com/docs/en/memory
+- `deny` / `ask` et l'idée qu'un blocage doit finir par rendre la main :
+  claude.com/blog/auto-mode, qui décrit le classificateur PreToolUse d'Anthropic.
+- Le budget se compte en **instructions** (~150-200 suivables, dont ~50 déjà prises
+  par le prompt système) et la dégradation est **uniforme** — une instruction faible
+  en plus dégrade aussi les fortes : humanlayer.dev/blog/writing-a-good-claude-md.
+  Chiffres non référencés par la source : argumentés, pas mesurés.
+- La « règle des 60 lignes » attribuée à HumanLayer par des index tiers est une
+  mauvaise citation : l'article recommande < 300 lignes et mentionne 60 comme un
+  simple constat sur son propre dépôt. Ne pas reprendre ce chiffre.
+
+Point ouvert : le schéma d'entrée de `InstructionsLoaded` n'est pas documenté.
+`instructions-chargees.sh` journalise donc le JSON brut. Quand le journal aura
+révélé les vrais noms de champs, les noter dans l'en-tête du hook — et seulement
+alors envisager d'en lire un.
+-->
+
+<!-- Écarté sciemment : les balises `<important if="...">` (hlyr.dev). Preuve
+     purement anecdotique, l'auteur reconnaît n'avoir « no rigorous explanation »,
+     et une condition en anglais jurerait avec la prose française du dépôt. À
+     reconsidérer une fois que le journal ci-dessus aura posé le diagnostic. -->
+
 
 ## Auto-merge des PR
 

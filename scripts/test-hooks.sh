@@ -91,9 +91,11 @@ cas "prompt trop large : sujets lâchés, intention gardée" antiseche \
   '/point'
 
 echo "avant-livraison.sh"
-cas "refuse un commit sans gitmoji" avant-livraison \
+# `ask` et non `deny` : un commit de travail voué au rebase est légitime, et le
+# hook ne sait pas l'en distinguer. Le garde-fou avertit, la personne tranche.
+cas "rend la main sur un commit sans gitmoji" avant-livraison \
   '{"tool_name":"Bash","tool_input":{"command":"git commit -m \"ajoute un truc\""}}' \
-  '"permissionDecision": *"deny"'
+  '"permissionDecision": *"ask"'
 cas "laisse passer un commit gitmoji" avant-livraison \
   '{"tool_name":"Bash","tool_input":{"command":"git commit -m \"✨(ui) : ajoute un ecran\""}}' \
   VIDE
@@ -160,6 +162,58 @@ fi
 
 rm -f "${memo}"
 [ -n "${sauvegarde}" ] && printf '%s' "${sauvegarde}" > "${memo}"
+
+echo "instructions-chargees.sh"
+# Cas volontairement AGNOSTIQUES AU SCHÉMA : la doc ne publie pas la forme d'entrée
+# de cet événement. On fige ce dont on est sûr — le hook se tait sur stdout, il
+# écrit une ligne par événement, et rien de ce qu'il reçoit ne le fait échouer —
+# sans jamais affirmer qu'un champ s'appelle untel. C'est ce qu'il aurait fallu
+# faire pour `antiseche.sh`.
+journal="${gitdir}/badgemoi-instructions.log"
+journal_sauve=""
+[ -e "${journal}" ] && journal_sauve="$(cat "${journal}")"
+rm -f "${journal}"
+
+cas "ne écrit rien sur stdout" instructions-chargees \
+  '{"hook_event_name":"InstructionsLoaded","reason":"session_start"}' \
+  VIDE
+cas "encaisse un schéma inattendu" instructions-chargees \
+  '{"un_champ_jamais_vu":["a","b"]}' \
+  VIDE
+cas "encaisse une entrée non-JSON" instructions-chargees \
+  'ceci nest pas du json' \
+  VIDE
+cas "encaisse une entrée vide" instructions-chargees \
+  '' \
+  VIDE
+
+if [ "$(wc -l < "${journal}" 2>/dev/null || echo 0)" -eq 3 ]; then
+  reussis=$((reussis + 1))
+else
+  echecs=$((echecs + 1))
+  echo "  ÉCHEC  journalise une ligne par événement non vide (3 attendues, $(wc -l < "${journal}" 2>/dev/null || echo 0) obtenues)"
+fi
+
+if grep -q 'un_champ_jamais_vu' "${journal}" 2>/dev/null; then
+  reussis=$((reussis + 1))
+else
+  echecs=$((echecs + 1))
+  echo "  ÉCHEC  le journal conserve le JSON reçu tel quel"
+fi
+
+# Le plafond : une séance longue ne doit pas laisser un journal illisible.
+for _ in $(seq 1 520); do
+  printf '%s' '{"n":1}' | "${hooks}/instructions-chargees.sh" >/dev/null 2>&1
+done
+if [ "$(wc -l < "${journal}" 2>/dev/null || echo 0)" -le 500 ]; then
+  reussis=$((reussis + 1))
+else
+  echecs=$((echecs + 1))
+  echo "  ÉCHEC  tronque le journal au-delà de 500 lignes"
+fi
+
+rm -f "${journal}"
+[ -n "${journal_sauve}" ] && printf '%s\n' "${journal_sauve}" > "${journal}"
 
 echo "jalon-qualite.sh"
 jalon="${gitdir}/badgemoi-qualite"
