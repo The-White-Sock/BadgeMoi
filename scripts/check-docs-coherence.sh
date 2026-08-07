@@ -123,24 +123,50 @@ if [ -f "${CAHIER}" ]; then
 fi
 
 # --- 4. Configuration Claude Code --------------------------------------------
-# `CLAUDE.md` est chargé en entier à chaque session : au-delà de 200 lignes, il
-# coûte du contexte et l'adhérence baisse. Ce qui grossit doit migrer vers
-# `.claude/rules/` (chargé à la demande) ou `docs/` (lu au besoin).
+# Ce qui est chargé au **lancement** de chaque session, et ré-injecté après une
+# compaction : `CLAUDE.md` **et** les règles `.claude/rules/` sans frontmatter
+# `paths:` — la documentation les charge « with the same priority as
+# `.claude/CLAUDE.md` ». Une règle *avec* `paths:` n'en est pas : elle n'arrive
+# qu'en ouvrant un fichier de sa zone, et repart à la compaction. C'est donc la
+# somme des non scopées qu'il faut tenir, pas le seul `CLAUDE.md` : ne mesurer que
+# lui laisserait une porte par laquelle le chargement de session grossit sans que
+# rien ne le compte.
 #
-# Ce qui compte est le contexte **réellement injecté**, pas la taille du fichier :
-# les commentaires HTML de bloc sont retirés avant injection, donc gratuits pour le
-# budget d'instructions — c'est d'ailleurs pourquoi la provenance des choix y est
-# rangée. Les facturer ferait mordre le contrôle sur des lignes qui ne coûtent rien,
-# et son message ordonnerait de sortir la seule chose qu'il est sans risque de
-# garder. Ne pas revenir à un `wc -l` du fichier entier.
-if [ -f "CLAUDE.md" ]; then
-  brutes="$(wc -l < CLAUDE.md)"
-  # `dans` passe à 1 avant le test d'impression : un commentaire ouvert et fermé sur
-  # une même ligne est donc écarté lui aussi.
-  lignes="$(awk '/<!--/ { dans = 1 } !dans { print } /-->/ { dans = 0 }' CLAUDE.md | wc -l)"
-  [ "${lignes}" -le 200 ] || \
-    add "**\`CLAUDE.md\` trop long** — ${lignes} lignes injectées, pour une cible de 200 (${brutes} lignes dans le fichier, commentaires HTML de bloc compris : ceux-là sont retirés avant injection et ne comptent pas). Déplacer ce qui n'est pas un invariant de toutes les sessions vers \`.claude/rules/\` (chargement par chemin) ou \`docs/\`."
-fi
+# Ce qui compte est le contexte **réellement injecté**, pas la taille des fichiers :
+# frontmatter et commentaires HTML de bloc en sont retirés, donc gratuits pour le
+# budget d'instructions — c'est d'ailleurs pourquoi la provenance des choix est
+# rangée dans un commentaire. Les facturer ferait mordre le contrôle sur des lignes
+# qui ne coûtent rien, et son message ordonnerait de sortir la seule chose qu'il est
+# sans risque de garder. Ne pas revenir à un `wc -l` du fichier entier.
+#
+# `dans` passe à 1 avant le test d'impression : un commentaire ouvert et fermé sur
+# une même ligne est donc écarté lui aussi.
+injectees() {
+  awk '
+    NR == 1 && /^---[[:space:]]*$/ { fm = 1; next }
+    fm && /^---[[:space:]]*$/      { fm = 0; next }
+    fm                             { next }
+    /<!--/                         { dans = 1 }
+    !dans                          { print }
+    /-->/                          { dans = 0 }
+  ' "$1" | wc -l
+}
+
+lancement=0
+detail=""
+for charge in CLAUDE.md .claude/rules/*.md; do
+  [ -f "${charge}" ] || continue
+  # Une règle à `paths:` se charge par zone : hors budget de lancement.
+  if [ "${charge}" != "CLAUDE.md" ] && grep -q '^paths:' "${charge}"; then
+    continue
+  fi
+  n="$(injectees "${charge}")"
+  lancement=$(( lancement + n ))
+  detail="${detail}${detail:+, }\`${charge}\` ${n}"
+done
+
+[ "${lancement}" -le 200 ] || \
+  add "**Chargement de session trop lourd** — ${lancement} lignes injectées à chaque lancement, pour une cible de 200 (${detail}). Ces fichiers sont chargés en entier et ré-injectés après compaction. Déplacer ce qui n'est pas un invariant de toutes les sessions vers une règle \`.claude/rules/\` **avec** \`paths:\` (chargement par zone) ou vers \`docs/\`."
 
 # Une règle dont le glob ne matche plus aucun fichier est morte **en silence** :
 # elle ne se déclenche jamais et rien ne le signale. C'est le mode de panne
