@@ -138,9 +138,27 @@ vide alors que des fichiers ont été ouverts est donc anormal, et se dit dans l
 
 ## Forme
 
-Rendre la note **dans la réponse**, en markdown, prête à être collée dans le prompt
-suivant. Ne pas créer de fichier : une passation périmée traînant dans le dépôt est pire
-que pas de passation.
+Écrire la note en markdown dans un fichier, puis l'**envoyer** — et ne pas la répéter
+dans la réponse. Une passation vit pour être transmise ; tant qu'elle n'existe que dans
+le flux du terminal, elle ne l'est pas : la TUI capture la souris, et la sélectionner
+suppose de connaître le contournement (Maj sous Linux, Option sur macOS).
+
+**Le fichier va hors du dépôt**, sans exception : le répertoire de travail de session
+quand le prompt système en indique un, sinon un `mktemp -d`. C'est le point à ne pas
+relâcher — une passation périmée qui traîne dans l'arbre de travail, ou pire qui part
+dans un commit, est pire que pas de passation du tout. C'est le dépôt qu'il faut tenir
+propre, pas le disque.
+
+Nommer le fichier `passation-AAAA-MM-JJ-HHMM.md`. Deux passations dans la même séance
+se suivent, elles ne s'écrasent pas.
+
+L'envoyer en **rendu inline** plutôt qu'en simple pièce jointe : elle reste ainsi
+lisible d'un coup d'œil, sans manipulation.
+
+La réponse, elle, tient en **une ligne** : où est le fichier, et l'état en une phrase.
+Recopier la note à côté annulerait le seul bénéfice — une passation fait couramment
+quatre-vingts à cent vingt lignes, et `/point` s'appelle précisément quand le contexte
+est saturé.
 
 Concis mais complet — ce qui n'est pas écrit ici sera reconstruit à partir du code, et
 la reconstruction se trompe.
