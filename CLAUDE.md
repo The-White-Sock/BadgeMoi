@@ -43,12 +43,17 @@ Android/Kotlin doivent être résolus depuis le réseau au premier build).
 
 ## Outillage de session
 
-- **`.claude/rules/*.md`** — rappels chargés **automatiquement** selon les fichiers
-  ouverts : composants Compose, pureté du domaine, tests, CI/build, documentation. Ce
-  sont des digests avec pointeurs ; `docs/` reste la source.
-  **Ils ne survivent pas à un `/compact`** : ce fichier-ci est ré-injecté, eux attendent
-  qu'un fichier de leur zone soit relu. Après une compaction, rouvrir un fichier concerné
-  avant d'y écrire — `/point` détaille la vérification.
+- **`.claude/rules/*.md`** — digests avec pointeurs ; `docs/` reste la source. Deux
+  régimes, et c'est le frontmatter `paths:` qui les sépare :
+  - **Avec `paths:`** — chargés à l'ouverture d'un fichier de leur zone : composants
+    Compose, pureté du domaine, tests, CI/build, documentation, hooks et scripts.
+    **Ils ne survivent pas à un `/compact`** : ce fichier-ci est ré-injecté, eux
+    attendent qu'un fichier de leur zone soit relu. Après une compaction, rouvrir un
+    fichier concerné avant d'y écrire — `/point` détaille la vérification.
+  - **Sans `paths:`** — chargés à chaque lancement et ré-injectés après compaction,
+    au même rang que ce fichier. Réservé à ce qui vaut en fin de séance, quand plus
+    aucun fichier n'est ouvert : `langue.md` seul aujourd'hui. Leur poids est compté
+    avec celui de `CLAUDE.md` par `check-docs-coherence.sh`.
 
 ### Commandes
 

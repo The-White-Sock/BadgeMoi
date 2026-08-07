@@ -7,14 +7,8 @@ paths:
 
 # Documentation et décisions
 
-## Langue
-
-Toute la prose du dépôt est en **français** : commentaires, KDoc, messages de
-commit, corps de PR, documentation. Les identifiants restent anglais/techniques.
-
-Une exception, et une seule : les mots-clés que GitHub interprète. `Closes #N`,
-`Fixes #N`, `Resolves #N` n'existent qu'en anglais — « Ferme #N » est une simple
-mention et ne ferme aucune issue.
+La langue du dépôt a sa propre règle, `langue.md`, sans `paths:` — elle valait pour
+tout commit et toute PR alors qu'elle ne se chargeait qu'en ouvrant un `.md`.
 
 ## Consigner un écart au cahier
 
