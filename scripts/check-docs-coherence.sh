@@ -126,10 +126,20 @@ fi
 # `CLAUDE.md` est chargé en entier à chaque session : au-delà de 200 lignes, il
 # coûte du contexte et l'adhérence baisse. Ce qui grossit doit migrer vers
 # `.claude/rules/` (chargé à la demande) ou `docs/` (lu au besoin).
+#
+# Ce qui compte est le contexte **réellement injecté**, pas la taille du fichier :
+# les commentaires HTML de bloc sont retirés avant injection, donc gratuits pour le
+# budget d'instructions — c'est d'ailleurs pourquoi la provenance des choix y est
+# rangée. Les facturer ferait mordre le contrôle sur des lignes qui ne coûtent rien,
+# et son message ordonnerait de sortir la seule chose qu'il est sans risque de
+# garder. Ne pas revenir à un `wc -l` du fichier entier.
 if [ -f "CLAUDE.md" ]; then
-  lignes="$(wc -l < CLAUDE.md)"
+  brutes="$(wc -l < CLAUDE.md)"
+  # `dans` passe à 1 avant le test d'impression : un commentaire ouvert et fermé sur
+  # une même ligne est donc écarté lui aussi.
+  lignes="$(awk '/<!--/ { dans = 1 } !dans { print } /-->/ { dans = 0 }' CLAUDE.md | wc -l)"
   [ "${lignes}" -le 200 ] || \
-    add "**\`CLAUDE.md\` trop long** — ${lignes} lignes, pour une cible de 200. Déplacer ce qui n'est pas un invariant de toutes les sessions vers \`.claude/rules/\` (chargement par chemin) ou \`docs/\`."
+    add "**\`CLAUDE.md\` trop long** — ${lignes} lignes injectées, pour une cible de 200 (${brutes} lignes dans le fichier, commentaires HTML de bloc compris : ceux-là sont retirés avant injection et ne comptent pas). Déplacer ce qui n'est pas un invariant de toutes les sessions vers \`.claude/rules/\` (chargement par chemin) ou \`docs/\`."
 fi
 
 # Une règle dont le glob ne matche plus aucun fichier est morte **en silence** :
