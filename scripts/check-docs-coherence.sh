@@ -225,6 +225,37 @@ for regle in .claude/rules/*.md; do
   done <<< "${motifs}"
 done
 
+# Les relecteurs de `/revue` sont annoncés « en lecture seule » **par la commande
+# elle-même**. Ça a été faux pendant toute leur existence : `tools: … Bash` non
+# qualifié leur ouvrait tout le shell. Une garde affirmée en prose et absente du
+# harnais est le pire des deux mondes — on cesse de la vérifier parce qu'on croit
+# l'avoir.
+#
+# `permissionMode: plan` **ne suffit pas**, et ce n'est pas une supposition : éprouvé,
+# il bloque les outils `Write` et `Edit` mais laisse passer un `echo >` par Bash. La
+# seule garde qui tienne est l'absence d'outil d'écriture dans `tools:`.
+if grep -q 'lecture seule' .claude/commands/revue.md 2>/dev/null; then
+  for agent in .claude/agents/*.md; do
+    [ -f "${agent}" ] || continue
+
+    outils="$(awk '/^tools:/ { sub(/^tools:[[:space:]]*/, ""); print; exit }' \
+      <<< "$(frontmatter "${agent}")")"
+
+    # Pas de `tools:` du tout = héritage de **tous** les outils, écriture comprise.
+    # C'est le cas le plus dangereux, et le plus discret.
+    if [ -z "${outils}" ]; then
+      add "**Sous-agent sans allowlist d'outils** — \`${agent}\` ne déclare aucun \`tools:\`, il hérite donc de **tous** les outils, écriture comprise, alors que \`/revue\` l'annonce en lecture seule."
+      continue
+    fi
+
+    # Here-string et non tube : `grep -q` au bout d'un tube le SIGPIPE, et sous
+    # `pipefail` l'alerte se perdrait (voir `.claude/rules/harnais.md`).
+    if grep -qE '(^|[,[:space:]])(Bash|Write|Edit|NotebookEdit)([,[:space:]]|$)' <<< "${outils}"; then
+      add "**Lecture seule démentie** — \`${agent}\` déclare \`tools: ${outils}\`, qui contient un outil capable d'écrire, alors que \`/revue\` affirme que les relecteurs « sont en lecture seule ». Retirer l'outil, ou corriger la phrase de \`/revue\` — mais ne pas compter sur \`permissionMode: plan\`, qui ne ferme pas la voie du shell."
+    fi
+  done
+fi
+
 # --- Rapport -----------------------------------------------------------------
 if [ ${#ecarts[@]} -eq 0 ]; then
   echo "Documentation cohérente — aucun écart détecté."

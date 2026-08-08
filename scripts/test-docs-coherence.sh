@@ -177,6 +177,23 @@ cas "motif à double astérisque, légitime" \
   'printf -- "---\npaths:\n  - \"app/**/*.kt\"\n---\n\nCorps.\n" > .claude/rules/temoin.md' \
   AUCUN
 
+# --- 4c. Lecture seule des relecteurs ----------------------------------------
+# Ce contrôle mesure une **cohérence entre deux fichiers**, pas l'absence de Bash.
+# Le troisième cas est donc le seul qui prouve quelque chose : même outil d'écriture,
+# mais `/revue` ne promet plus rien — l'alerte doit disparaître. Sans lui, les deux
+# premiers seraient satisfaits par un contrôle qui interdirait Bash en toutes
+# circonstances, ce qui n'est pas la règle voulue.
+echo "lecture seule des relecteurs"
+cas "un relecteur retrouve Bash" \
+  'sed -i "s/^tools: Read, Grep, Glob$/tools: Read, Grep, Glob, Bash/" .claude/agents/gardien-du-cahier.md' \
+  'Lecture seule démentie'
+cas "un relecteur sans allowlist hérite de tout" \
+  'sed -i "/^tools: /d" .claude/agents/relecteur-ergonomie.md' \
+  'sans allowlist'
+cas "Bash redevient licite si /revue ne promet plus la lecture seule" \
+  'sed -i "s/^tools: Read, Grep, Glob$/tools: Read, Grep, Glob, Bash/" .claude/agents/gardien-du-cahier.md; sed -i "s/lecture seule/relecture attentive/g" .claude/commands/revue.md' \
+  AUCUN
+
 # --- Rapport -----------------------------------------------------------------
 rm -rf "$(dirname "${reference}")"
 

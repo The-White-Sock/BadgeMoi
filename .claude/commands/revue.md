@@ -28,6 +28,17 @@ Rassembler le diff, puis lancer **dans le même message** :
 Leur passer le diff et la liste des fichiers touchés. Ils sont en lecture seule : ils
 rapportent, ils ne corrigent pas.
 
+Cette lecture seule est désormais **tenue par le harnais**, et non plus seulement par
+cette phrase. Elle l'est parce que les deux agents n'ont plus `Bash` du tout :
+`tools: Read, Grep, Glob`. C'est **le retrait de `Bash` qui tient la garde**, pas le
+`permissionMode: plan` qui l'accompagne — mesuré, celui-ci bloque les outils `Write` et
+`Edit` mais laisse passer un `echo >` par le shell. Il reste en second rideau, il ne
+suffit pas.
+
+Conséquence directe pour cette commande : **leur passer le diff dans le message**. Ils ne
+peuvent plus lancer `git diff` eux-mêmes, et c'est voulu — un agent qui rassemble sa
+propre matière peut aussi la modifier.
+
 ## 3. Synthèse
 
 Rendre **une** liste, chaque point classé :

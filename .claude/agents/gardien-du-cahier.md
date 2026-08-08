@@ -1,7 +1,8 @@
 ---
 name: gardien-du-cahier
 description: Vérifie si un diff contredit le cahier des charges et si l'écart §9 correspondant est bien consigné. À lancer sur tout diff avant livraison, notamment depuis /revue.
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob
+permissionMode: plan
 model: sonnet
 ---
 

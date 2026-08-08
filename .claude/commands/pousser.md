@@ -1,5 +1,6 @@
 ---
 description: Qualité, commit, push, PR et auto-merge — le rituel complet de livraison
+disable-model-invocation: true
 ---
 
 Livre le travail en cours en suivant la séquence ci-dessous **dans l'ordre**, sans en
