@@ -28,6 +28,12 @@ set -uo pipefail
 export LC_ALL=C.UTF-8
 export LANG=C.UTF-8
 
+# Journal d'usage — sourcé, jamais bloquant. Si la bibliothèque manque, le hook
+# continue sans journaliser : un contrôle vaut mieux que sa mesure.
+if ! . "$(dirname "${BASH_SOURCE[0]}")/journal-usage.sh" 2>/dev/null; then
+  journaliser_usage() { :; }
+fi
+
 entree="$(cat)"
 
 # Le harnais envoie `.prompt`. `.user_input` est conservé en repli : c'est le nom
@@ -35,12 +41,20 @@ entree="$(cat)"
 # ne le signale — un hook silencieux est indistinguable d'un hook sans occurrence.
 # D'où `scripts/test-hooks.sh`, qui fige désormais ce contrat.
 prompt="$(printf '%s' "${entree}" | jq -r '.prompt // .user_input // empty' 2>/dev/null || true)"
-[ -z "${prompt}" ] && exit 0
+[ -z "${prompt}" ] && { journaliser_usage antiseche hors-perimetre "prompt vide"; exit 0; }
 
 # Une commande slash porte déjà ses propres instructions : lui suggérer un outil
 # reviendrait le plus souvent à lui suggérer celui qu'on est en train de lancer.
+#
+# C'est aussi le seul endroit du harnais qui voit passer les invocations de
+# commande : on les compte avant de sortir. Le référentiel suggérait un hook
+# `PreToolUse` pour cela ; ici la donnée arrive plus tôt et plus complète.
 case "${prompt}" in
-  /*) exit 0 ;;
+  /*)
+    journaliser_usage antiseche commande \
+      "$(printf '%s' "${prompt}" | awk '{print $1}')"
+    exit 0
+    ;;
 esac
 
 mode="$(printf '%s' "${entree}" | jq -r '.permission_mode // empty' 2>/dev/null || true)"
@@ -137,7 +151,16 @@ if [ ${#pointeurs[@]} -gt 3 ]; then
   pointeurs=()
 fi
 
-[ -z "${intention}" ] && [ ${#pointeurs[@]} -eq 0 ] && exit 0
+if [ -z "${intention}" ] && [ ${#pointeurs[@]} -eq 0 ]; then
+  # Le prompt a bien été lu et confronté aux motifs : le silence est un résultat,
+  # pas une panne. C'est la distinction que le `.user_input` mort rendait
+  # impossible — à l'époque, ce hook sortait ici à **chaque** tour.
+  journaliser_usage antiseche muet
+  exit 0
+fi
+
+journaliser_usage antiseche alerte \
+  "intention=$([ -n "${intention}" ] && echo oui || echo non) sujets=${#pointeurs[@]}"
 
 contexte="Antisèche BadgeMoi :"
 

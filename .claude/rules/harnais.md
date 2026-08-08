@@ -35,6 +35,34 @@ et poussé, 49 sur un arbre sale — le bloc `bilan.sh` branche sur `git status
 jour » : c'est le hook qui fonctionne, pas une régression. Annoncer « N cas » sans dire
 l'état de l'arbre n'est pas reproductible.
 
+## Une batterie prouve qu'un hook *peut* se déclencher, pas qu'il *se déclenche*
+
+C'est le reliquat que les deux batteries ne couvraient pas, et par lequel les deux
+pannes historiques sont passées : elles étaient vertes pendant que les hooks étaient
+inutiles en séance réelle.
+
+`journal-usage.sh` est une **bibliothèque sourcée**, pas un hook — aucun événement ne
+la lance. Elle est sourcée par `antiseche.sh`, `garde-fous.sh` et `avant-livraison.sh`,
+qui journalisent leur issue dans `$(git rev-parse --git-dir)/badgemoi-usage.log` :
+
+- `alerte` — trouvé quelque chose, et l'a dit ;
+- `muet` — a examiné sa cible sans rien trouver. Le silence est un **résultat** ;
+- `hors-perimetre` — n'avait rien à examiner. Le silence est **normal** ;
+- `commande` — une commande slash a été invoquée (mesure d'usage, pas un contrôle).
+
+**Trois issues et non deux, parce que c'est la distinction `muet` / `hors-perimetre`
+qui porte tout.** Les deux produisent le même silence sur stdout. Mesuré : la coupe
+`*.kt` de `garde-fous.sh` neutralisée, quatre fichiers Kotlin édités donnent quatre
+`hors-perimetre` au lieu de quatre `muet` — la signature exacte du défaut resté
+invisible. Un compteur qui les confondrait rouvrirait le trou qu'il prétend fermer.
+
+Corollaire pour les cas de test : ils vont **par paires**, comme ceux du budget dans
+`test-docs-coherence.sh`. Un cas `muet` seul ne prouve rien sans son `hors-perimetre`.
+
+La bibliothèque ne doit jamais faire échouer le hook qui la source : erreurs avalées,
+retour toujours 0, rien sur stdout — un octet de trop y corromprait le JSON rendu au
+harnais. Si elle manque, chaque hook redéfinit `journaliser_usage` en fonction vide.
+
 ## Une batterie verte au premier lancement n'a encore rien prouvé
 
 Le vert d'un test qu'on vient d'écrire ne distingue pas « le contrôle marche » de

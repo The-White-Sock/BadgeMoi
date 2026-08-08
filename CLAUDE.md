@@ -93,6 +93,10 @@ Tous **consultatifs** sauf un, signalé comme tel :
 - Au chargement d'un fichier d'instructions, un hook journalise l'événement dans
   `.git/badgemoi-instructions.log` — c'est ce qui permet de savoir si une règle s'est
   vraiment chargée, et combien s'accumulent. Il n'écrit rien en session ; `/point` le lit.
+- Trois hooks journalisent en plus leur **issue** dans `.git/badgemoi-usage.log`, via la
+  bibliothèque sourcée `journal-usage.sh` : `alerte`, `muet` (examiné, rien trouvé) ou
+  `hors-perimetre` (rien à examiner). C'est cette distinction qui rend visible un contrôle
+  dont la coupe ne mord plus, batterie verte à l'appui. `/point` en donne la lecture.
 - **`avant-livraison.sh` arrête**, lui — c'est la seule entorse au principe
   consultatif, limitée à trois erreurs déjà commises et mal réparables. Il **refuse** le
   push direct sur `main` et la fermeture d'issue rédigée en français (elle ne ferme rien) :
@@ -106,7 +110,8 @@ interrogations de `/point`. `./scripts/test-docs-coherence.sh` fait de même pou
 `check-docs-coherence.sh`. Les deux tournent en CI (`.github/workflows/harnais.yml`) ;
 les lancer après modification de leur zone n'achète qu'un aller-retour évité. Un contrôle
 muet est indistinguable d'un contrôle qui n'avait rien à dire — c'est exactement comme ça
-que l'antisèche est restée morte plusieurs semaines.
+que l'antisèche est restée morte plusieurs semaines. Les batteries prouvent qu'un hook
+**peut** se déclencher ; le journal d'usage est ce qui dit qu'il **se déclenche**.
 
 <!--
 NOTE DE MAINTENANCE — pour qui fait évoluer le harnais, pas pour la session.

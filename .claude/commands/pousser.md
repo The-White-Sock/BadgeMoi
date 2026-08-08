@@ -16,7 +16,23 @@ et la lecture des échecs courants.
 Tout doit être vert avant de continuer. La CI reste l'arbitre final, mais un aller-retour
 évité est une heure gagnée.
 
-Si le diff touche l'UI ou s'écarte peut-être du cahier, `/revue` avant de continuer.
+## 1 bis. Les deux relectures, qui ne se remplacent pas
+
+Elles répondent à deux questions différentes, et aucune ne couvre l'autre :
+
+- **`/revue`** — le diff contredit-il une **règle écrite** (ergonomie, cahier) ?
+  À lancer si le diff touche l'UI ou s'écarte peut-être du cahier.
+- **`/code-review`** — le code est-il **juste** : bugs, régressions, failles ?
+  À lancer dès que le diff touche `app/src/main/**`. Sauté pour un diff de
+  documentation ou de harnais seul, qui ne paie pas une relecture de code.
+
+Deux précautions sur `/code-review`, tirées d'un échec déjà commis :
+
+- **Fixer la plage sur `origin/main...HEAD`**, jamais `main...HEAD`. Le `main` local peut
+  être en retard de plusieurs dizaines de commits, et la relecture couvre alors du travail
+  déjà fusionné. C'est arrivé : 16 commits relus pour rien.
+- Ses trouvailles sont des **hypothèses**, pas des verdicts. Les classer comme celles de
+  `/revue` — à corriger, à assumer, écarté — et vérifier chacune avant d'y toucher.
 
 ## 2. État de la branche
 
