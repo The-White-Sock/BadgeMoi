@@ -2,6 +2,14 @@
 <resources>
     <string name="app_name">BadgeMoi</string>
 
+    <!--
+        Widget d'écran d'accueil. Le libellé du sélecteur est `app_name` : le widget est
+        le raccourci de l'application, pas un objet à nommer autrement. Les deux
+        directions réutilisent `direction_aller` / `direction_retour` — même grandeur,
+        même mot que dans l'application.
+    -->
+    <string name="widget_description">Démarrer un trajet sans ouvrir l\'application</string>
+
     <!-- Bandeau haut : onglets de navigation et bascule de thème -->
     <string name="destination_trip">Trajet</string>
     <string name="destination_history">Historique</string>

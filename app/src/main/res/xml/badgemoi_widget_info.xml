@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Métadonnées du widget d'écran d'accueil (docs/cahier-des-charges.md §3.6).
+
+    `updatePeriodMillis` à zéro : le widget se rafraîchit sur événement (#116), jamais par
+    réveil périodique. Une application 100 % hors-ligne (§4.9) n'a rien à aller chercher,
+    et un réveil régulier ne coûterait que de la batterie.
+
+    Deux aperçus, et c'est voulu : `previewLayout` n'existe qu'à partir de l'API 31 et
+    donne un rendu fidèle dans le sélecteur ; `previewImage` sert de repli sur l'API 29-30,
+    que l'application vise encore (§4.1). Le système ignore l'attribut qu'il ne connaît pas.
+
+    Les trois renvois de layout pointent le **même** fichier — l'aperçu du sélecteur ne
+    peut donc pas diverger du widget réel.
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/widget_description"
+    android:initialLayout="@layout/badgemoi_widget"
+    android:minWidth="180dp"
+    android:minHeight="40dp"
+    android:previewImage="@mipmap/ic_launcher"
+    android:previewLayout="@layout/badgemoi_widget"
+    android:resizeMode="horizontal"
+    android:targetCellWidth="3"
+    android:targetCellHeight="1"
+    android:updatePeriodMillis="0"
+    android:widgetCategory="home_screen" />

@@ -22,7 +22,7 @@ commentaires sont concernés.
   pas de multi-module tant que le projet reste solo et de cette taille.
 - Injection de dépendances : **Hilt**.
 - Persistance : Room (archive des trajets) + DataStore Preferences (trajet en cours,
-  thème) — partagée entre l'appli et le widget Glance. Sérialisation via
+  thème) — partagée entre l'appli et le widget. Sérialisation via
   `kotlinx-serialization` (`StoredTrip`). Le modèle du domaine (`domain/`) reste pur
   (aucune annotation Room/serialization) ; le mapping vit dans `data/local/`.
 - 100% hors-ligne : ne jamais ajouter la permission `INTERNET` ni de dépendance réseau.
@@ -44,7 +44,7 @@ fr.whitytoes.badgemoi/
     trip/                  # écran "trajet actif" (lot 3)
     summary/               # écran récapitulatif (lot 4)
     history/               # écran historique (lot 5)
-    widget/                # widget Glance (lot 6)
+    widget/                # widget d'écran d'accueil, RemoteViews (lot 6)
   domain/                  # modèles + interfaces de repository (lot 1)
   data/                    # implémentations Room/DataStore (lot 1)
   di/                      # modules Hilt

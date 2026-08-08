@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        Versant nuit de la palette du widget. Voir `values/colors.xml` pour la raison de
+        cette duplication des tokens de `ui/theme/Color.kt` : un widget rend du
+        RemoteViews, qui ne sait pas lire un token Compose.
+
+        C'est le lanceur qui choisit ce fichier, sur le mode nuit de l'appareil — pas
+        l'application. Un widget qui contredirait le reste de l'écran d'accueil pour
+        suivre une bascule interne à l'application serait le comportement surprenant.
+
+        Rien d'autre ne bascule ici. `window_background` reste unique et sombre : il ne
+        couvre que l'instant avant le premier rendu Compose, où c'est `BadgeMoiTheme`
+        qui reprend la main.
+    -->
+    <color name="widget_background">#0F1115</color>
+    <color name="widget_aller_background">#29FFB020</color>
+    <color name="widget_aller_ink">#FFB020</color>
+    <color name="widget_retour_background">#293FD1C8</color>
+    <color name="widget_retour_ink">#3FD1C8</color>
+</resources>

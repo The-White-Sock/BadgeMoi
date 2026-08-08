@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Mise en page du widget d'écran d'accueil (docs/cahier-des-charges.md §3.6).
+
+    Ce fichier sert **trois** rôles à la fois — `initialLayout`, `previewLayout` du
+    sélecteur, et la vue construite par `BadgeMoiWidgetProvider`. C'est le gain direct
+    de l'abandon de Glance (écart 15, §9) : avec Glance, l'aperçu du sélecteur aurait été
+    un second layout XML reproduisant à la main ce que la composable rend, libre de
+    diverger en silence.
+
+    Aucune vue n'est cliquable à ce stade (#114), mais les blocs tiennent déjà leurs
+    48 dp : rendre un élément cliquable lui impose sa cible **au même commit**.
+
+    Seules les vues admises par RemoteViews sont utilisables ici — pas de ConstraintLayout,
+    pas de vue maison.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@color/widget_background"
+    android:orientation="horizontal"
+    android:padding="12dp">
+
+    <TextView
+        android:layout_width="0dp"
+        android:layout_height="48dp"
+        android:layout_weight="1"
+        android:background="@color/widget_aller_background"
+        android:gravity="center"
+        android:text="@string/direction_aller"
+        android:textColor="@color/widget_aller_ink"
+        android:textStyle="bold" />
+
+    <!-- Écart entre deux cibles distinctes (`docs/ergonomie.md` §4) -->
+    <Space
+        android:layout_width="8dp"
+        android:layout_height="wrap_content" />
+
+    <TextView
+        android:layout_width="0dp"
+        android:layout_height="48dp"
+        android:layout_weight="1"
+        android:background="@color/widget_retour_background"
+        android:gravity="center"
+        android:text="@string/direction_retour"
+        android:textColor="@color/widget_retour_ink"
+        android:textStyle="bold" />
+
+</LinearLayout>
