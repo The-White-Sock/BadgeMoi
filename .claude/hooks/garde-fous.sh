@@ -13,16 +13,30 @@ set -uo pipefail
 export LC_ALL=C.UTF-8
 export LANG=C.UTF-8
 
+# Journal d'usage — sourcé, jamais bloquant. Si la bibliothèque manque, le hook
+# continue sans journaliser : un contrôle vaut mieux que sa mesure.
+if ! . "$(dirname "${BASH_SOURCE[0]}")/journal-usage.sh" 2>/dev/null; then
+  journaliser_usage() { :; }
+fi
+
 entree="$(cat)"
 fichier="$(printf '%s' "${entree}" | jq -r '.tool_input.file_path // empty' 2>/dev/null || true)"
 
-[ -z "${fichier}" ] && exit 0
-[ -f "${fichier}" ] || exit 0
+[ -z "${fichier}" ] && { journaliser_usage garde-fous hors-perimetre "sans fichier"; exit 0; }
+[ -f "${fichier}" ] || { journaliser_usage garde-fous hors-perimetre "absent"; exit 0; }
 
 alertes=()
 
+# Dit si les contrôles Kotlin ont **réellement tourné**. Sans ce témoin, un fichier
+# hors périmètre et un fichier examiné sans reproche produiraient le même silence —
+# c'est exactement ce qui a laissé passer la perte de la coupe `*.kt`, batterie verte
+# à l'appui.
+examine="non"
+
 case "${fichier}" in
   *.kt)
+    examine="oui"
+
     # 1. Couleur littérale hors du thème. `ui/theme/` est l'endroit où les tokens
     #    sont *définis* : c'est le seul fichier qui a le droit d'en écrire.
     case "${fichier}" in
@@ -77,7 +91,18 @@ case "${fichier}" in
     ;;
 esac
 
-[ ${#alertes[@]} -eq 0 ] && exit 0
+if [ ${#alertes[@]} -eq 0 ]; then
+  # La distinction porte tout l'intérêt du journal : « examiné, rien trouvé » est un
+  # résultat, « pas du Kotlin » est une absence de sujet.
+  if [ "${examine}" = "oui" ]; then
+    journaliser_usage garde-fous muet "${fichier}"
+  else
+    journaliser_usage garde-fous hors-perimetre "${fichier}"
+  fi
+  exit 0
+fi
+
+journaliser_usage garde-fous alerte "${#alertes[@]} sur ${fichier}"
 
 contexte="Garde-fou BadgeMoi sur \`${fichier}\` (consultatif — à vérifier, pas à croire sur parole) :"
 for a in "${alertes[@]}"; do

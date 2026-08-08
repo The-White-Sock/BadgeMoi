@@ -181,6 +181,44 @@ un journal muet alors que des fichiers ont été ouverts n'est **pas** une anoma
 le cas normal dès que les règles concernées ont déjà servi dans la séance. Ne conclure à
 un défaut de glob qu'après avoir vu `check-docs-coherence.sh` rouge.
 
+## Ce que le harnais a réellement fait
+
+Le journal d'instructions dit ce qui s'est **chargé**. Celui-ci dit ce qui s'est
+**déclenché**, et surtout avec quelle issue. Deux interrogations :
+
+```bash
+usage="$(git rev-parse --git-dir)/badgemoi-usage.log"
+
+# Par hook, la répartition des issues. C'est le relevé qui compte.
+awk -F'\t' '{print $2"\t"$3}' "$usage" | sort | uniq -c | sort -rn
+
+# Les commandes invoquées dans la séance, les plus fréquentes d'abord
+awk -F'\t' '$3 == "commande" {print $4}' "$usage" | sort | uniq -c | sort -rn
+```
+
+**Comment lire la répartition**, et c'est tout l'intérêt du journal :
+
+- `muet` — le hook a examiné sa cible et n'a rien trouvé. Son silence est un
+  **résultat**, et c'est le cas sain le plus fréquent.
+- `hors-perimetre` — le hook a tourné mais n'avait rien à examiner. Son silence est
+  **normal** et ne prouve rien sur son bon fonctionnement.
+- `alerte` — il a trouvé et l'a dit.
+
+**Le signal d'alarme est un déséquilibre entre les deux premiers.** Une séance qui a
+édité du Kotlin et ne montre que des `garde-fous hors-perimetre` veut dire que la coupe
+`*.kt` ne mord plus — le défaut exact de 2026, que la batterie laissait passer verte.
+Mesuré : coupe cassée, quatre fichiers Kotlin édités donnent quatre `hors-perimetre` au
+lieu de quatre `muet`.
+
+Deux limites à ne pas oublier :
+
+- **Un hook absent de la répartition n'a pas tourné du tout.** C'est plus grave qu'une
+  mauvaise issue, et ça ne se voit qu'en cherchant ce qui *manque* — le relevé ne peut
+  pas signaler une ligne qui n'existe pas.
+- **Comme le journal d'instructions, celui-ci meurt avec le conteneur.** Un compte plus
+  bas que la passation précédente dit qu'on a changé de machine, pas que le harnais a
+  régressé.
+
 ## Forme
 
 Écrire la note en markdown dans un fichier, puis l'**envoyer** — et ne pas la répéter

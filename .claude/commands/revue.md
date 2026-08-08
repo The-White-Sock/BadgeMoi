@@ -9,6 +9,11 @@ L'intérêt n'est pas de relire une seconde fois avec les mêmes yeux : c'est de
 par un contexte qui n'a pas écrit le code. Celui qui vient d'implémenter sait ce qu'il a
 voulu faire, et lit donc son intention plutôt que son diff.
 
+**Ce que cette commande ne fait pas.** Ses deux relecteurs comparent le diff aux **règles
+écrites** du dépôt. Aucun ne cherche un bug, une régression ou une faille — un diff peut
+sortir d'ici sans reproche et être faux. C'est `/code-review` qui couvre la justesse, sur
+la plage `origin/main...HEAD` ; `/pousser` §1 bis dit quand lancer laquelle.
+
 ## 1. Qualité d'abord
 
 Lancer `/qualite`. Inutile de faire relire un diff qui ne compile pas.

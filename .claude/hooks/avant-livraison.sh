@@ -32,6 +32,13 @@ set -uo pipefail
 export LC_ALL=C.UTF-8
 export LANG=C.UTF-8
 
+# Journal d'usage — sourcé, jamais bloquant. Si la bibliothèque manque, le hook
+# continue sans journaliser : un contrôle vaut mieux que sa mesure, et celui-ci est
+# le seul qui refuse.
+if ! . "$(dirname "${BASH_SOURCE[0]}")/journal-usage.sh" 2>/dev/null; then
+  journaliser_usage() { :; }
+fi
+
 entree="$(cat)"
 outil="$(printf '%s' "${entree}" | jq -r '.tool_name // empty' 2>/dev/null || true)"
 
@@ -46,6 +53,9 @@ outil="$(printf '%s' "${entree}" | jq -r '.tool_name // empty' 2>/dev/null || tr
 # D'où la règle ici : `deny` pour ce qui n'est **jamais** correct dans ce dépôt,
 # `ask` pour ce qui a un cas d'usage légitime que le hook ne sait pas distinguer.
 decider() {
+  # Point d'étranglement unique des deux décisions : c'est donc ici, et nulle part
+  # ailleurs, que se journalise le fait d'avoir mordu.
+  journaliser_usage avant-livraison alerte "$1"
   jq -n --arg d "$1" --arg r "$2" \
     '{hookSpecificOutput: {hookEventName: "PreToolUse",
                            permissionDecision: $d,
@@ -71,17 +81,26 @@ verifier_fermeture() {
 case "${outil}" in
   mcp__github__create_pull_request | mcp__github__update_pull_request)
     verifier_fermeture "$(printf '%s' "${entree}" | jq -r '.tool_input.body // empty' 2>/dev/null || true)"
+    # Atteint seulement si `verifier_fermeture` n'a pas refusé : corps de PR lu,
+    # aucun mot-clé français orphelin.
+    journaliser_usage avant-livraison muet "corps de PR"
     exit 0
     ;;
   Bash) ;;
-  *) exit 0 ;;
+  *) journaliser_usage avant-livraison hors-perimetre "${outil:-sans outil}"; exit 0 ;;
 esac
 
 commande="$(printf '%s' "${entree}" | jq -r '.tool_input.command // empty' 2>/dev/null || true)"
-[ -z "${commande}" ] && exit 0
+[ -z "${commande}" ] && { journaliser_usage avant-livraison hors-perimetre "Bash sans commande"; exit 0; }
+
+# Dit si l'un des trois gestes de livraison a été **reconnu**. Une commande Bash
+# ordinaire (`ls`, `./gradlew`) n'a rien à voir avec ce hook : son silence n'est pas
+# un résultat. Confondre les deux masquerait le jour où un motif cesse de mordre.
+geste="non"
 
 # --- Règle 1 : commit sans gitmoji -----------------------------------------
 if printf '%s' "${commande}" | grep -qE 'git[[:space:]]+commit'; then
+  geste="oui"
   # On ne lit qu'un message passé en clair par `-m`. Tout le reste — `-F`,
   # heredoc, `--amend --no-edit`, éditeur interactif — sort par le silence.
   message="$(printf '%s' "${commande}" \
@@ -108,6 +127,7 @@ fi
 
 # --- Règle 2 : push direct sur main ----------------------------------------
 if printf '%s' "${commande}" | grep -qE 'git[[:space:]]+push'; then
+  geste="oui"
   # Isoler le segment du push : sans ça, un `git push … && git checkout main`
   # innocent serait refusé pour le `main` de la seconde commande.
   segment="$(printf '%s' "${commande}" \
@@ -119,7 +139,14 @@ fi
 
 # --- Règle 3 : fermeture d'issue en français, par la CLI --------------------
 if printf '%s' "${commande}" | grep -qE 'gh[[:space:]]+pr[[:space:]]+(create|edit)'; then
+  geste="oui"
   verifier_fermeture "${commande}"
+fi
+
+if [ "${geste}" = "oui" ]; then
+  journaliser_usage avant-livraison muet "geste de livraison examiné"
+else
+  journaliser_usage avant-livraison hors-perimetre "Bash ordinaire"
 fi
 
 exit 0

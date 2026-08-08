@@ -491,6 +491,104 @@ cas "se tait sur un chemin inexistant" garde-fous \
 
 rm -rf "${bac}"
 
+echo "journal d'usage"
+# Ce que cette section éprouve n'est **pas** que le journal s'écrit : c'est qu'il
+# distingue « le contrôle a tourné sans rien trouver » de « le contrôle n'avait rien
+# à examiner ». Les deux produisent le même silence sur stdout, et les confondre
+# rouvrirait le trou que ce journal ferme. Les cas vont donc **par paires** : c'est
+# la paire qui prouve quelque chose, jamais le cas seul.
+usage="${gitdir}/badgemoi-usage.log"
+usage_sauvegarde=""
+[ -e "${usage}" ] && usage_sauvegarde="$(cat "${usage}")"
+
+bacu="$(mktemp -d)"
+mkdir -p "${bacu}/ui/summary" "${bacu}/domain"
+
+# cas_journal <description> <hook> <json> <issue attendue> [detail attendu]
+#   Vérifie la **dernière** ligne du journal, pas la sortie standard.
+cas_journal() {
+  local description="$1" hook="$2" entree="$3" issue="$4" detail="${5:-}"
+  local ligne obtenue
+
+  if [ ! -x "${hooks}/${hook}.sh" ]; then
+    echecs=$((echecs + 1))
+    printf '  ÉCHEC  %s\n         hook absent ou non exécutable\n' "${description}"
+    return
+  fi
+
+  : > "${usage}"
+  printf '%s' "${entree}" | "${hooks}/${hook}.sh" >/dev/null 2>&1
+  ligne="$(tail -n 1 "${usage}" 2>/dev/null)"
+  obtenue="$(printf '%s' "${ligne}" | cut -f3)"
+
+  if [ "${obtenue}" != "${issue}" ]; then
+    echecs=$((echecs + 1))
+    printf '  ÉCHEC  %s\n         issue attendue : %s\n         obtenue        : %s\n' \
+      "${description}" "${issue}" "${obtenue:-(journal vide)}"
+    return
+  fi
+
+  if [ -n "${detail}" ] && ! printf '%s' "${ligne}" | cut -f4 | grep -qE "${detail}"; then
+    echecs=$((echecs + 1))
+    printf '  ÉCHEC  %s\n         détail attendu : %s\n         obtenu         : %s\n' \
+      "${description}" "${detail}" "$(printf '%s' "${ligne}" | cut -f4)"
+    return
+  fi
+
+  reussis=$((reussis + 1))
+}
+
+# --- Paire 1 : la coupe `*.kt` de garde-fous ------------------------------
+# Le fichier non-Kotlin porte le **même** texte fautif que le Kotlin sain n'a pas :
+# ce qui les sépare dans le journal est donc bien la coupe, et rien d'autre. C'est
+# cette paire qui aurait signalé le défaut de 2026, resté invisible batterie verte.
+printf 'val x = 1\n' > "${bacu}/domain/Propre.kt"
+cas_journal "garde-fous : Kotlin examiné sans reproche → muet" garde-fous \
+  "{\"tool_input\":{\"file_path\":\"${bacu}/domain/Propre.kt\"}}" muet
+
+printf 'Text("Libelle ecrit en dur")\n' > "${bacu}/ui/summary/notes.md"
+cas_journal "garde-fous : hors Kotlin → hors-perimetre" garde-fous \
+  "{\"tool_input\":{\"file_path\":\"${bacu}/ui/summary/notes.md\"}}" hors-perimetre
+
+printf 'Text("Libelle ecrit en dur")\n' > "${bacu}/ui/summary/Fautif.kt"
+cas_journal "garde-fous : violation → alerte" garde-fous \
+  "{\"tool_input\":{\"file_path\":\"${bacu}/ui/summary/Fautif.kt\"}}" alerte
+
+cas_journal "garde-fous : chemin inexistant → hors-perimetre" garde-fous \
+  "{\"tool_input\":{\"file_path\":\"${bacu}/ui/summary/Absent.kt\"}}" hors-perimetre
+
+# --- Paire 2 : le geste de livraison d'avant-livraison ---------------------
+cas_journal "avant-livraison : commit lu et conforme → muet" avant-livraison \
+  '{"tool_name":"Bash","tool_input":{"command":"git commit -m \"✨(x) : ajoute\""}}' muet
+
+cas_journal "avant-livraison : Bash ordinaire → hors-perimetre" avant-livraison \
+  '{"tool_name":"Bash","tool_input":{"command":"ls -la"}}' hors-perimetre
+
+cas_journal "avant-livraison : push sur main → alerte" avant-livraison \
+  '{"tool_name":"Bash","tool_input":{"command":"git push origin main"}}' alerte deny
+
+cas_journal "avant-livraison : outil non concerné → hors-perimetre" avant-livraison \
+  '{"tool_name":"Read","tool_input":{"file_path":"x"}}' hors-perimetre
+
+# --- Paire 3 : l'antisèche, et la mesure d'usage des commandes -------------
+cas_journal "antiseche : prompt lu sans motif → muet" antiseche \
+  '{"prompt":"bonjour","permission_mode":"default"}' muet
+
+cas_journal "antiseche : motif reconnu → alerte" antiseche \
+  '{"prompt":"je veux pousser ce travail","permission_mode":"default"}' alerte
+
+# La mesure d'usage proprement dite : le nom de la commande doit arriver au journal,
+# sinon le relevé de `/point` compterait des invocations anonymes.
+cas_journal "antiseche : commande slash comptée avec son nom" antiseche \
+  '{"prompt":"/pousser 114","permission_mode":"default"}' commande '/pousser'
+
+rm -rf "${bacu}"
+if [ -n "${usage_sauvegarde}" ]; then
+  printf '%s\n' "${usage_sauvegarde}" > "${usage}"
+else
+  rm -f "${usage}"
+fi
+
 echo
 if [ "${echecs}" -eq 0 ]; then
   echo "${reussis} cas, tous verts."
