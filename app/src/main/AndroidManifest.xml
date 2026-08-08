@@ -44,9 +44,19 @@
             C'est le premier composant exporté de l'application, et le seul — la revue
             d'inclusion F-Droid (#120) le regardera.
 
-            L'unique `intent-filter` est celui d'`AppWidgetProvider`. Aucune action
-            maison n'est déclarée : ajouter la moindre ouvrirait à n'importe quelle
-            application le droit de déclencher du travail ici.
+            L'unique `intent-filter` est celui d'`AppWidgetProvider`. L'action de #114
+            (`START_TRIP`, définie dans `BadgeMoiWidgetProvider.kt`) n'y figure pas, et
+            c'est délibéré : un intent explicite atteint le receiver sans filtre, si bien
+            que la déclarer n'apporterait rien tout en la rendant résoluble par simple
+            diffusion.
+
+            Ce que cette absence ne fait **pas** : protéger l'accès. Le receiver étant
+            exporté, une application tierce connaissant le nom de composant et la chaîne
+            d'action peut déclencher `onReceive` de toute façon — un `intent-filter` ne
+            conditionne que la résolution implicite, jamais l'accès à un composant déjà
+            exporté. Ce qui borne le risque est ce que l'action permet — démarrer un
+            trajet, rien d'autre, sans lecture ni sortie de données — et non son absence
+            d'ici.
 
             C'est aussi le **seul** composant exporté ajouté, et aucune permission ne
             l'accompagne — ce qui n'aurait pas été vrai avec Glance (écart 15, §9).
