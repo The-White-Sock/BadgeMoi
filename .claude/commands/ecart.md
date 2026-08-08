@@ -1,5 +1,6 @@
 ---
 description: Consigner au §9 du cahier une décision qui contredit le périmètre d'origine
+disable-model-invocation: true
 ---
 
 Consigne dans `docs/cahier-des-charges.md` §9 une décision qui **contredit la lettre**

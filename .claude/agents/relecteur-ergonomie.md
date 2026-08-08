@@ -1,7 +1,8 @@
 ---
 name: relecteur-ergonomie
 description: Relit un diff Compose contre docs/ergonomie.md et les règles UI du dépôt. À lancer sur tout diff touchant `ui/**`, notamment depuis /revue.
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob
+permissionMode: plan
 model: sonnet
 ---
 
