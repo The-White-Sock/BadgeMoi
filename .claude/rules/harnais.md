@@ -25,6 +25,9 @@ sans que rien ne le signale.
   ajoutées en prose puis en commentaire HTML, la même règle scopée puis non scopée.
   C'est la paire qui prouve quelque chose, pas le cas seul.
 
+Les deux tournent en CI sur chaque push/PR (`.github/workflows/harnais.yml`), qui reste
+l'arbitre. Les lancer localement n'achète qu'un aller-retour évité.
+
 **Le compte de cas n'est pas une constante.** `test-hooks.sh` : 48 sur un arbre propre
 et poussé, 49 sur un arbre sale — le bloc `bilan.sh` branche sur `git status
 --porcelain`. Un arbre propre mais **non poussé** fait échouer le cas « propre et à

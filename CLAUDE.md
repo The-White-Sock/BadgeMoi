@@ -102,9 +102,10 @@ Tous **consultatifs** sauf un, signalé comme tel :
 
 `./scripts/test-hooks.sh` fige le contrat d'entrée/sortie de chaque hook, et les
 interrogations de `/point`. `./scripts/test-docs-coherence.sh` fait de même pour
-`check-docs-coherence.sh`. Lancer la batterie concernée après toute modification de sa
-zone : un contrôle muet est indistinguable d'un contrôle qui n'avait rien à dire, et
-c'est exactement comme ça que l'antisèche est restée morte plusieurs semaines.
+`check-docs-coherence.sh`. Les deux tournent en CI (`.github/workflows/harnais.yml`) ;
+les lancer après modification de leur zone n'achète qu'un aller-retour évité. Un contrôle
+muet est indistinguable d'un contrôle qui n'avait rien à dire — c'est exactement comme ça
+que l'antisèche est restée morte plusieurs semaines.
 
 <!--
 NOTE DE MAINTENANCE — pour qui fait évoluer le harnais, pas pour la session.

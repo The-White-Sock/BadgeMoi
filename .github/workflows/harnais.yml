@@ -1,0 +1,43 @@
+name: Harnais
+
+# Les deux batteries du harnais ne tournaient jusqu'ici que sur la machine de qui
+# pensait à les lancer. C'est précisément le mode de panne qu'elles servent à détecter
+# ailleurs : un contrôle muet est indistinguable d'un contrôle qui n'avait rien à dire.
+# Une batterie qu'on oublie de lancer est verte de la même façon.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Même règle que les autres workflows : on annule sur une PR, jamais sur `main`, où
+# `github.ref` est commun à tous les commits — annuler y ferait tuer la validation du
+# commit précédent par le suivant.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+jobs:
+  harnais:
+    runs-on: ubuntu-latest
+    steps:
+      # Ni filtre `paths:` sur le déclencheur, ni détection interne comme dans
+      # `codeql.yml` : les deux batteries tiennent en quelques secondes, il n'y a donc
+      # rien à économiser. Et un check requis filtré par `paths:` ne démarre jamais sur
+      # les PR hors de sa zone — il y reste en attente, et l'auto-merge avec lui.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        # Profondeur 1, la valeur par défaut, et c'est éprouvé plutôt que supposé :
+        # `test-hooks.sh` crée un worktree lié et `test-docs-coherence.sh` archive
+        # `HEAD`. Les deux passent sur un clone superficiel et détaché, y compris
+        # privé de toute ref distante — l'état d'un checkout de PR, où `origin/main`
+        # n'existe pas. C'est le cas qui décide, parce que `bilan.sh` s'y compare.
+
+      # Deux étapes plutôt qu'une : un rouge nomme alors la batterie sans qu'on ait à
+      # dérouler le journal.
+      - name: Hooks et interrogations de /point
+        run: ./scripts/test-hooks.sh
+
+      - name: Tests du contrôle de cohérence des docs
+        run: ./scripts/test-docs-coherence.sh
