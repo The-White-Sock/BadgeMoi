@@ -252,37 +252,58 @@ echo "interrogations de /point"
 # **exprès** une ligne de repli brut au milieu des lignes JSON : c'est le cas que
 # `fromjson?` protège, et celui qui casserait un `jq` naïf.
 #
-# Le témoin reproduit une **compaction** : une règle chargée, puis un `session_start`
-# qui reborne la fenêtre, puis une autre règle. Le `session_id` est volontairement le
+# Le témoin reproduit une **compaction** : une règle chargée, puis les `session_start`
+# qui rebornent la fenêtre, puis une autre règle. Le `session_id` est volontairement le
 # même partout — c'est le fait qui rendait l'ancien filtre par `session_id` incapable
 # de séparer les deux fenêtres, et qui lui faisait annoncer comme chargée une règle
 # évincée depuis longtemps.
+#
+# Chaque fenêtre ouvre sur **deux** `session_start` — `CLAUDE.md` puis la règle non
+# scopée `langue.md` — parce que c'est la forme réelle du journal depuis que cette règle
+# existe. Un témoin à un seul `session_start` par fenêtre passait au vert avec l'`awk`
+# qui tronquait comme avec celui qui borne juste : il ne mordait sur rien.
+fenetre_de() {
+  cut -f2 "$1" \
+    | jq -rR 'fromjson? | "\(.load_reason // "raison absente")\t\(((.file_path // "chemin absent") | split("/") | last))"' \
+    | awk '
+        /^session_start\t/ { if (!suite || ($0 in vu)) { n = 0; split("", vu) }
+                             suite = 1; vu[$0] = 1; l[n++] = $0; next }
+                           { suite = 0; l[n++] = $0 }
+        END                { for (i = 0; i < n; i++) print l[i] }' \
+    | sort -u
+}
+
 temoin="$(mktemp)"
 {
   printf '%s\t%s\n' '2026-01-01T00:00:00Z' \
     '{"session_id":"S1","file_path":"/r/CLAUDE.md","memory_type":"Project","load_reason":"session_start"}'
   printf '%s\t%s\n' '2026-01-01T00:00:01Z' \
+    '{"session_id":"S1","file_path":"/r/.claude/rules/langue.md","memory_type":"Project","load_reason":"session_start"}'
+  printf '%s\t%s\n' '2026-01-01T00:00:02Z' \
     '{"session_id":"S1","file_path":"/r/.claude/rules/docs-decisions.md","memory_type":"Project","load_reason":"path_glob_match"}'
-  printf '%s\t%s\n' '2026-01-01T00:00:02Z' 'ligne brute, pas du JSON'
-  printf '%s\t%s\n' '2026-01-01T00:00:03Z' \
-    '{"session_id":"S1","file_path":"/r/CLAUDE.md","memory_type":"Project","load_reason":"session_start"}'
+  printf '%s\t%s\n' '2026-01-01T00:00:03Z' 'ligne brute, pas du JSON'
   printf '%s\t%s\n' '2026-01-01T00:00:04Z' \
+    '{"session_id":"S1","file_path":"/r/CLAUDE.md","memory_type":"Project","load_reason":"session_start"}'
+  printf '%s\t%s\n' '2026-01-01T00:00:05Z' \
+    '{"session_id":"S1","file_path":"/r/.claude/rules/langue.md","memory_type":"Project","load_reason":"session_start"}'
+  printf '%s\t%s\n' '2026-01-01T00:00:06Z' \
     '{"session_id":"S1","file_path":"/r/.claude/rules/ui-compose.md","memory_type":"Project","load_reason":"path_glob_match"}'
   # Du JSON **valide** auquel manquent les champs attendus : c'est la dérive de schéma,
-  # et `fromjson?` n'en protège pas — lui ne filtre que le non-JSON. Placée après le
+  # et `fromjson?` n'en protège pas — lui ne filtre que le non-JSON. Placée après les
   # `session_start` pour tomber dans la fenêtre courante et non dans une fenêtre révolue.
-  printf '%s\t%s\n' '2026-01-01T00:00:05Z' '{"marqueur":"schema_inattendu"}'
+  printf '%s\t%s\n' '2026-01-01T00:00:07Z' '{"marqueur":"schema_inattendu"}'
 } > "${temoin}"
 
-fenetre="$(cut -f2 "${temoin}" \
-  | jq -rR 'fromjson? | "\(.load_reason // "raison absente")\t\(((.file_path // "chemin absent") | split("/") | last))"' \
-  | awk '/^session_start\t/ { n = 0 } { l[n++] = $0 } END { for (i = 0; i < n; i++) print l[i] }' \
-  | sort -u)"
-# Trois côtés, sinon un pipeline muet passerait au vert : la règle d'après la compaction
-# doit sortir, celle d'avant ne doit pas, et l'entrée au schéma inattendu doit sortir avec
-# ses replis plutôt que de disparaître. Sans les `//`, `split` échoue sur le champ absent,
-# la ligne s'évapore et `jq` sort quand même avec un code 0.
-if printf '%s\n' "${fenetre}" | grep -q 'path_glob_match.*ui-compose\.md' \
+fenetre="$(fenetre_de "${temoin}")"
+# Quatre côtés, sinon un pipeline muet passerait au vert : les deux `session_start` de la
+# fenêtre courante doivent sortir **tous les deux** — c'est la troncature réparée, celle
+# qui faisait disparaître `CLAUDE.md` du relevé alors qu'il est en contexte —, la règle
+# d'après la compaction doit sortir, celle d'avant ne doit pas, et l'entrée au schéma
+# inattendu doit sortir avec ses replis plutôt que de disparaître. Sans les `//`, `split`
+# échoue sur le champ absent, la ligne s'évapore et `jq` sort quand même avec un code 0.
+if printf '%s\n' "${fenetre}" | grep -q 'session_start.*CLAUDE\.md' \
+  && printf '%s\n' "${fenetre}" | grep -q 'session_start.*langue\.md' \
+  && printf '%s\n' "${fenetre}" | grep -q 'path_glob_match.*ui-compose\.md' \
   && ! printf '%s\n' "${fenetre}" | grep -q 'docs-decisions\.md' \
   && printf '%s\n' "${fenetre}" | grep -q 'raison absente.*chemin absent'; then
   reussis=$((reussis + 1))
@@ -290,6 +311,34 @@ else
   echecs=$((echecs + 1))
   echo "  ÉCHEC  borne le relevé à la fenêtre de contexte courante (obtenu : ${fenetre})"
 fi
+
+# Le cas que le seul « début de suite » ne couvre pas : une fenêtre qui n'a chargé aucune
+# règle scopée est suivie **immédiatement** de la suivante, et les deux suites de
+# `session_start` se touchent. Rien ne les sépare qu'un `session_start` déjà vu au tampon.
+# Sans ce cas, `langue.md` serait annoncée en contexte alors qu'elle appartient à une
+# fenêtre révolue — le défaut même qu'on répare, sous une autre forme.
+temoin_colle="$(mktemp)"
+{
+  printf '%s\t%s\n' '2026-01-01T00:00:00Z' \
+    '{"session_id":"S1","file_path":"/r/CLAUDE.md","memory_type":"Project","load_reason":"session_start"}'
+  printf '%s\t%s\n' '2026-01-01T00:00:01Z' \
+    '{"session_id":"S1","file_path":"/r/.claude/rules/langue.md","memory_type":"Project","load_reason":"session_start"}'
+  printf '%s\t%s\n' '2026-01-01T00:00:02Z' \
+    '{"session_id":"S1","file_path":"/r/CLAUDE.md","memory_type":"Project","load_reason":"session_start"}'
+  printf '%s\t%s\n' '2026-01-01T00:00:03Z' \
+    '{"session_id":"S1","file_path":"/r/.claude/rules/ui-compose.md","memory_type":"Project","load_reason":"path_glob_match"}'
+} > "${temoin_colle}"
+
+collee="$(fenetre_de "${temoin_colle}")"
+if printf '%s\n' "${collee}" | grep -q 'session_start.*CLAUDE\.md' \
+  && printf '%s\n' "${collee}" | grep -q 'path_glob_match.*ui-compose\.md' \
+  && ! printf '%s\n' "${collee}" | grep -q 'langue\.md'; then
+  reussis=$((reussis + 1))
+else
+  echecs=$((echecs + 1))
+  echo "  ÉCHEC  sépare deux fenêtres dont les suites de session_start se touchent (obtenu : ${collee})"
+fi
+rm -f "${temoin_colle}"
 
 # Trois raisons attendues, et le compte porte tout le sens : `session_start` et
 # `path_glob_match` pour les entrées conformes, `inconnue` pour celle au schéma

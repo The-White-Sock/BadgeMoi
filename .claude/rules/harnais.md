@@ -11,18 +11,33 @@ paths:
 `CLAUDE.md` § « Outillage de session » reste la source sur le rôle de chaque hook.
 Ce digest ne porte que ce qui casse **en silence** dans cette zone.
 
-## Après toute modification d'un hook, relancer `./scripts/test-hooks.sh`
+## Deux batteries, à relancer selon la zone touchée
 
-Un hook muet est indistinguable d'un hook qui n'avait rien à dire. C'est comme ça
-que l'antisèche est restée morte plusieurs semaines sur un `.user_input` devenu
-`.prompt`, et que `garde-fous.sh` a perdu son alerte sur les textes en dur sans que
-rien ne le signale. Tout hook doit avoir des cas dans cette batterie.
+Un contrôle muet est indistinguable d'un contrôle qui n'avait rien à dire. C'est
+comme ça que l'antisèche est restée morte plusieurs semaines sur un `.user_input`
+devenu `.prompt`, et que `garde-fous.sh` a perdu son alerte sur les textes en dur
+sans que rien ne le signale.
 
-**Le compte de cas n'est pas une constante.** 47 sur un arbre propre et poussé,
-48 sur un arbre sale : le bloc `bilan.sh` branche sur `git status --porcelain`. Un
-arbre propre mais **non poussé** fait échouer le cas « propre et à jour » — c'est le
-hook qui fonctionne, pas une régression. Annoncer « N cas » sans dire l'état de
-l'arbre n'est pas reproductible.
+- **`./scripts/test-hooks.sh`** — les hooks, et les interrogations de `/point`.
+  Tout hook doit y avoir des cas.
+- **`./scripts/test-docs-coherence.sh`** — `check-docs-coherence.sh`, un cas par
+  contrôle. Les cas de budget y figurent **avec leur revers** : les mêmes lignes
+  ajoutées en prose puis en commentaire HTML, la même règle scopée puis non scopée.
+  C'est la paire qui prouve quelque chose, pas le cas seul.
+
+**Le compte de cas n'est pas une constante.** `test-hooks.sh` : 48 sur un arbre propre
+et poussé, 49 sur un arbre sale — le bloc `bilan.sh` branche sur `git status
+--porcelain`. Un arbre propre mais **non poussé** fait échouer le cas « propre et à
+jour » : c'est le hook qui fonctionne, pas une régression. Annoncer « N cas » sans dire
+l'état de l'arbre n'est pas reproductible.
+
+## Une batterie verte au premier lancement n'a encore rien prouvé
+
+Le vert d'un test qu'on vient d'écrire ne distingue pas « le contrôle marche » de
+« le test ne mord sur rien ». Le geste qui tranche est de rejouer la batterie contre
+un contrôle **cassé exprès**, hors dépôt, et de vérifier que ce sont bien les cas
+attendus qui rougissent — les deux batteries ont été éprouvées ainsi, dans les deux
+sens (contrôle muet, puis contrôle bavard).
 
 ## Une règle créée en cours de séance ne se charge pas dans cette séance
 

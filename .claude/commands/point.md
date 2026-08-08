@@ -41,8 +41,11 @@ documentation :
 - Le `CLAUDE.md` racine est relu depuis le disque et ré-injecté. La compaction le
   journalise sous `session_start` — **il n'existe pas de raison `compact`**. Rien ne
   distingue donc au journal une compaction d'un démarrage de séance, sinon qu'elle
-  survient en cours de route ; et un `session_start` sur `CLAUDE.md` est la **borne**
-  d'une fenêtre de contexte.
+  survient en cours de route.
+- La borne d'une fenêtre de contexte est le **début d'une suite** de `session_start`,
+  pas chacune de ses lignes. La nuance n'est pas théorique : depuis que `langue.md`
+  existe, une fenêtre en ouvre **deux** — `CLAUDE.md` puis la règle non scopée — et
+  toute règle qui viendra la rejoindre en ajoutera une.
 - **Les règles à `paths:` ne sont pas ré-injectées.** Aucune ne réapparaît à la
   compaction. On peut donc, juste après, écrire du Compose sans que `ui-compose.md`
   soit chargé, ou toucher au domaine sans `domain-purity.md`.
@@ -66,11 +69,16 @@ Le hook `InstructionsLoaded` journalise chaque chargement, avec son `file_path`,
 journal="$(git rev-parse --git-dir)/badgemoi-instructions.log"
 racine="$(git rev-parse --show-toplevel)"
 
-# Ce qui est en contexte **maintenant** : la fenêtre courante, bornée par le dernier
-# `session_start`. C'est le seul relevé qui réponde à « ai-je cette règle sous les yeux ».
+# Ce qui est en contexte **maintenant** : la fenêtre courante, bornée par la dernière
+# **suite** de `session_start`. C'est le seul relevé qui réponde à « ai-je cette règle
+# sous les yeux ».
 cut -f2 "$journal" \
   | jq -rR 'fromjson? | "\(.load_reason // "raison absente")\t\(((.file_path // "chemin absent") | split("/") | last))"' \
-  | awk '/^session_start\t/ { n = 0 } { l[n++] = $0 } END { for (i = 0; i < n; i++) print l[i] }' \
+  | awk '
+      /^session_start\t/ { if (!suite || ($0 in vu)) { n = 0; split("", vu) }
+                           suite = 1; vu[$0] = 1; l[n++] = $0; next }
+                         { suite = 0; l[n++] = $0 }
+      END                { for (i = 0; i < n; i++) print l[i] }' \
   | sort -u
 
 # Le cumul, toutes les séances que ce conteneur a vues
@@ -98,10 +106,20 @@ personne ne regarde.
 fausse.** Cette interrogation filtrait avant sur le `session_id`, qui ne change pas à la
 compaction : elle mélangeait donc toutes les fenêtres d'une même séance et annonçait
 comme chargées des règles évincées depuis longtemps — le contraire de ce qu'on lui
-demande. Ce `awk` vide son tampon à chaque `session_start` et ne garde que la dernière
-fenêtre. Le `sort -u` remplace le `uniq -c` pour la même raison : à l'intérieur d'une
+demande. Ce `awk` vide son tampon à l'ouverture d'une fenêtre et ne garde que la
+dernière. Le `sort -u` remplace le `uniq -c` pour la même raison : à l'intérieur d'une
 fenêtre le chargement est dédupliqué, un compte n'y apporte rien et un compte supérieur
 à 1 n'y signifierait rien.
+
+**Il a fallu deux conditions pour borner cette fenêtre, et la seconde n'est pas
+décorative.** Vider le tampon à chaque `session_start` tronquait le relevé à la dernière
+ligne de la suite : `CLAUDE.md` disparaissait alors qu'il est en contexte — la mesure
+mentait sur la règle qui compte le plus. Ne le vider qu'au *début* d'une suite (`suite`)
+répare ce cas mais en laisse un autre : deux fenêtres consécutives dont la première n'a
+chargé aucune règle scopée ont leurs suites qui **se touchent**, et l'`awk` les fusionne.
+D'où `vu` : à l'intérieur d'une fenêtre le chargement est dédupliqué, donc un
+`session_start` déjà présent au tampon ne peut qu'ouvrir la fenêtre suivante. C'est
+`split("", vu)` et non `delete vu`, pour rester dans le `mawk` du conteneur.
 
 **Le journal vit dans `.git/`, donc il meurt avec le conteneur.** En session web le dépôt
 est recloné à neuf : le fichier repart vide, et « toutes séances confondues » ne couvre
