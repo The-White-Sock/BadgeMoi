@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -58,6 +59,14 @@ private val TouchTargetHeight = 48.dp
 
 /** Coin des cellules cliquables du bandeau — « Départ » et « Arrivée ». */
 private val HeaderCellShape = RoundedCornerShape(12.dp)
+
+/**
+ * Retrait interne des **trois** cellules du bandeau, y compris celle qui n'a pas de zone
+ * d'appui : la ligne est alignée par le bas, et une cellule sans ce retrait descendrait de
+ * 4 dp sous les autres. Une constante plutôt qu'un littéral répété — les deux valeurs
+ * doivent bouger ensemble ou l'alignement des lignes de base se défait en silence.
+ */
+private val HeaderCellPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
 
 /** Le jalon de départ : le seul que les tronçons ne peuvent pas ouvrir. */
 private const val DEPARTURE_INDEX = 0
@@ -286,12 +295,10 @@ private fun SummaryHeader(
                 labelRes = R.string.trip_total,
                 value = trip.totalDuration?.let(::formatDuration),
                 computed = true,
-                // Même retrait interne que les deux cellules cliquables, bien que
-                // celle-ci n'ait pas de zone d'appui : la ligne est alignée par le bas,
-                // et sans ce retrait le chiffre calculé descendrait de 4 dp sous les
-                // deux autres — l'alignement des lignes de base que le poids et la
-                // couleur sont justement censés préserver.
-                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                // Le même retrait que les deux cellules cliquables, bien que celle-ci
+                // n'ait pas de zone d'appui : c'est ce qui préserve l'alignement des
+                // lignes de base, que le poids et la couleur sont censés porter seuls.
+                modifier = Modifier.padding(HeaderCellPadding),
             )
         }
     }
@@ -334,7 +341,7 @@ private fun CorrectableValue(
                     // Cible tactile : la cellule est cliquable, elle doit tenir les 48 dp
                     // comme n'importe quel bouton (`docs/ergonomie.md` §4).
                 ).heightIn(min = TouchTargetHeight)
-                .padding(horizontal = 8.dp, vertical = 4.dp),
+                .padding(HeaderCellPadding),
     )
 }
 

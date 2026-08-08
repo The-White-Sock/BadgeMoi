@@ -478,6 +478,11 @@ for _ in $(seq 1 4000); do printf 'Text("Libelle ecrit en dur")\n'; done \
 cas "alerte encore sur un fichier volumineux (SIGPIPE)" garde-fous \
   "{\"tool_input\":{\"file_path\":\"${bac}/ui/summary/Volumineux.kt\"}}" 'en dur'
 
+# Le fichier doit **exister**, et porter un texte que le contrôle signalerait s'il
+# était du Kotlin : ce qui fait taire le hook est alors la coupe sur `*.kt`, et rien
+# d'autre. Sans ce contenu sur disque, le cas sortait par la garde « fichier absent »
+# et faisait doublon avec le suivant — vert sans avoir éprouvé la coupe.
+printf 'Text("Libelle ecrit en dur")\n' > "${bac}/ui/summary/notes.md"
 cas "se tait sur un fichier qui n'est pas du Kotlin" garde-fous \
   "{\"tool_input\":{\"file_path\":\"${bac}/ui/summary/notes.md\"}}" VIDE
 
