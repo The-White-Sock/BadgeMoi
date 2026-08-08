@@ -5,7 +5,9 @@ name: Cohérence de la documentation
 # ouvre une issue de suivi en cas d'écart. Ne modifie jamais le dépôt.
 on:
   schedule:
-    - cron: "0 6 * * 1" # tous les lundis à 06:00 UTC (08:00 Paris)
+    # GitHub n'interprète les expressions `schedule:` qu'en UTC — il n'existe aucun champ
+    # de fuseau. L'équivalent à Paris se déplace donc avec l'heure d'été.
+    - cron: "0 6 * * 1" # tous les lundis à 06:00 UTC — 07:00 à Paris en hiver, 08:00 en été
   workflow_dispatch: # déclenchement manuel pour tester
 
 permissions:

@@ -235,6 +235,33 @@ Deux canaux visés, **F-Droid en premier** :
 En attendant, les APK de test sont distribués via les **GitHub Releases** du dépôt
 (voir [`docs/publication.md`](publication.md)).
 
+### 4.11 Fuseau horaire et horodatage
+Un trajet est stocké en **`Instant`** — un point sur la ligne du temps, sans fuseau. Le
+fuseau n'intervient qu'**à l'affichage**, et il est celui de l'**appareil** :
+`Clock.systemDefaultZone()` injectée par
+[`app/src/main/kotlin/fr/whitytoes/badgemoi/di/TimeModule.kt`](../app/src/main/kotlin/fr/whitytoes/badgemoi/di/TimeModule.kt),
+et `ZoneId.systemDefault()` comme valeur par défaut des fonctions de formatage.
+
+**`Europe/Paris` ne doit jamais être codé en dur** dans `app/src/main/`, bien que ce soit
+le fuseau de l'usage quotidien visé. Ce que cette règle protège :
+
+- Un trajet chronométré ailleurs qu'en France se relirait à une heure qu'on n'a pas vécue.
+  L'application chronomètre un vécu ; l'heure affichée doit être celle de la montre qu'on
+  avait au poignet.
+- Le passage à l'heure d'été décalerait d'un coup **tout l'historique déjà archivé** si le
+  fuseau avait été figé au stockage plutôt que résolu au rendu.
+
+Conséquences ailleurs dans le cahier :
+
+- **Export CSV (§4.5)** : `TripCsv.serialize` et `TripCsv.fileName` prennent le fuseau en
+  paramètre, `systemDefault()` par défaut. L'export porte donc les heures locales lues à
+  l'écran, pas des heures UTC que personne ne reconnaîtrait.
+- **Tests** : tout appel dont le résultat dépend du fuseau en passe un **explicite** —
+  `Europe/Paris` pour le cas nominal, un autre fuseau pour éprouver la conversion. C'est
+  ce qui rend la suite indépendante de la machine qui l'exécute, et c'est pourquoi la CI
+  n'a besoin d'aucune variable `TZ` : ses runners tournent en UTC sans que cela change un
+  seul verdict.
+
 ---
 
 ## 5. Design system à reprendre tel quel
