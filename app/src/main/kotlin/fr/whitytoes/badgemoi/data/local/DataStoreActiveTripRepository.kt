@@ -31,6 +31,23 @@ class DataStoreActiveTripRepository
             dataStore.edit { prefs -> prefs[KEY] = Json.encodeToString(trip.toStored()) }
         }
 
+        /**
+         * Le test et l'écriture tiennent dans un seul `edit` : DataStore sérialise les
+         * transactions sur un même fichier, donc deux appels concurrents ne peuvent pas
+         * s'y entrelacer. C'est ce qui ferme la fenêtre qu'un `get()` suivi d'un `save()`
+         * laisserait ouverte entre les deux appels.
+         */
+        override suspend fun saveIfNoneInProgress(trip: Trip): Boolean {
+            var saved = false
+            dataStore.edit { prefs ->
+                saved = prefs[KEY] == null
+                if (saved) {
+                    prefs[KEY] = Json.encodeToString(trip.toStored())
+                }
+            }
+            return saved
+        }
+
         override suspend fun clear() {
             dataStore.edit { prefs -> prefs.remove(KEY) }
         }

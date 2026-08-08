@@ -2,12 +2,11 @@ package fr.whitytoes.badgemoi.ui.home
 
 import fr.whitytoes.badgemoi.domain.ActiveTripRepository
 import fr.whitytoes.badgemoi.domain.Direction
+import fr.whitytoes.badgemoi.domain.FakeActiveTripRepository
+import fr.whitytoes.badgemoi.domain.StartTrip
 import fr.whitytoes.badgemoi.domain.Trip
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -15,14 +14,18 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
 
+/**
+ * La règle de démarrage elle-même est éprouvée dans `StartTripTest`, sur le code
+ * partagé par l'écran d'accueil et le widget. Ce qui se vérifie ici, et nulle part
+ * ailleurs, c'est la traduction du dépôt en état d'écran et la délégation au cas
+ * d'usage.
+ */
 @OptIn(ExperimentalCoroutinesApi::class)
 class HomeViewModelTest {
     private val dispatcher = StandardTestDispatcher()
@@ -39,96 +42,71 @@ class HomeViewModelTest {
         Dispatchers.resetMain()
     }
 
+    private fun viewModel(repository: ActiveTripRepository) =
+        HomeViewModel(
+            activeTripRepository = repository,
+            startTripUseCase = StartTrip(repository, clock, newTripId = { "t-neuf" }),
+        )
+
     @Test
     fun `l'état initial est le chargement`() =
         runTest(dispatcher) {
-            val viewModel = HomeViewModel(FakeActiveTripRepository(), clock)
+            val model = viewModel(FakeActiveTripRepository())
 
-            assertEquals(HomeUiState.Loading, viewModel.uiState.value)
+            assertEquals(HomeUiState.Loading, model.uiState.value)
         }
 
     @Test
     fun `sans trajet enregistré l'écran propose un démarrage`() =
         runTest(dispatcher) {
-            val viewModel = HomeViewModel(FakeActiveTripRepository(), clock)
+            val model = viewModel(FakeActiveTripRepository())
 
             advanceUntilIdle()
 
-            assertEquals(HomeUiState.Idle, viewModel.uiState.value)
+            assertEquals(HomeUiState.Idle, model.uiState.value)
         }
 
     @Test
     fun `un trajet enregistré est proposé à la reprise`() =
         runTest(dispatcher) {
             val trip = Trip.start(id = "t1", direction = Direction.RETOUR, departureAt = now)
-            val viewModel = HomeViewModel(FakeActiveTripRepository(trip), clock)
+            val model = viewModel(FakeActiveTripRepository(trip))
 
             advanceUntilIdle()
 
-            assertEquals(HomeUiState.TripInProgress(trip), viewModel.uiState.value)
+            assertEquals(HomeUiState.TripInProgress(trip), model.uiState.value)
         }
 
     @Test
-    fun `démarrer un trajet le persiste avec l'heure de l'horloge`() =
+    fun `démarrer un trajet délègue au cas d'usage et le persiste`() =
         runTest(dispatcher) {
             val repository = FakeActiveTripRepository()
-            val viewModel = HomeViewModel(repository, clock)
+            val model = viewModel(repository)
             advanceUntilIdle()
 
-            viewModel.startTrip(Direction.ALLER)
+            model.startTrip(Direction.ALLER)
             advanceUntilIdle()
 
-            val saved = repository.observe().first()
-            assertEquals(Direction.ALLER, saved?.direction)
-            assertEquals(now, saved?.departureAt)
-            assertTrue("le trajet neuf n'est pas complet", saved?.isComplete == false)
+            assertEquals(Direction.ALLER, repository.current?.direction)
+            assertEquals(now, repository.current?.departureAt)
         }
 
     /**
-     * Garde-fou : l'application s'utilise en roulant, un double appui ne doit pas
-     * écraser un trajet déjà entamé par un trajet neuf.
+     * Reproduction du défaut que l'extraction ferme : l'ancienne garde s'appuyait sur
+     * `uiState`, encore à `Loading` juste après la construction, et refusait donc un
+     * démarrage pourtant légitime. La garde vivant désormais dans l'écriture, l'appui
+     * aboutit — et reste sans danger, le cas « trajet déjà en cours » étant couvert
+     * dans `StartTripTest`.
      */
     @Test
-    fun `démarrer un trajet est sans effet si un trajet est déjà en cours`() =
-        runTest(dispatcher) {
-            val enCours = Trip.start(id = "t1", direction = Direction.RETOUR, departureAt = now)
-            val repository = FakeActiveTripRepository(enCours)
-            val viewModel = HomeViewModel(repository, clock)
-            advanceUntilIdle()
-
-            viewModel.startTrip(Direction.ALLER)
-            advanceUntilIdle()
-
-            assertEquals(enCours, repository.observe().first())
-        }
-
-    @Test
-    fun `démarrer un trajet est sans effet tant que l'état n'est pas chargé`() =
+    fun `démarrer avant la fin du chargement aboutit quand aucun trajet n'est en cours`() =
         runTest(dispatcher) {
             val repository = FakeActiveTripRepository()
-            val viewModel = HomeViewModel(repository, clock)
+            val model = viewModel(repository)
 
-            viewModel.startTrip(Direction.ALLER)
+            model.startTrip(Direction.ALLER)
             advanceUntilIdle()
 
-            assertNull(repository.observe().first())
+            assertEquals(Direction.ALLER, repository.current?.direction)
         }
-}
-
-private class FakeActiveTripRepository(
-    initial: Trip? = null,
-) : ActiveTripRepository {
-    private val state = MutableStateFlow(initial)
-
-    override fun observe(): Flow<Trip?> = state
-
-    override suspend fun get(): Trip? = state.value
-
-    override suspend fun save(trip: Trip) {
-        state.value = trip
-    }
-
-    override suspend fun clear() {
-        state.value = null
-    }
 }

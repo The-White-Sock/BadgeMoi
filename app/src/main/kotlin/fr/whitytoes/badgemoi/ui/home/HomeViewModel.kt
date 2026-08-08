@@ -5,14 +5,12 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import fr.whitytoes.badgemoi.domain.ActiveTripRepository
 import fr.whitytoes.badgemoi.domain.Direction
-import fr.whitytoes.badgemoi.domain.Trip
+import fr.whitytoes.badgemoi.domain.StartTrip
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import java.time.Clock
-import java.util.UUID
 import javax.inject.Inject
 
 /**
@@ -28,8 +26,8 @@ import javax.inject.Inject
 class HomeViewModel
     @Inject
     constructor(
-        private val activeTripRepository: ActiveTripRepository,
-        private val clock: Clock,
+        activeTripRepository: ActiveTripRepository,
+        private val startTripUseCase: StartTrip,
     ) : ViewModel() {
         val uiState: StateFlow<HomeUiState> =
             activeTripRepository
@@ -42,22 +40,18 @@ class HomeViewModel
                 )
 
         /**
-         * Démarre un trajet dans le sens demandé.
+         * Démarre un trajet dans le sens demandé, en déléguant au cas d'usage
+         * [StartTrip] — la même règle que celle qu'appelle le widget (#114), et non
+         * une seconde copie qui divergerait.
          *
-         * Sans effet si un trajet est déjà en cours : l'application s'utilise en
-         * roulant, et un double appui ne doit pas effacer un trajet déjà entamé. Sans
-         * effet également tant que l'état n'est pas chargé, pour la même raison.
+         * L'ancienne garde `uiState.value != Idle` a disparu, et ce n'est pas un oubli :
+         * elle relisait un état en mémoire avant d'écrire, ce qui laissait une fenêtre
+         * entre la lecture et l'écriture. La garde vit désormais dans l'écriture
+         * elle-même ([ActiveTripRepository.saveIfNoneInProgress]), ce qui couvre
+         * strictement plus de cas — y compris l'appui survenu avant que l'état soit
+         * chargé, qui ne peut plus écraser un trajet en cours.
          */
         fun startTrip(direction: Direction) {
-            if (uiState.value != HomeUiState.Idle) return
-            viewModelScope.launch {
-                activeTripRepository.save(
-                    Trip.start(
-                        id = UUID.randomUUID().toString(),
-                        direction = direction,
-                        departureAt = clock.instant(),
-                    ),
-                )
-            }
+            viewModelScope.launch { startTripUseCase(direction) }
         }
     }

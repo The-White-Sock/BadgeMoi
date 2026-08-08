@@ -358,6 +358,13 @@ class SummaryViewModelTest {
             state.value = trip
         }
 
+        /** Même sémantique que `DataStoreActiveTripRepository` : n'écrit que sur un dépôt vide. */
+        override suspend fun saveIfNoneInProgress(trip: Trip): Boolean {
+            if (state.value != null) return false
+            save(trip)
+            return true
+        }
+
         override suspend fun clear() {
             operations += "clear"
             state.value = null
