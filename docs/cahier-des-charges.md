@@ -163,7 +163,7 @@ verrouillée en **portrait**.
 - Actions : Enregistrer, Ignorer ce jalon, Effacer, Annuler.
 
 ### 3.6 Widget d'écran d'accueil
-- Widget minimal (Glance) permettant de lancer directement un trajet Aller ou Retour sans ouvrir l'application.
+- Widget minimal permettant de lancer directement un trajet Aller ou Retour sans ouvrir l'application. La technique retenue est RemoteViews et non Glance (voir §9, écart 15) ; la fonction, elle, est inchangée.
 - Si un trajet est déjà en cours, le widget affiche l'état "en cours" (direction, heure de départ) et propose de rouvrir l'application sur l'écran "Trajet actif" plutôt que de permettre d'en démarrer un nouveau.
 - L'état affiché doit rester cohérent avec l'application (même source de vérité, cf. §4.2) — pas de duplication d'état entre widget et appli.
 
@@ -174,7 +174,8 @@ verrouillée en **portrait**.
 ### 4.1 Stack recommandée
 - **Langage** : Kotlin.
 - **UI** : Jetpack Compose + Material 3 (thème personnalisé, pas le thème Material par défaut — les tokens de couleur existants doivent être repris tels quels).
-- **Widget** : Glance (Jetpack Compose pour App Widgets).
+- **Widget** : **RemoteViews natifs** (`AppWidgetProvider`) et non Glance (voir §9,
+  écart 15) : Glance dépend de WorkManager, qui ajoute quatre permissions au manifeste.
 - **Architecture** : MVVM simple (ViewModel + StateFlow), pas besoin de couche réseau.
 - **Min SDK** : **API 29 (Android 10)**.
 
@@ -264,7 +265,7 @@ Règle de contraste à respecter dans la traduction Compose : tout texte/icône 
 | 3 | Écran "Trajet actif" (validation, correction, haptique, écran allumé) | Parcours de saisie complet |
 | 4 | Écran Récapitulatif + archivage | Cycle complet trajet → historique |
 | 5 | Écran Historique (moyennes, export CSV, purge) | Fonctionnalité complète |
-| 6 | Widget d'écran d'accueil (Glance) : lancement rapide + affichage de l'état en cours | Widget installable, cohérent avec l'état de l'appli |
+| 6 | Widget d'écran d'accueil (RemoteViews, voir §9 écart 15) : lancement rapide + affichage de l'état en cours | Widget installable, cohérent avec l'état de l'appli |
 | 7 | Polish : icônes vectorielles finales, thème système, tests sur petit écran, préparation recette F-Droid puis fiche Play Store | Prêt pour publication |
 
 ---
@@ -298,10 +299,11 @@ Règle de contraste à respecter dans la traduction Compose : tout texte/icône 
 | 12 | Défilement de l'Historique | **Trois blocs indépendants** au lieu d'une zone défilante unique, voir #107 |
 | 13 | Encodage de l'export CSV | **Fichier entièrement ASCII**, sans BOM UTF-8 — les accents sont repliés (« Départ » → « Depart ») |
 | 14 | Bandeau du récapitulatif | **Trois cellules fixes** au lieu de la bascule arrivée/durée du POC |
+| 15 | Technique du widget | **RemoteViews natifs**, pas Glance — qui ajoutait quatre permissions par WorkManager, voir #113 |
 
-### Écarts assumés au périmètre d'origine (6 à 14)
+### Écarts assumés au périmètre d'origine (6 à 15)
 
-Ces neuf points **contredisent la lettre** des sections citées. Ils sont le fruit d'un
+Ces dix points **contredisent la lettre** des sections citées. Ils sont le fruit d'un
 test sur appareil et ont été validés en connaissance de cause ; ils sont consignés ici
 parce que le script `scripts/check-docs-coherence.sh` ne vérifie que des invariants
 mécaniques — versions, chemins, liens — et ne verrait pas une contradiction de prose.
@@ -431,6 +433,42 @@ différentes selon l'état du trajet, ce qu'une cellule fixe interdit.
 La contrepartie est que la durée jusqu'au dernier pointage n'est plus affichée pour un
 trajet sans arrivée. Elle reste lisible tronçon par tronçon, et le remède est d'aller
 corriger l'arrivée — ce que le bandeau propose désormais.
+
+**15. Le widget est en RemoteViews natifs, pas en Glance.** Le §4.1 nomme Glance, et le
+§8 en faisait l'argument n°4 du choix de la voie native. Le socle du lot 6 (#113) l'a
+pourtant écarté, sur une mesure faite au manifeste fusionné.
+
+`androidx.glance:glance` dépend de `androidx.work:work-runtime`, dont le manifeste ajoute
+**quatre permissions** : `WAKE_LOCK`, `ACCESS_NETWORK_STATE`, `RECEIVE_BOOT_COMPLETED` et
+`FOREGROUND_SERVICE`. Aucune n'est demandée par le code de l'application ; elles arrivent
+par fusion de manifeste, invisibles à la lecture du diff. Trois documents s'en trouvaient
+contredits d'un coup : le §4.4, qui note que l'écran maintenu allumé évite précisément
+`WAKE_LOCK` ; le §4.8, dont le tableau ne déclare que `VIBRATE` ; et le §4.9, qui annonce
+une application 100 % hors-ligne — `ACCESS_NETWORK_STATE` y est indéfendable devant la
+revue d'inclusion F-Droid (#120).
+
+La dépendance n'est pas contournable. Glance fait tourner sa composition dans
+`androidx.glance.session.SessionWorker`, un worker WorkManager : c'est le chemin critique
+du rendu, pas un reliquat. Et elle est présente dans **toutes** les versions publiées,
+de la 1.1.1 à la 1.3.0-alpha02 — la montée de version n'offre aucune issue. Retirer les
+permissions par `tools:node="remove"` compile, mais WorkManager initialise ses traqueurs
+de contraintes au démarrage : le widget lèverait une `SecurityException` au rendu, sur
+l'écran d'accueil, sans qu'aucun test hors appareil ne le montre.
+
+Le prix payé est réel : la mise en page du widget est du XML admis par RemoteViews et non
+du Compose, et sa palette est **relue** en ressources couleur (`values/colors.xml` et son
+versant `values-night/`) au lieu d'être partagée avec `ui/theme/Color.kt`. Le §5 tient
+quand même — aucune couleur littérale hors de ces deux fichiers, qui portent la
+correspondance token par token. Ce qui se partage entre l'application et le widget reste
+le **domaine**, ce que Glance n'aurait pas amélioré.
+
+En regard, deux gains. Aucune permission, aucun composant exporté au-delà du receiver, et
+donc un dossier F-Droid inchangé. Et l'aperçu du sélecteur ne peut plus mentir : avec
+Glance, `previewLayout` aurait été un second layout XML reproduisant à la main ce que la
+composable rend ; ici les trois renvois de `badgemoi_widget_info.xml` pointent le même
+fichier que le widget.
+
+Le §3.6 est inchangé : la décision porte sur la technique, pas sur la fonction.
 
 ### Grain de l'ondulation d'appui
 

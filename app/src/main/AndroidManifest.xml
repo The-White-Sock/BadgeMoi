@@ -36,6 +36,33 @@
             </intent-filter>
         </activity>
 
+        <!--
+            Widget d'écran d'accueil (docs/cahier-des-charges.md §3.6).
+
+            `exported="true"` n'est pas un choix : c'est le système qui adresse ses
+            diffusions au receiver, et un receiver de widget non exporté ne reçoit rien.
+            C'est le premier composant exporté de l'application, et le seul — la revue
+            d'inclusion F-Droid (#120) le regardera.
+
+            L'unique `intent-filter` est celui d'`AppWidgetProvider`. Aucune action
+            maison n'est déclarée : ajouter la moindre ouvrirait à n'importe quelle
+            application le droit de déclencher du travail ici.
+
+            C'est aussi le **seul** composant exporté ajouté, et aucune permission ne
+            l'accompagne — ce qui n'aurait pas été vrai avec Glance (écart 15, §9).
+        -->
+        <receiver
+            android:name=".ui.widget.BadgeMoiWidgetProvider"
+            android:exported="true"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/badgemoi_widget_info" />
+        </receiver>
+
     </application>
 
 </manifest>

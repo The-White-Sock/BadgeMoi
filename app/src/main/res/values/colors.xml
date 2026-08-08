@@ -2,4 +2,22 @@
 <resources>
     <!-- Fond de fenêtre avant le premier rendu Compose (voir themes.xml) -->
     <color name="window_background">#0F1115</color>
+
+    <!--
+        Palette du widget d'écran d'accueil (res/layout/badgemoi_widget.xml).
+
+        Ces cinq valeurs **redisent** des tokens de `ui/theme/Color.kt` — ici la palette
+        jour, `values-night/` portant la nuit. C'est une duplication assumée et non une
+        entorse au §5 du cahier : un widget rend du RemoteViews, qui ne sait pas lire un
+        token Compose. Toucher un token sans toucher ces valeurs fait diverger le widget
+        de l'application, sans que rien ne le signale.
+
+        Correspondances : `widget_background` ← `background`, `widget_*_background` ←
+        `amberSoft` / `tealSoft`, `widget_*_ink` ← `amber` / `teal`.
+    -->
+    <color name="widget_background">#FFFFFF</color>
+    <color name="widget_aller_background">#24B5540B</color>
+    <color name="widget_aller_ink">#B5540B</color>
+    <color name="widget_retour_background">#240B7A73</color>
+    <color name="widget_retour_ink">#0B7A73</color>
 </resources>
