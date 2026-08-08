@@ -8,8 +8,8 @@
     un second layout XML reproduisant à la main ce que la composable rend, libre de
     diverger en silence.
 
-    Aucune vue n'est cliquable à ce stade (#114), mais les blocs tiennent déjà leurs
-    48 dp : rendre un élément cliquable lui impose sa cible **au même commit**.
+    Les deux blocs portent leur action depuis #114, et tiennent leurs 48 dp depuis
+    #113 : rendre un élément cliquable lui impose sa cible **au même commit**.
 
     Seules les vues admises par RemoteViews sont utilisables ici — pas de ConstraintLayout,
     pas de vue maison.
@@ -22,6 +22,7 @@
     android:padding="12dp">
 
     <TextView
+        android:id="@+id/widget_start_aller"
         android:layout_width="0dp"
         android:layout_height="48dp"
         android:layout_weight="1"
@@ -37,6 +38,7 @@
         android:layout_height="wrap_content" />
 
     <TextView
+        android:id="@+id/widget_start_retour"
         android:layout_width="0dp"
         android:layout_height="48dp"
         android:layout_weight="1"
