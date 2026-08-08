@@ -35,6 +35,31 @@ et poussé, 49 sur un arbre sale — le bloc `bilan.sh` branche sur `git status
 jour » : c'est le hook qui fonctionne, pas une régression. Annoncer « N cas » sans dire
 l'état de l'arbre n'est pas reproductible.
 
+## `disableAllHooks` coupe aussi la ligne d'état
+
+Les deux mécanismes paraissent indépendants et ne le sont pas : couper les hooks en
+urgence fait **disparaître la jauge de contexte** de `.claude/statusline.sh`. Ce n'est
+pas une panne, et ça se saura d'autant moins que la coupure aura été faite dans la
+précipitation. Le noter avant de chercher.
+
+## Trois mesures, trois questions différentes — ne pas les confondre
+
+- **Budget de lancement** (`check-docs-coherence.sh`) — combien de lignes d'instructions
+  sont injectées au démarrage. Plafond 200.
+- **Journal d'instructions** — quelles règles se sont chargées, et dans quelle fenêtre.
+- **`context_window.used_percentage`** (ligne d'état) — à quel point la fenêtre **en
+  cours** est pleine.
+
+Aucune ne remplace les autres, et les additionner n'a pas de sens. Précision qui compte :
+`CLAUDE_CODE_AUTO_COMPACT_WINDOW` **découple** le seuil de compaction de l'`used_percentage`
+affiché — la jauge et le déclencheur peuvent donc mesurer deux choses différentes.
+
+**Aucun seuil n'est peint dans la ligne d'état, et c'est délibéré.** Le « rester sous
+40 % » qui circule est, à la source, une heuristique de débutant que son auteur
+relativise lui-même (« for [an experienced user], the dumb zone is not a useful concept
+to you »), et le rot de contexte est donné côté Anthropic comme « highly dependent on the
+task — **not a fast rule** ». Afficher la mesure, régler sur les données.
+
 ## Une batterie prouve qu'un hook *peut* se déclencher, pas qu'il *se déclenche*
 
 C'est le reliquat que les deux batteries ne couvraient pas, et par lequel les deux
