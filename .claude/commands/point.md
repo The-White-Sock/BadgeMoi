@@ -49,14 +49,34 @@ documentation :
 - **Les règles à `paths:` ne sont pas ré-injectées.** Aucune ne réapparaît à la
   compaction. On peut donc, juste après, écrire du Compose sans que `ui-compose.md`
   soit chargé, ou toucher au domaine sans `domain-purity.md`.
-- **Le remède fonctionne**, et c'était le point douteux : rouvrir un fichier de la zone
-  ré-émet bien un `path_glob_match`, y compris pour une règle déjà chargée plus tôt
-  dans la **même** séance. La déduplication porte sur la fenêtre de contexte, pas sur
-  la séance, et une compaction la remet à zéro. Sans ça le remède aurait été inopérant
-  là où on en a le plus besoin.
+- **Le remède qu'on croyait acquis n'existe pas**, et c'est la correction la plus
+  coûteuse de ce fichier. On a soutenu ici, plusieurs séances durant, que rouvrir un
+  fichier de la zone ré-émettait un `path_glob_match` même pour une règle déjà chargée,
+  la déduplication portant sur la fenêtre et la compaction la remettant à zéro. **C'est
+  faux.** La déduplication porte sur la **séance** : une règle scopée se charge une fois,
+  et rien ne la recharge ensuite — ni rouvrir le fichier qui l'avait déclenchée, ni en
+  ouvrir un autre de sa zone.
 
-Le remède est donc mécanique et vérifié : rouvrir un fichier de la zone concernée avant
-d'y écrire.
+Le relevé qui tranche tient en trois lectures, dans une **même** fenêtre, à quelques
+secondes d'écart — c'est l'appariement qui fait la preuve, pas la lecture isolée :
+
+| geste | règle visée | déjà chargée cette séance ? | journal |
+|---|---|---|---|
+| ouvrir un fichier de `.claude/hooks/` | `harnais.md` | oui, 4 fenêtres plus tôt | **rien** |
+| ouvrir un fichier de `ui/` | `ui-compose.md` | non | `path_glob_match` |
+| lire `.claude/rules/harnais.md` | — | — | rien, mais le contenu est en contexte |
+
+Le deuxième geste est le **témoin**, et il est indispensable : sans lui, un journal muet
+ne se distingue pas d'un mécanisme mort. Le mécanisme est vivant — il ne sert qu'une
+fois. C'est ce qui donne l'illusion qu'il marche : sur une règle encore jamais chargée,
+rouvrir la zone fonctionne parfaitement.
+
+**Le remède réel est de lire le fichier de règle lui-même** (`.claude/rules/<nom>.md`).
+Ce n'est pas un chargement d'instruction — rien n'est journalisé — mais le contenu
+arrive en contexte comme contenu de fichier, ce qui est le seul effet recherché.
+
+Ce relevé vaut pour ce harnais-ci, sur un conteneur et une séance. Le refaire s'il
+change de version : trois lectures suffisent.
 
 ## Ce qui s'est réellement chargé
 
@@ -150,9 +170,16 @@ Ce qu'on en tire pour la passation :
   **réellement présentes** ; le cumul, lui, additionne des fenêtres révolues et gonfle à
   chaque compaction sans que rien ne s'accumule en contexte.
 
+- **Une règle chargée dans une fenêtre révolue n'est plus en contexte, et rien ne l'y
+  ramènera.** Ne pas écrire « rouvrir un fichier de la zone avant d'y toucher » dans une
+  passation : c'est le conseil faux, corrigé plus haut. Écrire le geste qui marche —
+  lire `.claude/rules/<nom>.md`.
+
 Le mécanisme lui-même est acquis : les règles se chargent bien sur `path_glob_match`, et
-le glob se déclenche sur le **chemin visé**, pas sur l'existence du fichier. Un journal
-vide alors que des fichiers ont été ouverts est donc anormal, et se dit dans la passation.
+le glob se déclenche sur le **chemin visé**, pas sur l'existence du fichier. En revanche
+un journal muet alors que des fichiers ont été ouverts n'est **pas** une anomalie : c'est
+le cas normal dès que les règles concernées ont déjà servi dans la séance. Ne conclure à
+un défaut de glob qu'après avoir vu `check-docs-coherence.sh` rouge.
 
 ## Forme
 
