@@ -51,8 +51,22 @@ prompt="$(printf '%s' "${entree}" | jq -r '.prompt // .user_input // empty' 2>/d
 # `PreToolUse` pour cela ; ici la donnée arrive plus tôt et plus complète.
 case "${prompt}" in
   /*)
-    journaliser_usage antiseche commande \
-      "$(printf '%s' "${prompt}" | awk '{print $1}')"
+    commande="$(printf '%s' "${prompt}" | awk '{print $1}')"
+    journaliser_usage antiseche commande "${commande}"
+
+    # Exception, et une seule. `/insights` annonce son rapport par un lien
+    # `file:///root/.claude/usage-data/…`. En session distante ce chemin désigne le
+    # disque du **conteneur**, pas la machine de la personne : le lien ne mène nulle
+    # part, et le fichier meurt avec le conteneur. La commande suppose un usage local.
+    #
+    # C'est le cas où suggérer un outil ne fait pas doublon avec la commande lancée :
+    # elle ne connaît pas son environnement, ce hook si.
+    if [ "${commande}" = "/insights" ] && [ "${CLAUDE_CODE_REMOTE:-}" = "true" ]; then
+      jq -n --arg c "Antisèche BadgeMoi :
+- Session **distante** : le lien \`file://\` du rapport ne mène nulle part chez la personne, et le fichier meurt avec le conteneur. Livrer le HTML par \`SendUserFile\` en \`display: render\`." \
+        '{hookSpecificOutput: {hookEventName: "UserPromptSubmit", additionalContext: $c}}'
+    fi
+
     exit 0
     ;;
 esac

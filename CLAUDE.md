@@ -87,7 +87,9 @@ Tous **consultatifs** sauf un, signalé comme tel :
 - Après édition, un hook signale les couleurs littérales, les textes en dur et les
   imports Android dans `domain/`. ktlint, detekt et la CI restent l'arbitre.
 - Au prompt, l'antisèche injecte au plus une orientation vers la commande adaptée et
-  trois pointeurs vers les sources qui font autorité sur les sujets détectés.
+  trois pointeurs vers les sources qui font autorité sur les sujets détectés. Une
+  commande slash la laisse muette — sauf `/insights` en session distante, dont le lien
+  `file://` ne mène nulle part chez la personne : le rapport se livre par `SendUserFile`.
 - En fin de tour, un bilan rappelle ce qui reste : qualité non relancée, travail non
   commité, commits non poussés. Une ligne, et rien tant que l'état ne change pas.
 - Au chargement d'un fichier d'instructions, un hook journalise l'événement dans

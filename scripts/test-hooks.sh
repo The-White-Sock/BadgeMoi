@@ -24,11 +24,17 @@ cd "${racine}" || exit 1
 reussis=0
 echecs=0
 
-# cas <description> <hook> <json> <motif attendu | VIDE>
+# cas <description> <hook> <json> <motif attendu | VIDE> [spec d'environnement]
 #   VIDE  : le hook doit se taire complètement.
 #   motif : ERE cherchée dans la sortie.
+#   spec  : passée telle quelle à `env` — `VAR=val` pour poser, `-u VAR` pour retirer.
+#
+# La spec d'environnement n'est pas un raffinement. La batterie tourne **dans** une
+# session où `CLAUDE_CODE_REMOTE=true` est déjà exporté : un cas censé éprouver le
+# comportement hors session distante hériterait de `true` sans le retirer, et
+# passerait au vert sans jamais tester ce qu'il prétend tester.
 cas() {
-  local description="$1" hook="$2" entree="$3" attendu="$4"
+  local description="$1" hook="$2" entree="$3" attendu="$4" env_spec="${5:-}"
   local sortie
 
   # Sans cette garde, un hook absent ou non exécutable ne rend rien — donc tous
@@ -41,7 +47,10 @@ cas() {
     return
   fi
 
-  sortie="$(printf '%s' "${entree}" | "${hooks}/${hook}.sh" 2>/dev/null)"
+  # `${env_spec}` est délibérément **non quotée** : `env` attend ses arguments
+  # découpés (`-u VAR` fait deux mots). Vide, elle disparaît et `env` est transparent.
+  # shellcheck disable=SC2086
+  sortie="$(printf '%s' "${entree}" | env ${env_spec} "${hooks}/${hook}.sh" 2>/dev/null)"
 
   if [ "${attendu}" = "VIDE" ]; then
     if [ -z "${sortie}" ]; then
@@ -80,6 +89,24 @@ cas "intention tue en mode plan" antiseche \
 cas "intention : livraison" antiseche \
   '{"prompt":"on pousse le travail","permission_mode":"default"}' \
   '/pousser'
+# `/insights` annonce son rapport par un lien `file://` qui, en session distante, désigne
+# le disque du conteneur et non la machine de la personne. C'est la seule commande slash
+# sur laquelle l'antisèche parle — d'où un triplet, et pas un cas isolé : le premier seul
+# serait satisfait par un hook qui parlerait sur n'importe quelle commande, ou dans
+# n'importe quel environnement.
+cas "/insights en session distante : oriente vers SendUserFile" antiseche \
+  '{"prompt":"/insights"}' \
+  'SendUserFile' 'CLAUDE_CODE_REMOTE=true'
+# Le revers, et il **doit** retirer la variable : la batterie tourne dans une session où
+# elle vaut déjà `true`. Sans `-u`, ce cas hériterait du distant et passerait au vert sans
+# rien éprouver.
+cas "/insights hors session distante : silence" antiseche \
+  '{"prompt":"/insights"}' \
+  VIDE '-u CLAUDE_CODE_REMOTE'
+cas "une autre commande slash reste silencieuse même en distant" antiseche \
+  '{"prompt":"/pousser 114"}' \
+  VIDE 'CLAUDE_CODE_REMOTE=true'
+
 cas "commande slash ignorée" antiseche \
   '{"prompt":"/pousser 42","permission_mode":"default"}' \
   VIDE
