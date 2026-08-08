@@ -47,9 +47,10 @@ Android/Kotlin doivent être résolus depuis le réseau au premier build).
   régimes, et c'est le frontmatter `paths:` qui les sépare :
   - **Avec `paths:`** — chargés à l'ouverture d'un fichier de leur zone : composants
     Compose, pureté du domaine, tests, CI/build, documentation, hooks et scripts.
-    **Ils ne survivent pas à un `/compact`** : ce fichier-ci est ré-injecté, eux
-    attendent qu'un fichier de leur zone soit relu. Après une compaction, rouvrir un
-    fichier concerné avant d'y écrire — `/point` détaille la vérification.
+    **Une règle ne se charge qu'une fois par séance**, et la compaction ne remet pas
+    ce compteur à zéro : après un `/compact` elle n'est plus en contexte, et rouvrir
+    un fichier de sa zone **ne la rappelle pas**. Le seul geste qui marche est de lire
+    le fichier de règle lui-même — `/point` porte le relevé qui l'établit.
   - **Sans `paths:`** — chargés à chaque lancement et ré-injectés après compaction,
     au même rang que ce fichier. Réservé à ce qui vaut en fin de séance, quand plus
     aucun fichier n'est ouvert : `langue.md` seul aujourd'hui. Leur poids est compté
@@ -132,7 +133,8 @@ journaliser le JSON brut — ces noms sont observés, pas spécifiés. Le mécan
 règles à `paths:` est vérifié : les cinq ont émis un `path_glob_match` en une
 poignée de lectures. Et le glob se déclenche sur le **chemin visé**, pas sur
 l'existence du fichier — lire un chemin inexistant de la zone suffit à charger la
-règle, ce qui rend le remède post-compaction gratuit.
+règle. Attention : cela ne vaut que pour un **premier** chargement dans la séance,
+voir plus bas.
 
 Portée du journal : il est écrit dans `.git/`, donc recloné à vide à chaque nouveau
 conteneur web. Le cumul « toutes séances » n'a que la durée de vie de la machine, et
@@ -144,10 +146,27 @@ Point clos aussi, sur une compaction réelle cette fois : `/compact` ré-injecte
 la documentation. Deux relevés inattendus au passage. D'abord **il n'existe pas de
 raison `compact`** : la compaction journalise `session_start`, si bien qu'un
 `session_start` en cours de séance est la borne d'une fenêtre de contexte — c'est ce
-qui permet enfin de mesurer ce qui est *réellement* chargé. Ensuite la déduplication
-porte sur la fenêtre, pas sur la séance : une compaction la remet à zéro, et c'est ce
-qui rend le remède (rouvrir un fichier de la zone) opérant là où on en a besoin. Sans
-cette remise à zéro il aurait été inopérant, et personne ne l'aurait su.
+qui permet enfin de mesurer ce qui est *réellement* chargé.
+
+CE POINT-CI ÉTAIT FAUX, et il l'est resté plusieurs séances : on avait conclu que la
+déduplication portait sur la fenêtre, donc qu'une compaction la remettait à zéro et
+rendait le remède opérant. Le relevé qui tranche tient en trois lectures, dans une
+même fenêtre, à quelques secondes d'écart :
+
+  Read .claude/hooks/antiseche.sh            harnais.md, chargée 4 fenêtres plus tôt
+                                             -> RIEN au journal
+  Read …/ui/components/LabelledValue.kt      ui-compose.md, jamais chargée
+                                             -> path_glob_match émis
+  Read .claude/rules/harnais.md              lecture ordinaire, contenu en contexte
+
+La seule variable est l'antériorité du chargement : **la déduplication porte sur la
+séance**. Le journal entier le confirme — 16 lignes, 6 fenêtres, 4 `path_glob_match`,
+quatre règles distinctes, aucune chargée deux fois. Le témoin est ce qui rend le
+relevé concluant : sans lui, un journal muet ne se distingue pas d'un mécanisme mort.
+
+Conséquence pratique : une règle scopée évincée par une compaction ne revient pas, et
+le seul geste qui la ramène est de lire son fichier. Refaire ce relevé si le harnais
+change de version — il est reproductible en trois lectures.
 
 Ce qui a été corrigé en conséquence : la première interrogation de `/point` filtrait
 sur le `session_id`, qui ne change pas à la compaction. Elle annonçait donc chargées

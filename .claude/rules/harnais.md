@@ -42,6 +42,15 @@ un contrôle **cassé exprès**, hors dépôt, et de vérifier que ce sont bien 
 attendus qui rougissent — les deux batteries ont été éprouvées ainsi, dans les deux
 sens (contrôle muet, puis contrôle bavard).
 
+## Une règle scopée ne se charge qu'une fois par séance
+
+La compaction ne remet pas ce compteur à zéro : passé un `/compact`, la règle n'est
+plus en contexte et rouvrir un fichier de sa zone **ne la rappelle pas**. Le seul
+geste qui marche est de lire `.claude/rules/<nom>.md`. Corollaire pour le diagnostic :
+un journal muet après avoir ouvert des fichiers est le cas **normal**, pas le signe
+d'un glob cassé — c'est `check-docs-coherence.sh` qui tranche là-dessus. Le relevé qui
+l'établit est dans `/point`.
+
 ## Une règle créée en cours de séance ne se charge pas dans cette séance
 
 Mesuré : `.claude/rules/` est parcouru au lancement. Ouvrir un fichier de la zone
