@@ -152,12 +152,28 @@ injectees() {
   ' "$1" | wc -l
 }
 
+# Le frontmatter seul : de la première ligne `---` jusqu'au `---` suivant. C'est la
+# seule zone où `paths:` est une **clé** ; ailleurs c'est de la prose ou un bloc de
+# code qui l'illustre. Chercher la clé dans tout le fichier se trompait dans les deux
+# sens, et les deux fois en silence : une règle non scopée qui documente la clé
+# sortait du budget de lancement, et une règle sans frontmatter du tout était
+# déclarée inopérante sur un motif qu'elle ne porte pas.
+frontmatter() {
+  awk '
+    NR == 1 && /^---[[:space:]]*$/ { dans = 1; next }
+    dans && /^---[[:space:]]*$/    { exit }
+    dans                           { print }
+  ' "$1"
+}
+
 lancement=0
 detail=""
 for charge in CLAUDE.md .claude/rules/*.md; do
   [ -f "${charge}" ] || continue
-  # Une règle à `paths:` se charge par zone : hors budget de lancement.
-  if [ "${charge}" != "CLAUDE.md" ] && grep -q '^paths:' "${charge}"; then
+  # Une règle à `paths:` se charge par zone : hors budget de lancement. Here-string
+  # et non tube : `grep -q` s'arrête au premier match et SIGPIPE l'amont, ce qui
+  # vaut 141 sous `pipefail` (voir `.claude/rules/harnais.md`).
+  if [ "${charge}" != "CLAUDE.md" ] && grep -q '^paths:' <<< "$(frontmatter "${charge}")"; then
     continue
   fi
   n="$(injectees "${charge}")"
@@ -189,15 +205,16 @@ suivis="$(git ls-files 2>/dev/null || true)"
 
 for regle in .claude/rules/*.md; do
   [ -f "${regle}" ] || continue
-  # Les items de `paths:`, en s'arrêtant à la première ligne qui n'en est pas un
-  # — sans quoi le `---` de fermeture du frontmatter est lu comme un motif.
+  # Les items de `paths:`, lus dans le **frontmatter** et nulle part ailleurs, en
+  # s'arrêtant à la première ligne qui n'en est pas un — sans quoi la clé suivante
+  # du frontmatter serait lue comme un motif.
   motifs="$(awk '
     /^paths:/ { dans = 1; next }
     dans && /^[[:space:]]*-[[:space:]]/ {
       sub(/^[[:space:]]*-[[:space:]]*"?/, ""); sub(/"[[:space:]]*$/, ""); print; next
     }
     dans { exit }
-  ' "${regle}")"
+  ' <<< "$(frontmatter "${regle}")")"
   [ -z "${motifs}" ] && continue
 
   while read -r motif; do
