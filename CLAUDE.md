@@ -100,10 +100,11 @@ Tous **consultatifs** sauf un, signalé comme tel :
   distinguer. Et il n'arrête que ce qu'il a su lire : un message passé par `-F` ou heredoc
   passe sans contrôle.
 
-`./scripts/test-hooks.sh` fige le contrat d'entrée/sortie de chaque hook. Le lancer après
-toute modification de `.claude/hooks/` : un hook muet est indistinguable d'un hook qui
-n'avait rien à dire, et c'est exactement comme ça que l'antisèche est restée morte
-plusieurs semaines.
+`./scripts/test-hooks.sh` fige le contrat d'entrée/sortie de chaque hook, et les
+interrogations de `/point`. `./scripts/test-docs-coherence.sh` fait de même pour
+`check-docs-coherence.sh`. Lancer la batterie concernée après toute modification de sa
+zone : un contrôle muet est indistinguable d'un contrôle qui n'avait rien à dire, et
+c'est exactement comme ça que l'antisèche est restée morte plusieurs semaines.
 
 <!--
 NOTE DE MAINTENANCE — pour qui fait évoluer le harnais, pas pour la session.
