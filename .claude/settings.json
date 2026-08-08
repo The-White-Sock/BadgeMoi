@@ -18,6 +18,7 @@
       "Bash(git fetch:*)",
       "Bash(./scripts/check-docs-coherence.sh:*)",
       "Bash(./scripts/test-hooks.sh:*)",
+      "Bash(./scripts/test-docs-coherence.sh:*)",
       "Bash(wc:*)",
       "Bash(find:*)",
       "mcp__github__pull_request_read",
