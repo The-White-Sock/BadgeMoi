@@ -146,6 +146,13 @@ imports Android dans `domain/`. Voir `CLAUDE.md`.
   elle existe déjà) ; sinon le workflow est silencieux. Il ne modifie jamais le dépôt.
   Ce contrôle ne couvre que les invariants mécaniques : la dérive de la prose
   (conventions, décisions d'architecture) reste du ressort de la relecture.
+- **Harnais** (`.github/workflows/harnais.yml`) : sur chaque push/PR, `scripts/test-hooks.sh`
+  et `scripts/test-docs-coherence.sh`. Ces deux batteries ne tournaient auparavant que
+  sur la machine de qui pensait à les lancer — soit exactement le mode de panne qu'elles
+  détectent ailleurs, puisqu'une batterie qu'on oublie de lancer est verte de la même
+  façon qu'une batterie qui passe. Contrairement à `codeql.yml`, le job n'est ni filtré
+  par `paths:` ni allégé sur les PR sans changement dans sa zone : il dure quelques
+  secondes, et un check requis filtré ne démarrerait jamais sur les PR hors de sa zone.
 - **Actions épinglées par SHA** : toute Action tierce dans un workflow (`.github/workflows/`)
   est référencée par son SHA de commit complet, jamais par un tag flottant (`@v4`) —
   un tag peut être déplacé, un SHA ne peut pas. Format :
