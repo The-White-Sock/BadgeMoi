@@ -42,12 +42,23 @@ jobs:
         # privé de toute ref distante — l'état d'un checkout de PR, où `origin/main`
         # n'existe pas. C'est le cas qui décide, parce que `bilan.sh` s'y compare.
 
-      # Deux étapes plutôt qu'une : un rouge nomme alors la batterie sans qu'on ait à
+      # Quatre étapes plutôt qu'une : un rouge nomme alors le contrôle sans qu'on ait à
       # dérouler le journal.
+      #
+      # `!cancelled()` sur chacune, et c'est ce qui rend ce découpage utile. Par défaut
+      # une étape porte un `success()` implicite : la première rouge emporte toutes les
+      # suivantes, et le découpage ne dit plus que « la première a échoué ». Mesuré sur
+      # cette PR même — une incohérence documentaire plantée exprès a fait rougir
+      # `test-docs-coherence.sh`, et les deux étapes ajoutées ci-dessous n'ont jamais
+      # tourné. Un tour de CI ne rapportait donc qu'un défaut à la fois, alors que les
+      # quatre contrôles sont indépendants et tiennent en quelques secondes chacun.
+      # `!cancelled()` et non `always()` : une annulation doit rester une annulation.
       - name: Hooks et interrogations de /point
+        if: ${{ !cancelled() }}
         run: ./scripts/test-hooks.sh
 
       - name: Tests du contrôle de cohérence des docs
+        if: ${{ !cancelled() }}
         run: ./scripts/test-docs-coherence.sh
 
       # Le contrôle lui-même, et plus seulement ses tests. `docs-coherence.yml` ne le
@@ -81,8 +92,9 @@ jobs:
       # chaque semaine.
       - name: Cohérence de la documentation
         if: >-
-          github.event_name != 'pull_request'
-          || github.event.pull_request.user.login != 'dependabot[bot]'
+          ${{ !cancelled()
+          && (github.event_name != 'pull_request'
+          || github.event.pull_request.user.login != 'dependabot[bot]') }}
         run: |
           # Le rapport se dépose hors de l'arbre : `test-hooks.sh` branche sur
           # `git status --porcelain`, et un fichier laissé dans le workspace rendrait
@@ -130,8 +142,9 @@ jobs:
       # `semantic-release` pour du travail écrit ici — pas un bump automatique.
       - name: Titre et fermetures d'issue de la PR
         if: >-
-          github.event_name == 'pull_request'
-          && github.event.pull_request.user.login != 'dependabot[bot]'
+          ${{ !cancelled()
+          && github.event_name == 'pull_request'
+          && github.event.pull_request.user.login != 'dependabot[bot]' }}
         env:
           # Par `env:` et jamais par interpolation `${{ }}` directe dans le `run:` : un
           # titre de PR est une entrée contrôlée par l'extérieur, et l'interpoler dans
