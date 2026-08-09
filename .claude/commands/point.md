@@ -38,11 +38,12 @@ qu'on oublie d'écrire et qu'on repaye intégralement.
 **Relevé au journal sur une compaction réelle**, plus seulement lu dans la
 documentation :
 
-- Le `CLAUDE.md` racine est relu depuis le disque et ré-injecté. La compaction le
-  journalise sous `session_start` — **il n'existe pas de raison `compact`**. Rien ne
-  distingue donc au journal une compaction d'un démarrage de séance, sinon qu'elle
-  survient en cours de route.
-- La borne d'une fenêtre de contexte est le **début d'une suite** de `session_start`,
+- Le `CLAUDE.md` racine est relu depuis le disque et ré-injecté. Le harnais journalise
+  ce rechargement sous **deux** raisons, et non une : `session_start` le plus souvent,
+  `compact` parfois. Le cumul d'un conteneur donne `98 session_start · 18
+  path_glob_match · 2 compact`. Dans quelles conditions il choisit l'une ou l'autre
+  n'est pas instruit — ce qui compte est que **les deux bornent une fenêtre**.
+- La borne d'une fenêtre de contexte est le **début d'une suite** de lignes de bordure,
   pas chacune de ses lignes. La nuance n'est pas théorique : depuis que `langue.md`
   existe, une fenêtre en ouvre **deux** — `CLAUDE.md` puis la règle non scopée — et
   toute règle qui viendra la rejoindre en ajoutera une.
@@ -94,11 +95,11 @@ racine="$(git rev-parse --show-toplevel)"
 # sous les yeux ».
 cut -f2 "$journal" \
   | jq -rR 'fromjson? | "\(.load_reason // "raison absente")\t\(((.file_path // "chemin absent") | split("/") | last))"' \
-  | awk '
-      /^session_start\t/ { if (!suite || ($0 in vu)) { n = 0; split("", vu) }
-                           suite = 1; vu[$0] = 1; l[n++] = $0; next }
-                         { suite = 0; l[n++] = $0 }
-      END                { for (i = 0; i < n; i++) print l[i] }' \
+  | awk -F'\t' '
+      /^(session_start|compact)\t/ { if (!suite || ($2 in vu)) { n = 0; split("", vu) }
+                                     suite = 1; vu[$2] = 1; l[n++] = $0; next }
+                                   { suite = 0; l[n++] = $0 }
+      END                          { for (i = 0; i < n; i++) print l[i] }' \
   | sort -u
 
 # Le cumul, toutes les séances que ce conteneur a vues
@@ -132,14 +133,23 @@ fenêtre le chargement est dédupliqué, un compte n'y apporte rien et un compte
 à 1 n'y signifierait rien.
 
 **Il a fallu deux conditions pour borner cette fenêtre, et la seconde n'est pas
-décorative.** Vider le tampon à chaque `session_start` tronquait le relevé à la dernière
-ligne de la suite : `CLAUDE.md` disparaissait alors qu'il est en contexte — la mesure
-mentait sur la règle qui compte le plus. Ne le vider qu'au *début* d'une suite (`suite`)
-répare ce cas mais en laisse un autre : deux fenêtres consécutives dont la première n'a
-chargé aucune règle scopée ont leurs suites qui **se touchent**, et l'`awk` les fusionne.
-D'où `vu` : à l'intérieur d'une fenêtre le chargement est dédupliqué, donc un
-`session_start` déjà présent au tampon ne peut qu'ouvrir la fenêtre suivante. C'est
+décorative.** Vider le tampon à chaque ligne de bordure tronquait le relevé à la
+dernière ligne de la suite : `CLAUDE.md` disparaissait alors qu'il est en contexte — la
+mesure mentait sur la règle qui compte le plus. Ne le vider qu'au *début* d'une suite
+(`suite`) répare ce cas mais en laisse un autre : deux fenêtres consécutives dont la
+première n'a chargé aucune règle scopée ont leurs suites qui **se touchent**, et l'`awk`
+les fusionne. D'où `vu` : à l'intérieur d'une fenêtre le chargement est dédupliqué, donc
+une bordure déjà présente au tampon ne peut qu'ouvrir la fenêtre suivante. C'est
 `split("", vu)` et non `delete vu`, pour rester dans le `mawk` du conteneur.
+
+**La déduplication porte sur le fichier (`$2`), pas sur la ligne entière — mesuré, pas
+supposé.** Tant que la seule bordure était `session_start`, les deux revenaient au même.
+Avec `compact`, non : une fenêtre sans règle scopée suivie d'une compaction fait se
+toucher une suite `session_start` et une suite `compact`, dont les lignes diffèrent par
+leur raison. Une déduplication sur la ligne entière ne les sépare donc pas, et les deux
+fenêtres fusionnent — le défaut même que `vu` répare, revenu par la porte d'à côté. Ce
+qu'une fenêtre dédoublonne est le **fichier** rechargé, et c'est sur lui qu'il faut
+tenir la clé. `-F'\t'` est là pour que `$2` soit le nom de fichier et rien d'autre.
 
 **Le journal vit dans `.git/`, donc il meurt avec le conteneur.** En session web le dépôt
 est recloné à neuf : le fichier repart vide, et « toutes séances confondues » ne couvre
@@ -160,9 +170,10 @@ Ce qu'on en tire pour la passation :
   interrogation liste les cinq règles parce que le journal est vide, pas parce que les
   globs sont cassés. Ne rien conclure d'une liste pleine sans avoir ouvert un fichier de
   la zone d'abord.
-- **Plusieurs `session_start` sur `CLAUDE.md`** ne sont pas une anomalie : c'est le
-  compte des compactions traversées, plus une ou deux au démarrage. Ne pas chercher la
-  raison `compact`, elle n'est jamais émise.
+- **Plusieurs rechargements de `CLAUDE.md`** ne sont pas une anomalie : c'est le compte
+  des compactions traversées, plus une ou deux au démarrage. Les compter suppose de
+  regarder `session_start` **et** `compact` : le harnais émet les deux, et n'en retenir
+  qu'une sous-compte les compactions sans que rien ne le signale.
 - **La fenêtre courante** est l'indicateur à surveiller, pas le cumul. Le nombre
   d'instructions qu'un modèle suit de façon fiable est fini et la dégradation est
   uniforme : au-delà d'un certain seuil, ce ne sont pas les dernières règles qui passent
@@ -192,9 +203,25 @@ usage="$(git rev-parse --git-dir)/badgemoi-usage.log"
 # Par hook, la répartition des issues. C'est le relevé qui compte.
 awk -F'\t' '{print $2"\t"$3}' "$usage" | sort | uniq -c | sort -rn
 
-# Les commandes invoquées dans la séance, les plus fréquentes d'abord
+# Les **skills** invoquées dans la séance, les plus fréquentes d'abord. Portée réelle
+# ci-dessous : ce relevé ne voit pas les commandes intégrées.
 awk -F'\t' '$3 == "commande" {print $4}' "$usage" | sort | uniq -c | sort -rn
 ```
+
+**La seconde interrogation ne compte pas « les commandes invoquées », elle compte les
+skills.** Elle s'appuie sur `antiseche.sh`, un hook `UserPromptSubmit` : il ne voit que
+ce qui atteint le modèle. Les **commandes intégrées** — `/clear`, `/compact`, `/batch`,
+`/resume` — sont interceptées par le client et n'y parviennent jamais. Seules les
+commandes du dépôt et les skills passent par là. Mesuré : `27 /insights · 22 /pousser ·
+2 /point`, et **zéro** `/compact`, alors que le journal d'instructions portait deux
+lignes `compact` le même matin.
+
+**Ce défaut ne se corrige pas** : aucun hook n'est placé pour voir les commandes
+intégrées, l'information n'arrive jamais de ce côté. La seule réparation est que le
+relevé annonce sa portée — d'où le mot « skills » plutôt que « commandes ». Ne pas
+conclure d'un zéro qu'une commande n'a pas servi, ni qu'elle n'existe pas : c'est
+l'erreur commise en concluant de l'absence de fichier dans `.claude/commands/` que
+`/batch` n'existait pas.
 
 **Comment lire la répartition**, et c'est tout l'intérêt du journal :
 

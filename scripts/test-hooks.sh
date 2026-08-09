@@ -318,18 +318,26 @@ echo "interrogations de /point"
 # de séparer les deux fenêtres, et qui lui faisait annoncer comme chargée une règle
 # évincée depuis longtemps.
 #
+# Le harnais émet **deux** formes de bordure et non une : `session_start`, ici, et
+# `compact`, éprouvée par ses propres témoins plus bas. Un jeu de témoins qui ne
+# connaîtrait que la première laisserait le second cas passer au vert sans l'avoir vu.
+#
 # Chaque fenêtre ouvre sur **deux** `session_start` — `CLAUDE.md` puis la règle non
 # scopée `langue.md` — parce que c'est la forme réelle du journal depuis que cette règle
 # existe. Un témoin à un seul `session_start` par fenêtre passait au vert avec l'`awk`
 # qui tronquait comme avec celui qui borne juste : il ne mordait sur rien.
+#
+# **Cet `awk` est recopié mot pour mot depuis `.claude/commands/point.md`.** Corriger
+# l'un sans l'autre laisse cette batterie verte contre une copie périmée — donc muette
+# sur la seule chose qu'elle est là pour surveiller.
 fenetre_de() {
   cut -f2 "$1" \
     | jq -rR 'fromjson? | "\(.load_reason // "raison absente")\t\(((.file_path // "chemin absent") | split("/") | last))"' \
-    | awk '
-        /^session_start\t/ { if (!suite || ($0 in vu)) { n = 0; split("", vu) }
-                             suite = 1; vu[$0] = 1; l[n++] = $0; next }
-                           { suite = 0; l[n++] = $0 }
-        END                { for (i = 0; i < n; i++) print l[i] }' \
+    | awk -F'\t' '
+        /^(session_start|compact)\t/ { if (!suite || ($2 in vu)) { n = 0; split("", vu) }
+                                       suite = 1; vu[$2] = 1; l[n++] = $0; next }
+                                     { suite = 0; l[n++] = $0 }
+        END                          { for (i = 0; i < n; i++) print l[i] }' \
     | sort -u
 }
 
@@ -399,6 +407,73 @@ else
   echo "  ÉCHEC  sépare deux fenêtres dont les suites de session_start se touchent (obtenu : ${collee})"
 fi
 rm -f "${temoin_colle}"
+
+# Une bordure `compact` **réelle**. Les témoins ci-dessus simulent la compaction par
+# une seconde suite de `session_start` : c'est la forme que le harnais émet le plus
+# souvent, mais pas la seule. Mesuré au journal de ce conteneur :
+# `98 session_start · 18 path_glob_match · 2 compact`. Une ligne `compact` tombait
+# jusqu'ici dans la seconde règle de l'`awk` — elle ne bornait rien, et la fenêtre
+# ouverte par la compaction était fusionnée avec la précédente. `docs-decisions.md`
+# est le témoin : évincée en amont, elle ne doit pas ressortir.
+temoin_compact="$(mktemp)"
+{
+  printf '%s\t%s\n' '2026-01-01T00:00:00Z' \
+    '{"session_id":"S1","file_path":"/r/CLAUDE.md","memory_type":"Project","load_reason":"session_start"}'
+  printf '%s\t%s\n' '2026-01-01T00:00:01Z' \
+    '{"session_id":"S1","file_path":"/r/.claude/rules/langue.md","memory_type":"Project","load_reason":"session_start"}'
+  printf '%s\t%s\n' '2026-01-01T00:00:02Z' \
+    '{"session_id":"S1","file_path":"/r/.claude/rules/docs-decisions.md","memory_type":"Project","load_reason":"path_glob_match"}'
+  printf '%s\t%s\n' '2026-01-01T00:00:03Z' \
+    '{"session_id":"S1","file_path":"/r/CLAUDE.md","memory_type":"Project","load_reason":"compact"}'
+  printf '%s\t%s\n' '2026-01-01T00:00:04Z' \
+    '{"session_id":"S1","file_path":"/r/.claude/rules/langue.md","memory_type":"Project","load_reason":"compact"}'
+  printf '%s\t%s\n' '2026-01-01T00:00:05Z' \
+    '{"session_id":"S1","file_path":"/r/.claude/rules/ui-compose.md","memory_type":"Project","load_reason":"path_glob_match"}'
+} > "${temoin_compact}"
+
+apres_compact="$(fenetre_de "${temoin_compact}")"
+if printf '%s\n' "${apres_compact}" | grep -q 'compact.*CLAUDE\.md' \
+  && printf '%s\n' "${apres_compact}" | grep -q 'compact.*langue\.md' \
+  && printf '%s\n' "${apres_compact}" | grep -q 'path_glob_match.*ui-compose\.md' \
+  && ! printf '%s\n' "${apres_compact}" | grep -q 'docs-decisions\.md'; then
+  reussis=$((reussis + 1))
+else
+  echecs=$((echecs + 1))
+  echo "  ÉCHEC  une bordure compact borne la fenêtre (obtenu : ${apres_compact})"
+fi
+rm -f "${temoin_compact}"
+
+# Le cas que la seule extension du motif ne couvre pas, et qui a tranché la question
+# laissée ouverte par #171 (« la déduplication vaut-elle pareil pour une fenêtre mêlant
+# les deux raisons ? »). Mesuré : **non**. Une fenêtre sans règle scopée suivie d'une
+# compaction fait se toucher une suite `session_start` et une suite `compact` ; comme
+# les lignes diffèrent par leur raison, une déduplication portant sur la ligne entière
+# ne les sépare pas et fusionne les deux fenêtres. D'où `vu[$2]` — la déduplication
+# porte sur le **fichier**, qui est ce que la fenêtre est censée dédupliquer.
+temoin_mele="$(mktemp)"
+{
+  printf '%s\t%s\n' '2026-01-01T00:00:00Z' \
+    '{"session_id":"S1","file_path":"/r/CLAUDE.md","memory_type":"Project","load_reason":"session_start"}'
+  printf '%s\t%s\n' '2026-01-01T00:00:01Z' \
+    '{"session_id":"S1","file_path":"/r/.claude/rules/langue.md","memory_type":"Project","load_reason":"session_start"}'
+  printf '%s\t%s\n' '2026-01-01T00:00:02Z' \
+    '{"session_id":"S1","file_path":"/r/CLAUDE.md","memory_type":"Project","load_reason":"compact"}'
+  printf '%s\t%s\n' '2026-01-01T00:00:03Z' \
+    '{"session_id":"S1","file_path":"/r/.claude/rules/langue.md","memory_type":"Project","load_reason":"compact"}'
+  printf '%s\t%s\n' '2026-01-01T00:00:04Z' \
+    '{"session_id":"S1","file_path":"/r/.claude/rules/ui-compose.md","memory_type":"Project","load_reason":"path_glob_match"}'
+} > "${temoin_mele}"
+
+melee="$(fenetre_de "${temoin_mele}")"
+if printf '%s\n' "${melee}" | grep -q 'compact.*CLAUDE\.md' \
+  && printf '%s\n' "${melee}" | grep -q 'path_glob_match.*ui-compose\.md' \
+  && ! printf '%s\n' "${melee}" | grep -q 'session_start'; then
+  reussis=$((reussis + 1))
+else
+  echecs=$((echecs + 1))
+  echo "  ÉCHEC  sépare une suite session_start d'une suite compact qui la touche (obtenu : ${melee})"
+fi
+rm -f "${temoin_mele}"
 
 # Trois raisons attendues, et le compte porte tout le sens : `session_start` et
 # `path_glob_match` pour les entrées conformes, `inconnue` pour celle au schéma
