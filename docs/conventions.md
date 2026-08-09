@@ -168,7 +168,8 @@ imports Android dans `domain/`. Voir `CLAUDE.md`.
     réseau : c'est une fonction pure de l'arbre, donc un rouge sur PR signifie toujours
     que le résultat de la fusion serait incohérent. Le rapport est versé au résumé du
     job, comme au cron. **Ceci rend la passe locale facultative**, au même titre que
-    les quatre tâches Gradle.
+    les quatre tâches Gradle. Épreuve temporaire du chemin mort :
+    `scripts/fichier-qui-nexiste-pas.sh`.
   - le **titre et le corps de la PR**, ce qu'`avant-livraison.sh` ne peut que suggérer :
     le titre porte un gitmoji (la fusion étant en squash, c'est lui que lit
     `semantic-release`), et un corps qui annonce une fermeture d'issue en français sans
