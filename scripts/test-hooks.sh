@@ -333,9 +333,9 @@ echo "interrogations de /point"
 fenetre_de() {
   cut -f2 "$1" \
     | jq -rR 'fromjson? | "\(.load_reason // "raison absente")\t\(((.file_path // "chemin absent") | split("/") | last))"' \
-    | awk -F'\t' '
-        /^(session_start|compact)\t/ { if (!suite || ($2 in vu)) { n = 0; split("", vu) }
-                                       suite = 1; vu[$2] = 1; l[n++] = $0; next }
+    | awk '
+        /^(session_start|compact)\t/ { if (!suite || ($0 in vu)) { n = 0; split("", vu) }
+                                       suite = 1; vu[$0] = 1; l[n++] = $0; next }
                                      { suite = 0; l[n++] = $0 }
         END                          { for (i = 0; i < n; i++) print l[i] }' \
     | sort -u
@@ -443,37 +443,44 @@ else
 fi
 rm -f "${temoin_compact}"
 
-# Le cas que la seule extension du motif ne couvre pas, et qui a tranché la question
-# laissée ouverte par #171 (« la déduplication vaut-elle pareil pour une fenêtre mêlant
-# les deux raisons ? »). Mesuré : **non**. Une fenêtre sans règle scopée suivie d'une
-# compaction fait se toucher une suite `session_start` et une suite `compact` ; comme
-# les lignes diffèrent par leur raison, une déduplication portant sur la ligne entière
-# ne les sépare pas et fusionne les deux fenêtres. D'où `vu[$2]` — la déduplication
-# porte sur le **fichier**, qui est ce que la fenêtre est censée dédupliquer.
-temoin_mele="$(mktemp)"
+# La question que #171 laissait ouverte : la déduplication par `vu` vaut-elle pareil
+# pour une fenêtre mêlant les deux raisons ? Mesuré, et la réponse tient en une
+# asymétrie qu'il ne faut pas troquer à l'envers.
+#
+# `vu` porte sur la **ligne entière**, raison comprise. Deux suites de raisons
+# différentes qui se touchent ne sont donc pas séparées, et les deux fenêtres
+# fusionnent. Ce défaut-là est **bénin** : une fenêtre dont la suite touche la
+# suivante est une fenêtre qui n'a chargé aucune règle scopée, et la fusion ne fait
+# que lister deux fois `CLAUDE.md` et la règle non scopée — que la compaction vient
+# précisément de remettre en contexte. Aucune règle évincée ne fuit.
+#
+# Déduire sur le seul fichier (`vu[$2]`) supprime cette redite, au prix d'un défaut
+# **dangereux** : une bordure qui répète un fichier sous deux raisons rouvre alors une
+# fenêtre au milieu d'elle-même et **perd** ce qui la précédait. C'est le faux négatif
+# que tout cet `awk` existe pour empêcher — une règle en contexte annoncée absente. On
+# préfère la redite. Ce témoin fige ce choix : sans lui, `vu[$2]` repasserait au vert.
+temoin_repete="$(mktemp)"
 {
   printf '%s\t%s\n' '2026-01-01T00:00:00Z' \
-    '{"session_id":"S1","file_path":"/r/CLAUDE.md","memory_type":"Project","load_reason":"session_start"}'
-  printf '%s\t%s\n' '2026-01-01T00:00:01Z' \
-    '{"session_id":"S1","file_path":"/r/.claude/rules/langue.md","memory_type":"Project","load_reason":"session_start"}'
-  printf '%s\t%s\n' '2026-01-01T00:00:02Z' \
-    '{"session_id":"S1","file_path":"/r/CLAUDE.md","memory_type":"Project","load_reason":"compact"}'
-  printf '%s\t%s\n' '2026-01-01T00:00:03Z' \
     '{"session_id":"S1","file_path":"/r/.claude/rules/langue.md","memory_type":"Project","load_reason":"compact"}'
-  printf '%s\t%s\n' '2026-01-01T00:00:04Z' \
+  printf '%s\t%s\n' '2026-01-01T00:00:01Z' \
+    '{"session_id":"S1","file_path":"/r/CLAUDE.md","memory_type":"Project","load_reason":"compact"}'
+  printf '%s\t%s\n' '2026-01-01T00:00:02Z' \
+    '{"session_id":"S1","file_path":"/r/CLAUDE.md","memory_type":"Project","load_reason":"session_start"}'
+  printf '%s\t%s\n' '2026-01-01T00:00:03Z' \
     '{"session_id":"S1","file_path":"/r/.claude/rules/ui-compose.md","memory_type":"Project","load_reason":"path_glob_match"}'
-} > "${temoin_mele}"
+} > "${temoin_repete}"
 
-melee="$(fenetre_de "${temoin_mele}")"
-if printf '%s\n' "${melee}" | grep -q 'compact.*CLAUDE\.md' \
-  && printf '%s\n' "${melee}" | grep -q 'path_glob_match.*ui-compose\.md' \
-  && ! printf '%s\n' "${melee}" | grep -q 'session_start'; then
+repetee="$(fenetre_de "${temoin_repete}")"
+if printf '%s\n' "${repetee}" | grep -q 'langue\.md' \
+  && printf '%s\n' "${repetee}" | grep -q 'CLAUDE\.md' \
+  && printf '%s\n' "${repetee}" | grep -q 'path_glob_match.*ui-compose\.md'; then
   reussis=$((reussis + 1))
 else
   echecs=$((echecs + 1))
-  echo "  ÉCHEC  sépare une suite session_start d'une suite compact qui la touche (obtenu : ${melee})"
+  echo "  ÉCHEC  une bordure qui répète un fichier sous deux raisons ne perd rien (obtenu : ${repetee})"
 fi
-rm -f "${temoin_mele}"
+rm -f "${temoin_repete}"
 
 # Trois raisons attendues, et le compte porte tout le sens : `session_start` et
 # `path_glob_match` pour les entrées conformes, `inconnue` pour celle au schéma

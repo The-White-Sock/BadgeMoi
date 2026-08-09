@@ -98,14 +98,26 @@ les fusionne. D'où `vu` : à l'intérieur d'une fenêtre le chargement est déd
 une bordure déjà présente au tampon ne peut qu'ouvrir la fenêtre suivante. C'est
 `split("", vu)` et non `delete vu`, pour rester dans le `mawk` du conteneur.
 
-**La déduplication porte sur le fichier (`$2`), pas sur la ligne entière — mesuré, pas
-supposé.** Tant que la seule bordure était `session_start`, les deux revenaient au même.
-Avec `compact`, non : une fenêtre sans règle scopée suivie d'une compaction fait se
-toucher une suite `session_start` et une suite `compact`, dont les lignes diffèrent par
-leur raison. Une déduplication sur la ligne entière ne les sépare donc pas, et les deux
-fenêtres fusionnent — le défaut même que `vu` répare, revenu par la porte d'à côté. Ce
-qu'une fenêtre dédoublonne est le **fichier** rechargé, et c'est sur lui qu'il faut
-tenir la clé. `-F'\t'` est là pour que `$2` soit le nom de fichier et rien d'autre.
+**`vu` porte sur la ligne entière, raison comprise — et c'est un choix, pas un
+reste.** La question s'est posée en ajoutant `compact` : tant que la seule bordure était
+`session_start`, déduire sur la ligne ou sur le seul nom de fichier revenait au même.
+Avec deux raisons, non. Les deux variantes ont été mesurées, et l'asymétrie tranche.
+
+| clé | ce qu'elle rate | gravité |
+|---|---|---|
+| `vu[$0]`, la ligne | deux suites de raisons différentes qui se touchent fusionnent | **bénigne** |
+| `vu[$2]`, le fichier | une bordure qui répète un fichier sous deux raisons perd ce qui la précède | **grave** |
+
+La fusion est bénigne parce qu'une fenêtre dont la suite touche la suivante est une
+fenêtre qui n'a chargé **aucune** règle scopée : la fusion ne fait que lister deux fois
+`CLAUDE.md` et la règle non scopée, que la compaction vient justement de remettre en
+contexte. Vérifié, aucune règle évincée ne fuit — c'est la seule chose qui compte.
+
+L'autre variante, elle, rouvre une fenêtre au milieu d'elle-même dès qu'une bordure
+répète un fichier, et **perd** les lignes d'avant. C'est le faux négatif que tout cet
+`awk` existe pour empêcher : une règle en contexte annoncée absente. Entre une redite
+lisible et un silence trompeur, ce dépôt choisit la redite. Un témoin de
+`scripts/test-hooks.sh` fige ce choix, sans quoi `vu[$2]` repasserait au vert.
 
 **Cet `awk` est recopié mot pour mot dans `fenetre_de()` de
 [`scripts/test-hooks.sh`](../scripts/test-hooks.sh).** Corriger l'un sans l'autre laisse
@@ -129,9 +141,9 @@ compte des règles réellement présentes.
   une fatalité. `./scripts/check-docs-coherence.sh` détecte déjà le motif qui ne
   correspond à aucun fichier suivi ; le lancer avant de conclure. La condition « alors que
   sa zone a été touchée » porte tout le sens : sur un conteneur neuf, la troisième
-  interrogation liste les cinq règles parce que le journal est vide, pas parce que les
-  globs sont cassés. Ne rien conclure d'une liste pleine sans avoir ouvert un fichier de
-  la zone d'abord.
+  interrogation liste **toutes** les règles parce que le journal est vide, pas parce que
+  les globs sont cassés. Ne rien conclure d'une liste pleine sans avoir ouvert un fichier
+  de la zone d'abord.
 - **Plusieurs rechargements de `CLAUDE.md`** ne sont pas une anomalie : c'est le compte
   des compactions traversées, plus une ou deux au démarrage. Les compter suppose de
   regarder `session_start` **et** `compact` : le harnais émet les deux, et n'en retenir
@@ -165,6 +177,10 @@ Le journal d'instructions dit ce qui s'est **chargé**. Celui-ci dit ce qui s'es
 - `hors-perimetre` — le hook a tourné mais n'avait rien à examiner. Son silence est
   **normal** et ne prouve rien sur son bon fonctionnement.
 - `alerte` — il a trouvé et l'a dit.
+
+Une quatrième valeur apparaît dans la première interrogation sans être une issue de
+contrôle : `commande`, la mesure d'usage que lit la seconde. Elle ne se compare pas aux
+trois autres et ne participe à aucun équilibre — la voir dans la répartition est normal.
 
 **Le signal d'alarme est un déséquilibre entre les deux premiers.** Une séance qui a
 édité du Kotlin et ne montre que des `garde-fous hors-perimetre` veut dire que la coupe

@@ -60,9 +60,9 @@ racine="$(git rev-parse --show-toplevel)"
 # seul relevé qui réponde à « ai-je cette règle sous les yeux ».
 cut -f2 "$journal" \
   | jq -rR 'fromjson? | "\(.load_reason // "raison absente")\t\(((.file_path // "chemin absent") | split("/") | last))"' \
-  | awk -F'\t' '
-      /^(session_start|compact)\t/ { if (!suite || ($2 in vu)) { n = 0; split("", vu) }
-                                     suite = 1; vu[$2] = 1; l[n++] = $0; next }
+  | awk '
+      /^(session_start|compact)\t/ { if (!suite || ($0 in vu)) { n = 0; split("", vu) }
+                                     suite = 1; vu[$0] = 1; l[n++] = $0; next }
                                    { suite = 0; l[n++] = $0 }
       END                          { for (i = 0; i < n; i++) print l[i] }' \
   | sort -u
@@ -80,7 +80,8 @@ comm -13 \
 
 Le journal d'instructions dit ce qui s'est **chargé**. Celui-ci dit ce qui s'est
 **déclenché**, et avec quelle issue : `muet` (examiné, rien trouvé), `hors-perimetre`
-(rien à examiner) ou `alerte`.
+(rien à examiner), `alerte` (trouvé et dit), plus `commande` — qui n'est pas une issue
+de contrôle mais la mesure d'usage que lit la seconde interrogation.
 
 ```bash
 usage="$(git rev-parse --git-dir)/badgemoi-usage.log"
@@ -94,8 +95,8 @@ awk -F'\t' '{print $2"\t"$3}' "$usage" | sort | uniq -c | sort -rn
 awk -F'\t' '$3 == "commande" {print $4}' "$usage" | sort | uniq -c | sort -rn
 ```
 
-Les trois issues ne sont pas interchangeables, et c'est leur **équilibre** qui alarme,
-pas leur présence. La lecture est dans le fichier de référence.
+`muet` et `hors-perimetre` ne sont pas interchangeables, et c'est leur **équilibre** qui
+alarme, pas leur présence. La lecture est dans le fichier de référence.
 
 ## Forme
 
