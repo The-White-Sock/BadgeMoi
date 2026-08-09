@@ -40,3 +40,8 @@ google-services.json
 
 # Profilage Android
 *.hprof
+
+# Worktrees des sous-agents de `/batch` — des copies de travail du dépôt, créées et
+# détruites par l'outillage. Elles apparaissent sinon comme fichiers non suivis à la
+# racine, et un hook de fin de tour réclame de les commiter.
+.claude/worktrees/
