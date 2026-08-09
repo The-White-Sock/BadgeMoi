@@ -24,6 +24,39 @@ cd "${racine}" || exit 1
 reussis=0
 echecs=0
 
+# Le journal d'usage est détourné vers un fichier jetable **pour toute la durée de la
+# batterie**, et pas seulement pour la section qui l'éprouve : les hooks journalisent
+# aussi depuis `garde-fous` et `avant-livraison`, et chaque exécution inscrivait
+# jusqu'ici une trentaine de lignes dans le journal réel — de quoi en fournir 60 %.
+# Un instrument alimenté par ses propres tests affiche de l'activité quoi qu'il
+# arrive : un hook devenu inerte en séance continuerait d'y paraître vivant.
+#
+# Variable dédiée et **pas** `GIT_DIR` comme la section `instructions-chargees` :
+# `GIT_DIR` détournerait tout git, or la suite de ce script a besoin du vrai dépôt.
+bac_usage="$(mktemp -d)"
+export BADGEMOI_USAGE_LOG="${bac_usage}/badgemoi-usage.log"
+: > "${BADGEMOI_USAGE_LOG}"
+# Ce que `cas_journal` vide entre deux cas est reversé ici : c'est le seul moyen de
+# compter en fin de course ce que la redirection a réellement reçu.
+cumul_usage="${bac_usage}/cumul.log"
+: > "${cumul_usage}"
+
+# Le revers, et c'est la paire qui prouve : on relève le journal **réel** avant tout
+# travail pour vérifier en fin de course qu'il n'a pas bougé. Sans ce second côté,
+# couper la journalisation passerait au vert exactement comme la détourner — le faux
+# positif que ce contrôle existe pour attraper.
+journal_reel="$(git rev-parse --git-dir 2>/dev/null || echo .git)/badgemoi-usage.log"
+
+# Le compte de lignes seul ne suffit pas : une redirection mal posée vide le journal
+# (`: > "${usage}"` entre deux cas) puis le remplit, et peut retomber par hasard sur
+# le même compte. La signature porte donc aussi la somme de contrôle du contenu.
+signature_reelle() {
+  printf '%s lignes / %s' \
+    "$(wc -l < "${journal_reel}" 2>/dev/null || echo 0)" \
+    "$(cksum < "${journal_reel}" 2>/dev/null || echo absent)"
+}
+reel_avant="$(signature_reelle)"
+
 # cas <description> <hook> <json> <motif attendu | VIDE> [spec d'environnement]
 #   VIDE  : le hook doit se taire complètement.
 #   motif : ERE cherchée dans la sortie.
@@ -524,9 +557,13 @@ echo "journal d'usage"
 # à examiner ». Les deux produisent le même silence sur stdout, et les confondre
 # rouvrirait le trou que ce journal ferme. Les cas vont donc **par paires** : c'est
 # la paire qui prouve quelque chose, jamais le cas seul.
-usage="${gitdir}/badgemoi-usage.log"
-usage_sauvegarde=""
-[ -e "${usage}" ] && usage_sauvegarde="$(cat "${usage}")"
+#
+# Aucune sauvegarde du journal réel n'est nécessaire ici : `BADGEMOI_USAGE_LOG` est
+# posée en tête de script et les hooks écrivent tous dans le fichier jetable. La
+# sauvegarde/restauration qui vivait à cet endroit était le pansement du défaut que
+# la redirection supprime — et elle détruisait au passage ce qui s'était journalisé
+# pendant la course.
+usage="${BADGEMOI_USAGE_LOG}"
 
 bacu="$(mktemp -d)"
 mkdir -p "${bacu}/ui/summary" "${bacu}/domain"
@@ -543,6 +580,10 @@ cas_journal() {
     return
   fi
 
+  # Le journal est vidé avant chaque cas — sinon un hook qui n'écrirait rien ferait
+  # relire la ligne du cas précédent. Ce qu'il portait part au cumul, qui reste le
+  # seul témoin de ce que la redirection a reçu sur toute la batterie.
+  cat "${usage}" >> "${cumul_usage}" 2>/dev/null
   : > "${usage}"
   printf '%s' "${entree}" | "${hooks}/${hook}.sh" >/dev/null 2>&1
   ligne="$(tail -n 1 "${usage}" 2>/dev/null)"
@@ -610,11 +651,37 @@ cas_journal "antiseche : commande slash comptée avec son nom" antiseche \
   '{"prompt":"/pousser 114","permission_mode":"default"}' commande '/pousser'
 
 rm -rf "${bacu}"
-if [ -n "${usage_sauvegarde}" ]; then
-  printf '%s\n' "${usage_sauvegarde}" > "${usage}"
+
+# --- Paire 4 : la redirection du journal elle-même -------------------------
+# Les deux côtés sont indispensables et ne se recouvrent pas. Le premier seul serait
+# satisfait en coupant purement la journalisation ; le second seul, en n'écrivant
+# nulle part. C'est leur conjonction qui dit « détourné », et rien d'autre.
+cat "${usage}" >> "${cumul_usage}" 2>/dev/null
+jetable_lignes="$(wc -l < "${cumul_usage}" 2>/dev/null || echo 0)"
+# Seuil délibérément bas devant la trentaine de lignes constatée : ce cas fige que la
+# journalisation **travaille**, pas un décompte que le moindre cas ajouté ferait
+# rougir sans qu'aucun contrat ne soit rompu.
+if [ "${jetable_lignes}" -ge 20 ]; then
+  reussis=$((reussis + 1))
 else
-  rm -f "${usage}"
+  echecs=$((echecs + 1))
+  echo "  ÉCHEC  le journal jetable reçoit la journalisation de la batterie (au moins 20 lignes attendues, ${jetable_lignes} obtenues)"
 fi
+
+reel_apres="$(signature_reelle)"
+if [ "${reel_apres}" = "${reel_avant}" ]; then
+  reussis=$((reussis + 1))
+else
+  echecs=$((echecs + 1))
+  echo "  ÉCHEC  la batterie n'écrit pas une ligne au journal réel"
+  echo "         avant : ${reel_avant}"
+  echo "         après : ${reel_apres}   (${journal_reel})"
+fi
+
+# Relevé affiché quel que soit le verdict : c'est la mesure que #170 demandait de
+# compter plutôt que de supposer, et elle sert autant à lire un échec qu'un succès.
+echo "  (journal jetable : ${jetable_lignes} lignes ; journal réel : ${reel_apres})"
+rm -rf "${bac_usage}"
 
 echo
 if [ "${echecs}" -eq 0 ]; then

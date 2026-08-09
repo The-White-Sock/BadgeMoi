@@ -35,15 +35,30 @@
 
 # Résolution par `git rev-parse`, jamais `.git/` en dur : dans un worktree lié,
 # `.git` est un fichier pointeur et l'écriture échouerait en silence.
+#
+# `BADGEMOI_USAGE_LOG` **surcharge** ce chemin, elle ne remplace pas le mécanisme :
+# la résolution reste la voie normale, et c'est elle qui vaut dès que la variable
+# n'est pas posée. Elle existe pour que `scripts/test-hooks.sh` détourne le journal
+# le temps de la batterie — celle-ci invoque les vrais hooks, et fournissait jusqu'ici
+# 60 % du journal réel. Un instrument alimenté par ses propres tests affiche de
+# l'activité quoi qu'il arrive, y compris quand un hook est devenu inerte en séance.
+#
+# Quand la variable est posée, `git rev-parse` n'est **pas** appelé du tout : hors
+# dépôt il échouerait, la fonction sortirait en 0 et n'écrirait rien, alors que le
+# journal détourné, lui, est parfaitement écrivable.
 journaliser_usage() {
   local hook="${1:-inconnu}"
   local issue="${2:-inconnu}"
   local detail="${3:-}"
   local gitdir journal lignes
 
-  gitdir="$(git rev-parse --git-dir 2>/dev/null)" || return 0
-  [ -n "${gitdir}" ] || return 0
-  journal="${gitdir}/badgemoi-usage.log"
+  if [ -n "${BADGEMOI_USAGE_LOG:-}" ]; then
+    journal="${BADGEMOI_USAGE_LOG}"
+  else
+    gitdir="$(git rev-parse --git-dir 2>/dev/null)" || return 0
+    [ -n "${gitdir}" ] || return 0
+    journal="${gitdir}/badgemoi-usage.log"
+  fi
 
   # Tabulations comme séparateur, comme le journal d'instructions : `/point`
   # interroge en `awk -F'\t'`. Le détail est nettoyé de ses tabulations et retours
