@@ -265,6 +265,26 @@ se suivent, elles ne s'écrasent pas.
 L'envoyer en **rendu inline** plutôt qu'en simple pièce jointe : elle reste ainsi
 lisible d'un coup d'œil, sans manipulation.
 
+**Ne pas couper la prose d'un fichier destiné à `SendUserFile` : un paragraphe, une
+ligne.** La règle vaut pour la **destination**, pas pour cette commande — tout fichier
+qui part en rendu plutôt qu'en diff relève d'elle.
+
+La raison, sans laquelle la consigne sera défaite au premier mimétisme avec `docs/` :
+le lecteur qui affiche ce rendu **honore les retours à la ligne simples**. Chaque
+coupure de la source devient une coupure visible, et sur un écran étroit elle s'ajoute
+à celle du lecteur — le texte se brise alors en plein milieu des phrases. Constaté à
+l'écran sur la passation du 9 août, capture à l'appui.
+
+La convention des 88 colonnes n'est pas en cause, sa **portée** l'est : couper sert à
+relire un diff et à tenir une revue de PR lisible. Une passation va hors du dépôt sans
+exception — jamais diffée, jamais relue en PR, jamais commitée. Elle payait donc tout
+le coût d'une contrainte dont elle ne tirait aucun bénéfice. Les fichiers versionnés,
+eux, restent coupés à 88 : les deux règles portent sur des destinations différentes et
+ne se contredisent pas.
+
+Tableaux, blocs de code et listes ne sont pas concernés : leur mise en forme est portée
+par leur syntaxe, que le lecteur respecte déjà.
+
 La réponse, elle, tient en **une ligne** : où est le fichier, et l'état en une phrase.
 Recopier la note à côté annulerait le seul bénéfice — une passation fait couramment
 quatre-vingts à cent vingt lignes, et `/point` s'appelle précisément quand le contexte
