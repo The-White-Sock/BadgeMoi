@@ -45,7 +45,11 @@ précipitation. Le noter avant de chercher.
 ## Trois mesures, trois questions différentes — ne pas les confondre
 
 - **Budget de lancement** (`check-docs-coherence.sh`) — combien de lignes d'instructions
-  sont injectées au démarrage. Plafond 200.
+  sont **réellement injectées** au lancement, plafond 200. Frontmatter, commentaires HTML
+  de bloc et règles à `paths:` en sont retirés parce qu'ils ne sont pas injectés au
+  lancement : l'écart avec un `wc -l` plus gros est **l'effet recherché**, pas un
+  sous-comptage à corriger. Le pourquoi est au-dessus de `injectees()` dans
+  `check-docs-coherence.sh`, et n'a pas à être redit ici.
 - **Journal d'instructions** — quelles règles se sont chargées, et dans quelle fenêtre.
 - **`context_window.used_percentage`** (ligne d'état) — à quel point la fenêtre **en
   cours** est pleine.
