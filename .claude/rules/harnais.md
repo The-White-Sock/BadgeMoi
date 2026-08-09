@@ -29,11 +29,13 @@ Les deux tournent en CI sur chaque PR et sur les push vers `main`
 (`.github/workflows/harnais.yml`), qui reste l'arbitre. Les lancer localement n'achète
 qu'un aller-retour évité.
 
-**Le compte de cas n'est pas une constante.** `test-hooks.sh` : 48 sur un arbre propre
-et poussé, 49 sur un arbre sale — le bloc `bilan.sh` branche sur `git status
---porcelain`. Un arbre propre mais **non poussé** fait échouer le cas « propre et à
-jour » : c'est le hook qui fonctionne, pas une régression. Annoncer « N cas » sans dire
-l'état de l'arbre n'est pas reproductible.
+**Le compte de cas n'est pas une constante** : il dépend de l'état de l'arbre. Le bloc
+`bilan.sh` de `test-hooks.sh` branche sur `git status --porcelain`, donc la batterie ne
+joue pas les mêmes cas sur un arbre propre et sur un arbre sale. Un arbre propre mais
+**non poussé** fait échouer le cas « propre et à jour » : c'est le hook qui fonctionne,
+pas une régression. Annoncer « N cas » sans dire l'état de l'arbre n'est pas
+reproductible — et le chiffre du jour vieillit dès qu'un cas s'ajoute, donc le lire en
+lançant la batterie plutôt que de l'écrire ici.
 
 ## `disableAllHooks` coupe aussi la ligne d'état
 
@@ -151,5 +153,5 @@ réparables. Il n'arrête d'ailleurs que ce qu'il a su lire — un message pass�
 
 Motif récurrent ici : un pipeline qui affirme plus que ses données ne portent. Le
 `.user_input` mort, le cumul du journal confondu avec la fenêtre courante, le
-`wc -l` d'un fichier dont un tiers n'est jamais injecté. Le réflexe utile n'est pas
-« vérifier le glob », c'est « vérifier ce que la mesure prétend mesurer ».
+`wc -l` d'un fichier dont une bonne part n'est jamais injectée. Le réflexe utile
+n'est pas « vérifier le glob », c'est « vérifier ce que la mesure prétend mesurer ».
