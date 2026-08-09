@@ -146,6 +146,13 @@ imports Android dans `domain/`. Voir `CLAUDE.md`.
   elle existe déjà) ; sinon le workflow est silencieux. Il ne modifie jamais le dépôt.
   Ce contrôle ne couvre que les invariants mécaniques : la dérive de la prose
   (conventions, décisions d'architecture) reste du ressort de la relecture.
+  Le **même script tourne aussi sur chaque PR**, dans le job `harnais` ci-dessous. Les
+  deux répondent à des questions différentes : la PR dit « ce changement casse-t-il
+  quelque chose », le cron dit « le dépôt a-t-il dérivé sans qu'aucune PR n'en soit la
+  cause » — et c'est lui seul qui ouvre l'issue de suivi. **La passe locale, elle, est
+  devenue facultative** : la CI reste l'arbitre final, et lancer
+  `./scripts/check-docs-coherence.sh` avant de pousser n'achète plus qu'un aller-retour
+  évité.
 - **Harnais** (`.github/workflows/harnais.yml`) : sur chaque PR et sur les push vers
   `main`, `scripts/test-hooks.sh` et `scripts/test-docs-coherence.sh`. Ces deux batteries
   ne tournaient auparavant que sur la machine de qui pensait à les lancer — soit
@@ -153,7 +160,16 @@ imports Android dans `domain/`. Voir `CLAUDE.md`.
   oublie de lancer est verte de la même façon qu'une batterie qui passe. Contrairement
   à `codeql.yml`, le job n'est ni filtré par `paths:` ni allégé sur les PR sans
   changement dans sa zone : il dure quelques secondes, et un check requis filtré ne
-  démarrerait jamais sur les PR hors de sa zone.
+  démarrerait jamais sur les PR hors de sa zone. Le même job lance en outre
+  `scripts/check-docs-coherence.sh` lui-même, en **échec dur** : les contrôles du script
+  comparent tous des fichiers du dépôt entre eux et aucun ne consulte le réseau, donc
+  un rouge sur PR signifie toujours que le résultat de la fusion serait incohérent. Le
+  rapport est versé au résumé du job, comme au cron. Cette étape **saute les PR de
+  Dependabot** : ses bumps de `gradle/` périment la ligne « stack » ci-dessus sans qu'il
+  sache mettre la prose à jour, et en échec dur ces PR ne fusionneraient plus jamais —
+  la panne même que l'exclusion Dependabot du plafond Kotlin cherche à éviter. Le cron
+  du lundi voit le même écart et ouvre son issue : pour cette population, seul le moment
+  du signalement change.
 - **Actions épinglées par SHA** : toute Action tierce dans un workflow (`.github/workflows/`)
   est référencée par son SHA de commit complet, jamais par un tag flottant (`@v4`) —
   un tag peut être déplacé, un SHA ne peut pas. Format :

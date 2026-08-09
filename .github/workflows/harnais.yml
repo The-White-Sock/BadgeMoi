@@ -41,3 +41,58 @@ jobs:
 
       - name: Tests du contrôle de cohérence des docs
         run: ./scripts/test-docs-coherence.sh
+
+      # Le contrôle lui-même, et plus seulement ses tests. `docs-coherence.yml` ne le
+      # lançait qu'au cron du lundi : on vérifiait donc sur chaque PR que le contrôle
+      # **fonctionne**, et une fois par semaine ce qu'il **trouve** — une PR cassant la
+      # cohérence n'était signalée que le lundi suivant, plusieurs PR plus tard (#181).
+      #
+      # Le cron reste en place et n'est pas touché : les deux répondent à des questions
+      # différentes. Celui-ci dit « cette PR casse-t-elle quelque chose », le cron dit
+      # « le dépôt a-t-il dérivé sans qu'aucune PR n'en soit la cause » — et c'est lui
+      # qui ouvre l'issue de suivi.
+      #
+      # **Échec dur**, et c'est un choix argumenté plutôt qu'un signalement : les treize
+      # contrôles de `scripts/check-docs-coherence.sh` comparent tous des fichiers du
+      # dépôt entre eux — versions annoncées contre `gradle/libs.versions.toml`, chemins
+      # cités contre l'arbre, §9 contre lui-même, budget de lancement contre les fichiers
+      # réellement injectés. Aucun ne consulte le réseau, aucun ne dépend d'un état
+      # extérieur : le script est une **fonction pure de l'arbre**. Un rouge sur PR
+      # signifie donc toujours que le résultat de la fusion serait incohérent, ce qui
+      # retire toute raison d'ajouter un mécanisme de sévérité ou une option `--pr`.
+      #
+      # Dans le job `harnais` existant et non dans un job à part : le check requis du
+      # ruleset s'appelle `harnais`. Un job supplémentaire ne serait pas requis et ne
+      # bloquerait donc rien tant que le ruleset n'aurait pas été modifié.
+      #
+      # Exception Dependabot, et elle est mesurée plutôt que prudentielle : le groupe
+      # `gradle-dependencies` de `.github/dependabot.yml` porte `patterns: ["*"]`, donc
+      # un bump d'AGP ou de Gradle périme la ligne « stack » de `docs/conventions.md`
+      # que le premier contrôle du script compare à `gradle/libs.versions.toml`. En
+      # échec dur, cette PR ne fusionnerait plus jamais — et Dependabot ne sait pas
+      # mettre la prose à jour. Le cron du lundi voit exactement le même écart et ouvre
+      # son issue d'audit : la couverture est inchangée pour cette population, seul le
+      # moment du signalement l'est. Sans cette exception on retomberait sur la panne
+      # déjà décrite dans `.github/dependabot.yml` — une PR rouge et une branche morte
+      # chaque semaine.
+      - name: Cohérence de la documentation
+        if: >-
+          github.event_name != 'pull_request'
+          || github.event.pull_request.user.login != 'dependabot[bot]'
+        run: |
+          # Le rapport se dépose hors de l'arbre : `test-hooks.sh` branche sur
+          # `git status --porcelain`, et un fichier laissé dans le workspace rendrait
+          # l'arbre sale pour toute étape ajoutée ensuite.
+          rapport="${RUNNER_TEMP}/coherence.md"
+          # Le script sort 1 sur écart. Sans ce `if`, l'étape s'arrêterait sur ce code
+          # de retour avant d'avoir versé le rapport, et le rouge arriverait sans son
+          # motif. Même forme que `docs-coherence.yml`, l'échec explicite en plus.
+          if ./scripts/check-docs-coherence.sh > "${rapport}"; then
+            ecart=false
+          else
+            ecart=true
+          fi
+          cat "${rapport}" >> "$GITHUB_STEP_SUMMARY"
+          if [ "${ecart}" = true ]; then
+            exit 1
+          fi

@@ -13,11 +13,17 @@ le rituel de livraison.
 Les quatre dans le même appel : Gradle réutilise la configuration et la compilation, et
 quatre invocations séparées coûtent plusieurs minutes de plus pour le même résultat.
 
-Si des fichiers de `docs/`, `CLAUDE.md` ou `README.md` ont changé :
+Si des fichiers de `docs/`, `CLAUDE.md` ou `README.md` ont changé — **facultatif** :
 
 ```bash
 ./scripts/check-docs-coherence.sh
 ```
+
+Facultatif depuis que `.github/workflows/harnais.yml` lance ce même script sur chaque
+PR, en échec dur : une PR qui casse la cohérence documentaire rougit avant fusion, que
+quelqu'un ait pensé à la passe locale ou non. Le lancer ici n'achète, comme les quatre
+tâches ci-dessus, que l'aller-retour évité — utile quand le diff touche largement
+`docs/`, superflu sinon.
 
 ## Lecture des échecs
 
