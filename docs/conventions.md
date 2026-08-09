@@ -160,16 +160,30 @@ imports Android dans `domain/`. Voir `CLAUDE.md`.
   oublie de lancer est verte de la même façon qu'une batterie qui passe. Contrairement
   à `codeql.yml`, le job n'est ni filtré par `paths:` ni allégé sur les PR sans
   changement dans sa zone : il dure quelques secondes, et un check requis filtré ne
-  démarrerait jamais sur les PR hors de sa zone. Le même job lance en outre
-  `scripts/check-docs-coherence.sh` lui-même, en **échec dur** : les contrôles du script
-  comparent tous des fichiers du dépôt entre eux et aucun ne consulte le réseau, donc
-  un rouge sur PR signifie toujours que le résultat de la fusion serait incohérent. Le
-  rapport est versé au résumé du job, comme au cron. Cette étape **saute les PR de
-  Dependabot** : ses bumps de `gradle/` périment la ligne « stack » ci-dessus sans qu'il
-  sache mettre la prose à jour, et en échec dur ces PR ne fusionneraient plus jamais —
+  démarrerait jamais sur les PR hors de sa zone. Le même job porte deux contrôles de
+  plus, dans le même job et non à côté, parce que le check requis du ruleset s'appelle
+  `harnais` :
+  - `scripts/check-docs-coherence.sh` lui-même, en **échec dur**. Les contrôles du
+    script comparent tous des fichiers du dépôt entre eux et aucun ne consulte le
+    réseau : c'est une fonction pure de l'arbre, donc un rouge sur PR signifie toujours
+    que le résultat de la fusion serait incohérent. Le rapport est versé au résumé du
+    job, comme au cron. **Ceci rend la passe locale facultative**, au même titre que
+    les quatre tâches Gradle.
+  - le **titre et le corps de la PR**, ce qu'`avant-livraison.sh` ne peut que suggérer :
+    le titre porte un gitmoji (la fusion étant en squash, c'est lui que lit
+    `semantic-release`), et un corps qui annonce une fermeture d'issue en français sans
+    mot-clé anglais échoue. Le hook reste en place pour le retour immédiat, mais il
+    n'arrête que ce qu'il a su lire — `git commit -F`, un heredoc ou une PR ouverte
+    depuis l'interface web le contournent, pas la CI. Une PR **sans** fermeture reste
+    parfaitement légitime et n'est pas contrôlée.
+
+  Ces deux étapes-là, et elles seules, **sautent les PR de Dependabot**. Ses titres
+  n'ont pas de gitmoji et il ne sait pas les réécrire ; ses bumps de `gradle/` périment
+  la ligne « stack » ci-dessus sans qu'il sache mettre la prose à jour. En échec dur,
+  ces PR ne fusionneraient plus jamais et laisseraient une branche morte par semaine —
   la panne même que l'exclusion Dependabot du plafond Kotlin cherche à éviter. Le cron
-  du lundi voit le même écart et ouvre son issue : pour cette population, seul le moment
-  du signalement change.
+  du lundi voit les mêmes écarts et ouvre son issue : pour cette population, seul le
+  moment du signalement change.
 - **Actions épinglées par SHA** : toute Action tierce dans un workflow (`.github/workflows/`)
   est référencée par son SHA de commit complet, jamais par un tag flottant (`@v4`) —
   un tag peut être déplacé, un SHA ne peut pas. Format :
