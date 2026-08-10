@@ -50,7 +50,8 @@ Android/Kotlin doivent être résolus depuis le réseau au premier build).
     **Une règle ne se charge qu'une fois par séance**, et la compaction ne remet pas
     ce compteur à zéro : après un `/compact` elle n'est plus en contexte, et rouvrir
     un fichier de sa zone **ne la rappelle pas**. Le seul geste qui marche est de lire
-    le fichier de règle lui-même — `/point` porte le relevé qui l'établit.
+    le fichier de règle lui-même — le relevé qui l'établit est dans
+    [`docs/journaux-du-harnais.md`](docs/journaux-du-harnais.md).
   - **Sans `paths:`** — chargés à chaque lancement et ré-injectés après compaction,
     au même rang que ce fichier. Réservé à ce qui vaut en fin de séance, quand plus
     aucun fichier n'est ouvert : `langue.md` seul aujourd'hui. Leur poids est compté
@@ -146,7 +147,8 @@ dans la séance, voir plus bas.
 Portée du journal : il est écrit dans `.git/`, donc recloné à vide à chaque nouveau
 conteneur web. Le cumul « toutes séances » n'a que la durée de vie de la machine, et
 la liste des « règles jamais chargées » sort pleine au démarrage sans que rien ne
-soit cassé. Détail et garde-fous dans `/point`.
+soit cassé. Détail et garde-fous dans
+[`docs/journaux-du-harnais.md`](docs/journaux-du-harnais.md).
 
 Point clos aussi, sur une compaction réelle cette fois : `/compact` ré-injecte bien
 `CLAUDE.md` et **aucune** règle à `paths:`, ce qui n'était jusque-là qu'une lecture de
