@@ -137,11 +137,11 @@ Provenance des choix ci-dessus :
 Point clos : le schéma de `InstructionsLoaded` a été relevé au journal (`file_path`,
 `memory_type`, `load_reason`) et noté dans l'en-tête du hook, qui continue de
 journaliser le JSON brut — ces noms sont observés, pas spécifiés. Le mécanisme des
-règles à `paths:` est vérifié : les cinq ont émis un `path_glob_match` en une
-poignée de lectures. Et le glob se déclenche sur le **chemin visé**, pas sur
-l'existence du fichier — lire un chemin inexistant de la zone suffit à charger la
-règle. Attention : cela ne vaut que pour un **premier** chargement dans la séance,
-voir plus bas.
+règles à `paths:` est vérifié : au 6 août, les cinq règles scopées d'alors ont toutes
+émis un `path_glob_match` en une poignée de lectures. Et le glob se déclenche sur le
+**chemin visé**, pas sur l'existence du fichier — lire un chemin inexistant de la zone
+suffit à charger la règle. Attention : cela ne vaut que pour un **premier** chargement
+dans la séance, voir plus bas.
 
 Portée du journal : il est écrit dans `.git/`, donc recloné à vide à chaque nouveau
 conteneur web. Le cumul « toutes séances » n'a que la durée de vie de la machine, et
@@ -150,15 +150,20 @@ soit cassé. Détail et garde-fous dans `/point`.
 
 Point clos aussi, sur une compaction réelle cette fois : `/compact` ré-injecte bien
 `CLAUDE.md` et **aucune** règle à `paths:`, ce qui n'était jusque-là qu'une lecture de
-la documentation. Deux relevés inattendus au passage. D'abord **il n'existe pas de
-raison `compact`** : la compaction journalise `session_start`, si bien qu'un
-`session_start` en cours de séance est la borne d'une fenêtre de contexte — c'est ce
-qui permet enfin de mesurer ce qui est *réellement* chargé.
+la documentation. Deux relevés inattendus au passage. D'abord la compaction journalise
+un `session_start`, si bien qu'un `session_start` en cours de séance est la borne d'une
+fenêtre de contexte — c'est ce qui permet enfin de mesurer ce qui est *réellement*
+chargé. Ce paragraphe a longtemps affirmé qu'**il n'existait pas de raison `compact`** :
+c'est faux. Le relevé du 9 août plus bas en compte deux, journalisées la veille.
+`session_start` reste la borne utile — `compact` est trop rare pour en tenir lieu — mais
+un dénombrement des raisons qui l'ignore est incomplet, et un bornage de fenêtre qui ne
+reconnaît que `session_start` rate ces deux lignes. Même erreur dans `/point`, relevée
+par #171.
 
-CE POINT-CI ÉTAIT FAUX, et il l'est resté plusieurs séances : on avait conclu que la
-déduplication portait sur la fenêtre, donc qu'une compaction la remettait à zéro et
-rendait le remède opérant. Le relevé qui tranche tient en trois lectures, dans une
-même fenêtre, à quelques secondes d'écart :
+Ensuite la déduplication, et CE SECOND POINT ÉTAIT FAUX, resté faux plusieurs séances :
+on avait conclu qu'elle portait sur la fenêtre, donc qu'une compaction la remettait à
+zéro et rendait le remède opérant. Le relevé qui tranche tient en trois lectures, dans
+une même fenêtre, à quelques secondes d'écart :
 
   Read .claude/hooks/antiseche.sh            harnais.md, chargée 4 fenêtres plus tôt
                                              -> RIEN au journal
@@ -167,9 +172,13 @@ même fenêtre, à quelques secondes d'écart :
   Read .claude/rules/harnais.md              lecture ordinaire, contenu en contexte
 
 La seule variable est l'antériorité du chargement : **la déduplication porte sur la
-séance**. Le journal entier le confirme — 16 lignes, 6 fenêtres, 4 `path_glob_match`,
-quatre règles distinctes, aucune chargée deux fois. Le témoin est ce qui rend le
-relevé concluant : sans lui, un journal muet ne se distingue pas d'un mécanisme mort.
+séance**. Le journal entier le confirmait — relevé du 8 août, sur les 16 lignes qu'il
+comptait alors : 6 fenêtres, 4 `path_glob_match`, quatre règles distinctes, aucune
+chargée deux fois dans une même séance. Le 9 août, sur un autre conteneur, le journal
+comptait 98 `session_start`, 18 `path_glob_match` et 2 `compact` : le cumul grossit à
+chaque séance, la conclusion tient toujours, et c'est pourquoi tout relevé chiffré ici
+porte sa date. Le témoin est ce qui rend le relevé concluant : sans lui, un journal
+muet ne se distingue pas d'un mécanisme mort.
 
 Conséquence pratique : une règle scopée évincée par une compaction ne revient pas, et
 le seul geste qui la ramène est de lire son fichier. Refaire ce relevé si le harnais

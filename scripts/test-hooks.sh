@@ -24,6 +24,39 @@ cd "${racine}" || exit 1
 reussis=0
 echecs=0
 
+# Le journal d'usage est détourné vers un fichier jetable **pour toute la durée de la
+# batterie**, et pas seulement pour la section qui l'éprouve : les hooks journalisent
+# aussi depuis `garde-fous` et `avant-livraison`, et chaque exécution inscrivait
+# jusqu'ici une trentaine de lignes dans le journal réel — de quoi en fournir 60 %.
+# Un instrument alimenté par ses propres tests affiche de l'activité quoi qu'il
+# arrive : un hook devenu inerte en séance continuerait d'y paraître vivant.
+#
+# Variable dédiée et **pas** `GIT_DIR` comme la section `instructions-chargees` :
+# `GIT_DIR` détournerait tout git, or la suite de ce script a besoin du vrai dépôt.
+bac_usage="$(mktemp -d)"
+export BADGEMOI_USAGE_LOG="${bac_usage}/badgemoi-usage.log"
+: > "${BADGEMOI_USAGE_LOG}"
+# Ce que `cas_journal` vide entre deux cas est reversé ici : c'est le seul moyen de
+# compter en fin de course ce que la redirection a réellement reçu.
+cumul_usage="${bac_usage}/cumul.log"
+: > "${cumul_usage}"
+
+# Le revers, et c'est la paire qui prouve : on relève le journal **réel** avant tout
+# travail pour vérifier en fin de course qu'il n'a pas bougé. Sans ce second côté,
+# couper la journalisation passerait au vert exactement comme la détourner — le faux
+# positif que ce contrôle existe pour attraper.
+journal_reel="$(git rev-parse --git-dir 2>/dev/null || echo .git)/badgemoi-usage.log"
+
+# Le compte de lignes seul ne suffit pas : une redirection mal posée vide le journal
+# (`: > "${usage}"` entre deux cas) puis le remplit, et peut retomber par hasard sur
+# le même compte. La signature porte donc aussi la somme de contrôle du contenu.
+signature_reelle() {
+  printf '%s lignes / %s' \
+    "$(wc -l < "${journal_reel}" 2>/dev/null || echo 0)" \
+    "$(cksum < "${journal_reel}" 2>/dev/null || echo absent)"
+}
+reel_avant="$(signature_reelle)"
+
 # cas <description> <hook> <json> <motif attendu | VIDE> [spec d'environnement]
 #   VIDE  : le hook doit se taire complètement.
 #   motif : ERE cherchée dans la sortie.
@@ -285,18 +318,26 @@ echo "interrogations de /point"
 # de séparer les deux fenêtres, et qui lui faisait annoncer comme chargée une règle
 # évincée depuis longtemps.
 #
+# Le harnais émet **deux** formes de bordure et non une : `session_start`, ici, et
+# `compact`, éprouvée par ses propres témoins plus bas. Un jeu de témoins qui ne
+# connaîtrait que la première laisserait le second cas passer au vert sans l'avoir vu.
+#
 # Chaque fenêtre ouvre sur **deux** `session_start` — `CLAUDE.md` puis la règle non
 # scopée `langue.md` — parce que c'est la forme réelle du journal depuis que cette règle
 # existe. Un témoin à un seul `session_start` par fenêtre passait au vert avec l'`awk`
 # qui tronquait comme avec celui qui borne juste : il ne mordait sur rien.
+#
+# **Cet `awk` est recopié mot pour mot depuis `.claude/commands/point.md`.** Corriger
+# l'un sans l'autre laisse cette batterie verte contre une copie périmée — donc muette
+# sur la seule chose qu'elle est là pour surveiller.
 fenetre_de() {
   cut -f2 "$1" \
     | jq -rR 'fromjson? | "\(.load_reason // "raison absente")\t\(((.file_path // "chemin absent") | split("/") | last))"' \
     | awk '
-        /^session_start\t/ { if (!suite || ($0 in vu)) { n = 0; split("", vu) }
-                             suite = 1; vu[$0] = 1; l[n++] = $0; next }
-                           { suite = 0; l[n++] = $0 }
-        END                { for (i = 0; i < n; i++) print l[i] }' \
+        /^(session_start|compact)\t/ { if (!suite || ($0 in vu)) { n = 0; split("", vu) }
+                                       suite = 1; vu[$0] = 1; l[n++] = $0; next }
+                                     { suite = 0; l[n++] = $0 }
+        END                          { for (i = 0; i < n; i++) print l[i] }' \
     | sort -u
 }
 
@@ -366,6 +407,80 @@ else
   echo "  ÉCHEC  sépare deux fenêtres dont les suites de session_start se touchent (obtenu : ${collee})"
 fi
 rm -f "${temoin_colle}"
+
+# Une bordure `compact` **réelle**. Les témoins ci-dessus simulent la compaction par
+# une seconde suite de `session_start` : c'est la forme que le harnais émet le plus
+# souvent, mais pas la seule. Mesuré au journal de ce conteneur :
+# `98 session_start · 18 path_glob_match · 2 compact`. Une ligne `compact` tombait
+# jusqu'ici dans la seconde règle de l'`awk` — elle ne bornait rien, et la fenêtre
+# ouverte par la compaction était fusionnée avec la précédente. `docs-decisions.md`
+# est le témoin : évincée en amont, elle ne doit pas ressortir.
+temoin_compact="$(mktemp)"
+{
+  printf '%s\t%s\n' '2026-01-01T00:00:00Z' \
+    '{"session_id":"S1","file_path":"/r/CLAUDE.md","memory_type":"Project","load_reason":"session_start"}'
+  printf '%s\t%s\n' '2026-01-01T00:00:01Z' \
+    '{"session_id":"S1","file_path":"/r/.claude/rules/langue.md","memory_type":"Project","load_reason":"session_start"}'
+  printf '%s\t%s\n' '2026-01-01T00:00:02Z' \
+    '{"session_id":"S1","file_path":"/r/.claude/rules/docs-decisions.md","memory_type":"Project","load_reason":"path_glob_match"}'
+  printf '%s\t%s\n' '2026-01-01T00:00:03Z' \
+    '{"session_id":"S1","file_path":"/r/CLAUDE.md","memory_type":"Project","load_reason":"compact"}'
+  printf '%s\t%s\n' '2026-01-01T00:00:04Z' \
+    '{"session_id":"S1","file_path":"/r/.claude/rules/langue.md","memory_type":"Project","load_reason":"compact"}'
+  printf '%s\t%s\n' '2026-01-01T00:00:05Z' \
+    '{"session_id":"S1","file_path":"/r/.claude/rules/ui-compose.md","memory_type":"Project","load_reason":"path_glob_match"}'
+} > "${temoin_compact}"
+
+apres_compact="$(fenetre_de "${temoin_compact}")"
+if printf '%s\n' "${apres_compact}" | grep -q 'compact.*CLAUDE\.md' \
+  && printf '%s\n' "${apres_compact}" | grep -q 'compact.*langue\.md' \
+  && printf '%s\n' "${apres_compact}" | grep -q 'path_glob_match.*ui-compose\.md' \
+  && ! printf '%s\n' "${apres_compact}" | grep -q 'docs-decisions\.md'; then
+  reussis=$((reussis + 1))
+else
+  echecs=$((echecs + 1))
+  echo "  ÉCHEC  une bordure compact borne la fenêtre (obtenu : ${apres_compact})"
+fi
+rm -f "${temoin_compact}"
+
+# La question que #171 laissait ouverte : la déduplication par `vu` vaut-elle pareil
+# pour une fenêtre mêlant les deux raisons ? Mesuré, et la réponse tient en une
+# asymétrie qu'il ne faut pas troquer à l'envers.
+#
+# `vu` porte sur la **ligne entière**, raison comprise. Deux suites de raisons
+# différentes qui se touchent ne sont donc pas séparées, et les deux fenêtres
+# fusionnent. Ce défaut-là est **bénin** : une fenêtre dont la suite touche la
+# suivante est une fenêtre qui n'a chargé aucune règle scopée, et la fusion ne fait
+# que lister deux fois `CLAUDE.md` et la règle non scopée — que la compaction vient
+# précisément de remettre en contexte. Aucune règle évincée ne fuit.
+#
+# Déduire sur le seul fichier (`vu[$2]`) supprime cette redite, au prix d'un défaut
+# **dangereux** : une bordure qui répète un fichier sous deux raisons rouvre alors une
+# fenêtre au milieu d'elle-même et **perd** ce qui la précédait. C'est le faux négatif
+# que tout cet `awk` existe pour empêcher — une règle en contexte annoncée absente. On
+# préfère la redite. Ce témoin fige ce choix : sans lui, `vu[$2]` repasserait au vert.
+temoin_repete="$(mktemp)"
+{
+  printf '%s\t%s\n' '2026-01-01T00:00:00Z' \
+    '{"session_id":"S1","file_path":"/r/.claude/rules/langue.md","memory_type":"Project","load_reason":"compact"}'
+  printf '%s\t%s\n' '2026-01-01T00:00:01Z' \
+    '{"session_id":"S1","file_path":"/r/CLAUDE.md","memory_type":"Project","load_reason":"compact"}'
+  printf '%s\t%s\n' '2026-01-01T00:00:02Z' \
+    '{"session_id":"S1","file_path":"/r/CLAUDE.md","memory_type":"Project","load_reason":"session_start"}'
+  printf '%s\t%s\n' '2026-01-01T00:00:03Z' \
+    '{"session_id":"S1","file_path":"/r/.claude/rules/ui-compose.md","memory_type":"Project","load_reason":"path_glob_match"}'
+} > "${temoin_repete}"
+
+repetee="$(fenetre_de "${temoin_repete}")"
+if printf '%s\n' "${repetee}" | grep -q 'langue\.md' \
+  && printf '%s\n' "${repetee}" | grep -q 'CLAUDE\.md' \
+  && printf '%s\n' "${repetee}" | grep -q 'path_glob_match.*ui-compose\.md'; then
+  reussis=$((reussis + 1))
+else
+  echecs=$((echecs + 1))
+  echo "  ÉCHEC  une bordure qui répète un fichier sous deux raisons ne perd rien (obtenu : ${repetee})"
+fi
+rm -f "${temoin_repete}"
 
 # Trois raisons attendues, et le compte porte tout le sens : `session_start` et
 # `path_glob_match` pour les entrées conformes, `inconnue` pour celle au schéma
@@ -524,9 +639,13 @@ echo "journal d'usage"
 # à examiner ». Les deux produisent le même silence sur stdout, et les confondre
 # rouvrirait le trou que ce journal ferme. Les cas vont donc **par paires** : c'est
 # la paire qui prouve quelque chose, jamais le cas seul.
-usage="${gitdir}/badgemoi-usage.log"
-usage_sauvegarde=""
-[ -e "${usage}" ] && usage_sauvegarde="$(cat "${usage}")"
+#
+# Aucune sauvegarde du journal réel n'est nécessaire ici : `BADGEMOI_USAGE_LOG` est
+# posée en tête de script et les hooks écrivent tous dans le fichier jetable. La
+# sauvegarde/restauration qui vivait à cet endroit était le pansement du défaut que
+# la redirection supprime — et elle détruisait au passage ce qui s'était journalisé
+# pendant la course.
+usage="${BADGEMOI_USAGE_LOG}"
 
 bacu="$(mktemp -d)"
 mkdir -p "${bacu}/ui/summary" "${bacu}/domain"
@@ -543,6 +662,10 @@ cas_journal() {
     return
   fi
 
+  # Le journal est vidé avant chaque cas — sinon un hook qui n'écrirait rien ferait
+  # relire la ligne du cas précédent. Ce qu'il portait part au cumul, qui reste le
+  # seul témoin de ce que la redirection a reçu sur toute la batterie.
+  cat "${usage}" >> "${cumul_usage}" 2>/dev/null
   : > "${usage}"
   printf '%s' "${entree}" | "${hooks}/${hook}.sh" >/dev/null 2>&1
   ligne="$(tail -n 1 "${usage}" 2>/dev/null)"
@@ -610,11 +733,37 @@ cas_journal "antiseche : commande slash comptée avec son nom" antiseche \
   '{"prompt":"/pousser 114","permission_mode":"default"}' commande '/pousser'
 
 rm -rf "${bacu}"
-if [ -n "${usage_sauvegarde}" ]; then
-  printf '%s\n' "${usage_sauvegarde}" > "${usage}"
+
+# --- Paire 4 : la redirection du journal elle-même -------------------------
+# Les deux côtés sont indispensables et ne se recouvrent pas. Le premier seul serait
+# satisfait en coupant purement la journalisation ; le second seul, en n'écrivant
+# nulle part. C'est leur conjonction qui dit « détourné », et rien d'autre.
+cat "${usage}" >> "${cumul_usage}" 2>/dev/null
+jetable_lignes="$(wc -l < "${cumul_usage}" 2>/dev/null || echo 0)"
+# Seuil délibérément bas devant la trentaine de lignes constatée : ce cas fige que la
+# journalisation **travaille**, pas un décompte que le moindre cas ajouté ferait
+# rougir sans qu'aucun contrat ne soit rompu.
+if [ "${jetable_lignes}" -ge 20 ]; then
+  reussis=$((reussis + 1))
 else
-  rm -f "${usage}"
+  echecs=$((echecs + 1))
+  echo "  ÉCHEC  le journal jetable reçoit la journalisation de la batterie (au moins 20 lignes attendues, ${jetable_lignes} obtenues)"
 fi
+
+reel_apres="$(signature_reelle)"
+if [ "${reel_apres}" = "${reel_avant}" ]; then
+  reussis=$((reussis + 1))
+else
+  echecs=$((echecs + 1))
+  echo "  ÉCHEC  la batterie n'écrit pas une ligne au journal réel"
+  echo "         avant : ${reel_avant}"
+  echo "         après : ${reel_apres}   (${journal_reel})"
+fi
+
+# Relevé affiché quel que soit le verdict : c'est la mesure que #170 demandait de
+# compter plutôt que de supposer, et elle sert autant à lire un échec qu'un succès.
+echo "  (journal jetable : ${jetable_lignes} lignes ; journal réel : ${reel_apres})"
+rm -rf "${bac_usage}"
 
 echo
 if [ "${echecs}" -eq 0 ]; then
