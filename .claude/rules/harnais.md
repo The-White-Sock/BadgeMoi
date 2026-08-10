@@ -109,7 +109,7 @@ plus en contexte et rouvrir un fichier de sa zone **ne la rappelle pas**. Le seu
 geste qui marche est de lire `.claude/rules/<nom>.md`. Corollaire pour le diagnostic :
 un journal muet après avoir ouvert des fichiers est le cas **normal**, pas le signe
 d'un glob cassé — c'est `check-docs-coherence.sh` qui tranche là-dessus. Le relevé qui
-l'établit est dans `/point`.
+l'établit est dans `docs/journaux-du-harnais.md`.
 
 ## Une règle créée en cours de séance ne se charge pas dans cette séance
 

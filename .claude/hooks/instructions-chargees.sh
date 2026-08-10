@@ -2,11 +2,11 @@
 # Hook InstructionsLoaded : journalise quels fichiers d'instructions se chargent,
 # quand et pourquoi.
 #
-# POURQUOI : les cinq règles de `.claude/rules/` se déclenchent sur le chemin des
+# POURQUOI : les six règles de `.claude/rules/` se déclenchent sur le chemin des
 # fichiers ouverts, donc leur silence est indistinguable d'une absence d'occurrence
 # — exactement le mode de défaillance qui a laissé `antiseche.sh` muette depuis sa
 # création. Le journal a depuis tranché la question qui l'avait fait naître : les
-# cinq se chargent bien, sur `path_glob_match`. Il reste utile pour situer la
+# six se chargent bien, sur `path_glob_match`. Il reste utile pour situer la
 # fenêtre de contexte courante, que rien d'autre ne donne à voir.
 #
 # Ce que le journal permet de voir :
