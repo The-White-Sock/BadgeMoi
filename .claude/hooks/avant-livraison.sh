@@ -23,6 +23,24 @@
 # tait. Un garde-fou qui refuse dans le doute finit contourné, et il emporte le
 # reste du harnais avec lui.
 #
+# FILET EN AVAL — `.github/workflows/harnais.yml`, étape « Titre et fermetures
+# d'issue de la PR » (#180). Ce hook ne voit que ce qui passe par cette session ;
+# une PR ouverte depuis l'interface web n'en déclenche aucun. La CI reprend donc
+# les règles 1 et 3 **au niveau de la PR** — titre et corps —, ce qui est le bon
+# niveau puisque le dépôt fusionne en squash et que `semantic-release` lit le titre
+# de la PR. Le hook garde sa raison d'être : le retour est immédiat, pas dans trois
+# minutes de CI.
+#
+# Les deux ne doivent pas diverger. Toute retouche de la liste de gitmojis du `case`
+# ci-dessous ou de l'ERE de `verifier_fermeture()` se reporte dans ce workflow, qui
+# les reprend telles quelles — et inversement. Un seul écart de forme est assumé
+# là-bas : les `grep -q` y sont alimentés par here-string et non par tube, parce que
+# `grep -q` SIGPIPE son amont et rend 141 sous `pipefail`, ce qui **perd l'alerte**
+# sur un corps long (`.claude/rules/harnais.md`). Le même `LC_ALL=C.UTF-8` y est
+# forcé, sans quoi `grep -i` ne replierait pas les accents et « RÉSOUT #12 » passerait
+# en CI tout en étant refusé ici. Une divergence de couverture entre les deux serait
+# pire que l'absence du second : elle se croirait couverte.
+#
 # Entrée : JSON sur stdin (`.tool_name`, `.tool_input`).
 # Sortie : JSON `hookSpecificOutput.permissionDecision` valant `deny` ou `ask`,
 #          ou rien du tout.

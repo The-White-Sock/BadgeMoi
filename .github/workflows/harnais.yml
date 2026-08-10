@@ -7,7 +7,15 @@ name: Harnais
 on:
   push:
     branches: [main]
+  # `types:` explicite, et `edited` est la raison d'être de cette liste. Par défaut
+  # `pull_request` ne se déclenche que sur `opened`, `synchronize` et `reopened` — or
+  # le titre et le corps d'une PR ne changent que par `edited`. Sans lui, le contrôle
+  # ajouté plus bas manque des deux côtés : une PR renommée après coup garderait son
+  # vert alors que c'est ce titre-là que `semantic-release` lira après le squash, et
+  # une PR corrigée après un rouge y resterait faute de nouveau lancement — check
+  # requis bloqué, sans autre issue qu'un commit sans rapport ou une relance à la main.
   pull_request:
+    types: [opened, synchronize, reopened, edited]
 
 # Même règle que les autres workflows : on annule sur une PR, jamais sur `main`, où
 # `github.ref` est commun à tous les commits — annuler y ferait tuer la validation du
@@ -34,10 +42,151 @@ jobs:
         # privé de toute ref distante — l'état d'un checkout de PR, où `origin/main`
         # n'existe pas. C'est le cas qui décide, parce que `bilan.sh` s'y compare.
 
-      # Deux étapes plutôt qu'une : un rouge nomme alors la batterie sans qu'on ait à
+      # Quatre étapes plutôt qu'une : un rouge nomme alors le contrôle sans qu'on ait à
       # dérouler le journal.
+      #
+      # `!cancelled()` sur chacune, et c'est ce qui rend ce découpage utile. Par défaut
+      # une étape porte un `success()` implicite : la première rouge emporte toutes les
+      # suivantes, et le découpage ne dit plus que « la première a échoué ». Mesuré sur
+      # cette PR même — une incohérence documentaire plantée exprès a fait rougir
+      # `test-docs-coherence.sh`, et les deux étapes ajoutées ci-dessous n'ont jamais
+      # tourné. Un tour de CI ne rapportait donc qu'un défaut à la fois, alors que les
+      # quatre contrôles sont indépendants et tiennent en quelques secondes chacun.
+      # `!cancelled()` et non `always()` : une annulation doit rester une annulation.
       - name: Hooks et interrogations de /point
+        if: ${{ !cancelled() }}
         run: ./scripts/test-hooks.sh
 
       - name: Tests du contrôle de cohérence des docs
+        if: ${{ !cancelled() }}
         run: ./scripts/test-docs-coherence.sh
+
+      # Le contrôle lui-même, et plus seulement ses tests. `docs-coherence.yml` ne le
+      # lançait qu'au cron du lundi : on vérifiait donc sur chaque PR que le contrôle
+      # **fonctionne**, et une fois par semaine ce qu'il **trouve** — une PR cassant la
+      # cohérence n'était signalée que le lundi suivant, plusieurs PR plus tard (#181).
+      #
+      # Le cron reste en place et n'est pas touché : les deux répondent à des questions
+      # différentes. Celui-ci dit « cette PR casse-t-elle quelque chose », le cron dit
+      # « le dépôt a-t-il dérivé sans qu'aucune PR n'en soit la cause » — et c'est lui
+      # qui ouvre l'issue de suivi.
+      #
+      # **Échec dur**, et c'est un choix argumenté plutôt qu'un signalement : les treize
+      # contrôles de `scripts/check-docs-coherence.sh` comparent tous des fichiers du
+      # dépôt entre eux — versions annoncées contre `gradle/libs.versions.toml`, chemins
+      # cités contre l'arbre, §9 contre lui-même, budget de lancement contre les fichiers
+      # réellement injectés. Aucun ne consulte le réseau, aucun ne dépend d'un état
+      # extérieur : le script est une **fonction pure de l'arbre**. Un rouge sur PR
+      # signifie donc toujours que le résultat de la fusion serait incohérent, ce qui
+      # retire toute raison d'ajouter un mécanisme de sévérité ou une option `--pr`.
+      #
+      # Exception Dependabot, et elle est mesurée plutôt que prudentielle : le groupe
+      # `gradle-dependencies` de `.github/dependabot.yml` porte `patterns: ["*"]`, donc
+      # un bump d'AGP ou de Gradle périme la ligne « stack » de `docs/conventions.md`
+      # que le premier contrôle du script compare à `gradle/libs.versions.toml`. En
+      # échec dur, cette PR ne fusionnerait plus jamais — et Dependabot ne sait pas
+      # mettre la prose à jour. Le cron du lundi voit exactement le même écart et ouvre
+      # son issue d'audit : la couverture est inchangée pour cette population, seul le
+      # moment du signalement l'est. Sans cette exception on retomberait sur la panne
+      # déjà décrite dans `.github/dependabot.yml` — une PR rouge et une branche morte
+      # chaque semaine.
+      - name: Cohérence de la documentation
+        if: >-
+          ${{ !cancelled()
+          && (github.event_name != 'pull_request'
+          || github.event.pull_request.user.login != 'dependabot[bot]') }}
+        run: |
+          # Le rapport se dépose hors de l'arbre : `test-hooks.sh` branche sur
+          # `git status --porcelain`, et un fichier laissé dans le workspace rendrait
+          # l'arbre sale pour toute étape ajoutée ensuite.
+          rapport="${RUNNER_TEMP}/coherence.md"
+          # Le script sort 1 sur écart. Sans ce `if`, l'étape s'arrêterait sur ce code
+          # de retour avant d'avoir versé le rapport, et le rouge arriverait sans son
+          # motif. Même forme que `docs-coherence.yml`, l'échec explicite en plus.
+          if ./scripts/check-docs-coherence.sh > "${rapport}"; then
+            ecart=false
+          else
+            ecart=true
+          fi
+          cat "${rapport}" >> "$GITHUB_STEP_SUMMARY"
+          if [ "${ecart}" = true ]; then
+            exit 1
+          fi
+
+      # Ce que `avant-livraison.sh` ne peut que suggérer (#180). Le hook n'arrête que ce
+      # qu'il a su lire : `git commit -F`, un heredoc ou une PR ouverte depuis
+      # l'interface web le contournent tous les trois. Ici le contrôle est
+      # inconditionnel — il vaut pour une PR ouverte à la main comme pour une PR ouverte
+      # par un agent.
+      #
+      # Le niveau contrôlé est la **PR**, pas le commit : le dépôt fusionne en squash
+      # (`docs/publication.md`), donc le message que lit `semantic-release` est le titre
+      # de la PR. Un commit de travail voué au rebase reste libre, ce qui est cohérent
+      # avec l'`ask` du hook.
+      #
+      # Ni action tierce ni dépendance : `github.event.pull_request.title` et `.body`
+      # suffisent, et c'est un SHA de moins à épingler (`docs/conventions.md`,
+      # § Sécurité et automatisation CI).
+      #
+      # Dans le job `harnais` et non dans un job à part, comme l'étape précédente : le
+      # check requis du ruleset s'appelle `harnais`. Un job supplémentaire ne serait pas
+      # requis et ne bloquerait donc rien tant que le ruleset n'aurait pas été modifié.
+      #
+      # Dependabot exempté ici aussi, et pour une raison qui lui est propre : ses
+      # titres n'ont pas de gitmoji (`Bump the gradle-dependencies group with 2
+      # updates`, `4c78b1e`), `.github/dependabot.yml` ne configure aucun
+      # `commit-message.prefix`, et Dependabot ne réécrit pas ses titres. Sans cette
+      # garde, les trois écosystèmes rougiraient chaque semaine et
+      # `dependabot-auto-merge.yml` aurait beau armer l'auto-merge, plus rien ne
+      # fusionnerait. Le contrôle vise le message que le squash donnera à
+      # `semantic-release` pour du travail écrit ici — pas un bump automatique.
+      - name: Titre et fermetures d'issue de la PR
+        if: >-
+          ${{ !cancelled()
+          && github.event_name == 'pull_request'
+          && github.event.pull_request.user.login != 'dependabot[bot]' }}
+        env:
+          # Par `env:` et jamais par interpolation `${{ }}` directe dans le `run:` : un
+          # titre de PR est une entrée contrôlée par l'extérieur, et l'interpoler dans
+          # un script shell est une injection.
+          TITRE: ${{ github.event.pull_request.title }}
+          CORPS: ${{ github.event.pull_request.body }}
+        run: |
+          set -uo pipefail
+          # Même geste que le hook, et pour la même raison : `LANG` est vide sur un
+          # runner GitHub, et en locale POSIX `grep -i` ne replie pas les accents — un
+          # corps annonçant « RÉSOUT #12 » serait refusé par le hook et passerait ici.
+          # Un contrôle porté en CI ne vaut que s'il mord sur les mêmes entrées.
+          export LC_ALL=C.UTF-8
+          export LANG=C.UTF-8
+          statut=0
+
+          # Liste reprise **telle quelle** du `case` d'`avant-livraison.sh` (règle 1),
+          # soit dix emojis. `docs/conventions.md` n'en documente que neuf : il lui
+          # manque `🔖` (version de release). Reprendre le hook plutôt que d'écrire ici
+          # une troisième liste, qui divergerait des deux autres à son tour.
+          case "${TITRE}" in
+            ✨* | 🐛* | ♻* | ✅* | 📝* | 🔧* | 💄* | 🚀* | 💥* | 🔖*) ;;
+            *)
+              echo "::error::Titre de PR sans gitmoji : « ${TITRE} ». La fusion est en squash, donc ce titre est le message que lit semantic-release — sans emoji de tête, aucune version ne sort et rien ne le signale. Format attendu : <emoji>(<scope>) : <description au présent>. ✨ fonctionnalité · 🐛 correctif · ♻️ refactor · 💄 visuel · 🚀 perf · 💥 rupture · ✅ tests · 📝 docs · 🔧 outillage · 🔖 version."
+              statut=1
+              ;;
+          esac
+
+          # ERE reprise de `verifier_fermeture()` d'`avant-livraison.sh`. Le contrôle ne
+          # mord **que si** une fermeture est annoncée : une PR sans aucune fermeture est
+          # parfaitement légitime (#167, #169), et la refuser serait le faux positif
+          # inverse. Le corps reste en français par principe (`langue.md`) ; il ne s'agit
+          # pas d'interdire ces verbes, mais la forme qui **prétend fermer** sans le faire.
+          #
+          # Here-string et non tube : `grep -q` s'arrête au premier match et SIGPIPE son
+          # amont, ce qui donne 141 sous `pipefail` et **perd l'alerte** — d'autant plus
+          # sûrement que le corps est long, donc exactement quand le contrôle sert
+          # (`.claude/rules/harnais.md`). C'est le seul écart de forme avec le hook.
+          if grep -qiE '(ferme|ferment|corrige|resout|résout|regle|règle)[[:space:]]+#[0-9]+' <<< "${CORPS}" \
+            && ! grep -qiE '(close[sd]?|fixe[sd]?|resolve[sd]?)[[:space:]]+#[0-9]+' <<< "${CORPS}"; then
+            echo "::error::Corps de PR : une fermeture d'issue est annoncée en français et aucun mot-clé anglais n'est présent. GitHub ne reconnaît que Closes #N, Fixes #N et Resolves #N — « Ferme #N » est une simple mention et ne ferme rien. C'est l'erreur qui a laissé une série d'issues ouvertes après leur livraison. Le reste du corps reste en français."
+            statut=1
+          fi
+
+          exit "${statut}"
