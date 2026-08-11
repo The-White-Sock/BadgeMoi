@@ -24,7 +24,7 @@ kotlinxSerialization = "1.11.0"
 # Injection de dépendances
 hilt = "2.60.1"
 hiltComposeViewModel = "1.4.0"
-ksp = "2.3.10"
+ksp = "2.3.11"
 
 # Coroutines
 coroutines = "1.11.0"
