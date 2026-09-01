@@ -1,6 +1,6 @@
 [versions]
 # Toolchain
-agp = "9.3.2"
+agp = "9.4.0"
 kotlin = "2.4.0"
 
 # AndroidX / Jetpack
@@ -8,7 +8,7 @@ coreKtx = "1.19.0"
 lifecycle = "2.11.0"
 activityCompose = "1.13.0"
 composeBom = "2026.08.00"
-navigationCompose = "2.9.8"
+navigationCompose = "2.10.0"
 
 # Persistance — pas encore appliquées, réservées pour le lot 1 (voir docs/cahier-des-charges.md §7)
 room = "2.8.4"
