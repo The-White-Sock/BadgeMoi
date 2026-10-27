@@ -12,14 +12,14 @@ navigationCompose = "2.10.2"
 
 # Persistance — pas encore appliquées, réservées pour le lot 1 (voir docs/cahier-des-charges.md §7)
 room = "2.8.5"
-datastore = "1.2.1"
+datastore = "1.3.0"
 
 # Pas de version Glance : le widget est écrit en RemoteViews natifs, sans dépendance.
 # `androidx.glance:glance` tire `androidx.work:work-runtime`, qui ajoute quatre
 # permissions au manifeste — voir l'écart 15 du §9 de docs/cahier-des-charges.md.
 
 # Sérialisation (persistance Room/DataStore)
-kotlinxSerialization = "1.11.0"
+kotlinxSerialization = "1.12.0"
 
 # Injection de dépendances
 hilt = "2.60.1"
