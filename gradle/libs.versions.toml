@@ -1,6 +1,6 @@
 [versions]
 # Toolchain
-agp = "9.4.1"
+agp = "9.5.0"
 kotlin = "2.4.0"
 
 # AndroidX / Jetpack
@@ -24,7 +24,7 @@ kotlinxSerialization = "1.12.0"
 # Injection de dépendances
 hilt = "2.60.1"
 hiltComposeViewModel = "1.4.0"
-ksp = "2.3.12"
+ksp = "2.3.13"
 
 # Coroutines
 coroutines = "1.11.0"
